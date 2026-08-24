@@ -34,7 +34,10 @@ repos:
     hooks:
       - id: pytest-build-limpo
         name: pytest (build limpo antes do push)
-        entry: pytest
+        # `language: system` roda com o Python ativo no shell que dispara o push —
+        # se pytest não estiver instalado nesse interpretador, o hook falha ali
+        # mesmo (esse é o comportamento certo: sem venv ativado, sem push).
+        entry: python -m pytest
         language: system
         pass_filenames: false
         always_run: true
