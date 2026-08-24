@@ -1,0 +1,7 @@
+# Normaliza quebra de linha: sempre LF no repositório, independente do OS de quem
+# commita. Evita diff gigante por causa de CRLF vs LF entre colaboradores Windows/Unix.
+* text=auto eol=lf
+
+*.png binary
+*.jpg binary
+*.ico binary

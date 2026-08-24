@@ -1,0 +1,37 @@
+services:
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "8000:8000"
+    env_file:
+      - .env
+    environment:
+      DATABASE_URL: postgresql+asyncpg://invoisys:invoisys@db:5432/invoisys
+    depends_on:
+      db:
+        condition: service_healthy
+    volumes:
+      - ./app:/app/app
+      - ./prompts:/app/prompts
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: invoisys
+      POSTGRES_PASSWORD: invoisys
+      POSTGRES_DB: invoisys
+    ports:
+      - "5432:5432"
+    volumes:
+      - invoisys_db_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U invoisys"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  invoisys_db_data:
