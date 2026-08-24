@@ -12,7 +12,7 @@ from app.api.v1.schemas import (
     ReleaseProcessadaOut,
 )
 from app.core.dependencies import get_jira_client, get_llm_provider
-from app.domain.entities import Release
+from app.domain.enums import StatusPipeline
 from app.domain.ports import JiraClient, LLMProvider
 from app.infrastructure.jira.jira_rest_client import JiraApiError
 from app.infrastructure.llm.provider_pendente import ProviderNaoConfiguradoError
@@ -35,7 +35,9 @@ async def buscar_historias(
 
     return ReleaseOut(
         chave_jira=chave_release,
-        status=Release(chave_jira=chave_release, historias=historias).status,
+        # Este endpoint só busca no Jira, nunca roda o pipeline — status é sempre
+        # PENDENTE aqui (instanciar Release só pra ler o default seria rebuscado).
+        status=StatusPipeline.PENDENTE,
         total_historias=len(historias),
         historias=[
             HistoriaJiraOut(

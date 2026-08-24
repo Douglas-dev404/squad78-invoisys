@@ -53,7 +53,7 @@ app/
 │   └── ports/        # JiraClient, LLMProvider — interfaces que infra implementa
 ├── infrastructure/   # adapters concretos — implementam as portas do domain
 │   ├── jira/          # JiraRestClient real
-│   ├── llm/            # ProviderPendente (stub) até LLM provider ser decidido
+│   ├── llm/            # OpenRouterProvider real; ProviderPendente se sem API key
 │   └── database/        # SQLAlchemy — ainda não implementado
 ├── services/         # orquestração de casos de uso, depende só de PORTAS, nunca de adapter concreto
 ├── api/v1/           # FastAPI — camada fina, só traduz HTTP <-> service, zero regra de negócio
@@ -71,16 +71,24 @@ service — sempre via `Depends()`.
 
 ## Decisões já tomadas — não reabrir sem motivo novo
 
-- Stack: Python 3.12+ / FastAPI / PostgreSQL / SQLAlchemy 2.0.
-- LangChain mantido no pipeline de IA (decisão registrada com ressalva — ver documentação interna
-  do projeto se você tiver acesso; peso morto para o escopo atual, aceito porque a
-  visão é evoluir para RAG/agents depois).
-- LLM provider: **ainda não decidido**. Não implemente um adapter real em
-  `app/infrastructure/llm/` sem confirmação explícita de qual provider usar — até lá,
-  `ProviderPendente` é o adapter ativo, e isso é esperado, não um bug a "corrigir"
-  sozinho.
-- Um único LLM provider no MVP, nunca dois em paralelo.
+- Stack: Python 3.12+ / FastAPI / PostgreSQL / SQLAlchemy 2.0. Confirmado mesmo com a
+  InvoiSys sinalizando preferência por Node/.NET — enunciado da residência deixa a
+  escolha de tecnologia livre pro squad, e reescrever a fundação já feita não agregaria.
+- LangChain **removido**. Avaliado e descartado: o adapter real de LLM (OpenRouter)
+  usa só `httpx`, schema compatível com OpenAI, sem necessidade de SDK de orquestração
+  pra um pipeline linear de 5 estágios sem RAG.
+- LLM provider: **OpenRouter** (`app/infrastructure/llm/openrouter_provider.py`),
+  gateway único pra múltiplos modelos via um schema de API compatível com OpenAI.
+  Modelo configurável via `OPENROUTER_MODEL` (formato `provedor/modelo`). Sem
+  `OPENROUTER_API_KEY` configurada, o composition root cai para `ProviderPendente` —
+  isso é esperado em ambiente sem chave, não um bug a "corrigir" trocando o fallback.
+- Um único LLM provider no MVP, nunca dois em paralelo (fallback entre *modelos* via
+  `OPENROUTER_FALLBACK_MODELS` é diferente disso — mesma OpenRouter, resiliência).
 - Sem fallback de input JSON/CSV — só API real do Jira.
+- Interpolação de prompt usa `{{chave}}` (Mustache-like) via `montar_prompt()` em
+  `app/infrastructure/llm/prompt_loader.py`, nunca `str.format()` — os prompts têm
+  JSON literal de exemplo no formato de saída, que `.format()` interpretaria como
+  placeholder e quebraria com `KeyError` (bug real já corrigido uma vez, não reintroduza).
 
 ## Padrões de código
 

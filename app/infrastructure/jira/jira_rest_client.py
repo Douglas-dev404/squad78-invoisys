@@ -17,7 +17,13 @@ from __future__ import annotations
 
 import httpx
 from loguru import logger
-from tenacity import retry, retry_if_exception_type, stop_after_attempt, wait_exponential
+from tenacity import (
+    retry,
+    retry_if_exception,
+    retry_if_exception_type,
+    stop_after_attempt,
+    wait_exponential,
+)
 
 from app.domain.entities import HistoriaJira
 
@@ -27,7 +33,21 @@ _TIPO_ISSUE_RELEASE_NOTE = "Release Note"  # nome do subtask type no Jira da Inv
 
 
 class JiraApiError(Exception):
-    """Erro de comunicação com a API do Jira, após esgotar as tentativas de retry."""
+    """Erro de comunicação com a API do Jira, após esgotar as tentativas de retry
+    (quando aplicável). Envelope único para qualquer status HTTP de erro — o chamador
+    (`app/api/v1/releases.py`) captura só este tipo e nunca precisa saber se a causa
+    raiz foi um 401, 404 ou 503."""
+
+    def __init__(self, mensagem: str, status_code: int) -> None:
+        super().__init__(mensagem)
+        self.status_code = status_code
+
+    @property
+    def retentavel(self) -> bool:
+        """429/5xx são transitórios — o @retry em `_get` os re-tenta antes de
+        desistir. 4xx (token inválido, Release inexistente) nunca é, então uma
+        tentativa já basta."""
+        return self.status_code == 429 or self.status_code >= 500
 
 
 class JiraRestClient:
@@ -132,7 +152,11 @@ class JiraRestClient:
         return " ".join(p for p in partes if p).strip()
 
     @retry(
-        retry=retry_if_exception_type(httpx.TransportError),
+        # Retenta erro de transporte (timeout, conexão) sempre; JiraApiError só
+        # quando `.retentavel` (429/5xx) — um 401/404 propaga na primeira tentativa,
+        # tentar de novo não mudaria o resultado.
+        retry=retry_if_exception_type(httpx.TransportError)
+        | retry_if_exception(lambda exc: isinstance(exc, JiraApiError) and exc.retentavel),
         stop=stop_after_attempt(3),
         wait=wait_exponential(multiplier=1, min=1, max=8),
         reraise=True,
@@ -143,13 +167,12 @@ class JiraRestClient:
             response.raise_for_status()
             return response.json()
         except httpx.HTTPStatusError as exc:
-            logger.error(
-                "Jira respondeu erro {} em {}: {}",
-                exc.response.status_code,
-                path,
-                exc.response.text[:500],
-            )
-            raise JiraApiError(f"Jira retornou {exc.response.status_code} em {path}") from exc
+            status = exc.response.status_code
+            corpo = exc.response.text[:500]
+            logger.error("Jira respondeu erro {} em {}: {}", status, path, corpo)
+            raise JiraApiError(
+                f"Jira retornou {status} em {path}: {corpo}", status_code=status
+            ) from exc
 
     async def aclose(self) -> None:
         await self._http.aclose()

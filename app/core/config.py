@@ -15,6 +15,17 @@ class Settings(BaseSettings):
     jira_email: str = Field(default="")
     jira_api_token: str = Field(default="")
 
+    # LLM — OpenRouter (gateway único, mesmo schema de request da OpenAI)
+    openrouter_api_key: str = Field(default="")
+    openrouter_model: str = Field(
+        default="openai/gpt-4o-mini",
+        description="Formato provedor/modelo, ex: openai/gpt-4o-mini, anthropic/claude-3.5-sonnet",
+    )
+    openrouter_fallback_models: list[str] = Field(
+        default_factory=list,
+        description="Modelos alternativos, usados pela OpenRouter em erro 5xx/rate limit",
+    )
+
     # Banco
     database_url: str = Field(
         default="postgresql+asyncpg://invoisys:invoisys@localhost:5432/invoisys"
