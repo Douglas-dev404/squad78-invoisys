@@ -21,12 +21,10 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-# LangChain fica opcional até o LLM provider ser decidido — evita instalar peso morto
-# enquanto o pipeline roda contra ProviderPendente. Ver documentação interna de estado do projeto.
-llm = [
-    "langchain>=0.3.0",
-    "tiktoken>=0.8.0",
-]
+# LangChain avaliado e descartado: o adapter real de LLM (OpenRouter) usa só httpx —
+# schema compatível com OpenAI, sem necessidade de SDK de orquestração pra um
+# pipeline linear de 5 estágios sem RAG. Reavaliar só se surgir necessidade real de
+# RAG/agents sobre Releases históricas.
 pdf = [
     "weasyprint>=62.0",
 ]

@@ -40,12 +40,29 @@ class PipelineGeracaoReleaseNote:
     @staticmethod
     def _extrair_e_limpar(historia: HistoriaJira) -> HistoriaJira:
         """Estágio 1: normaliza espaços/quebras de linha do texto fonte. Não chama
-        LLM — é limpeza determinística, não tem por que gastar tokens nisso."""
-        texto_limpo = " ".join(historia.texto_fonte.split())
+        LLM — é limpeza determinística, não tem por que gastar tokens nisso.
+
+        Limpa especificamente o campo que `HistoriaJira.texto_fonte` vai devolver
+        (Release Note dedicada, se existir; senão descrição técnica) — limpar sempre
+        `descricao_tecnica` seria bug quando há Release Note, porque `texto_fonte`
+        ignoraria a limpeza e devolveria o texto original sujo."""
+
+        def normalizar(texto: str) -> str:
+            return " ".join(texto.split())
+
+        if historia.possui_release_note_dedicada:
+            return HistoriaJira(
+                chave=historia.chave,
+                titulo=historia.titulo.strip(),
+                descricao_tecnica=historia.descricao_tecnica,
+                tipo_issue=historia.tipo_issue,
+                texto_release_note=normalizar(historia.texto_release_note),  # type: ignore[arg-type]
+                labels=historia.labels,
+            )
         return HistoriaJira(
             chave=historia.chave,
             titulo=historia.titulo.strip(),
-            descricao_tecnica=texto_limpo,
+            descricao_tecnica=normalizar(historia.descricao_tecnica),
             tipo_issue=historia.tipo_issue,
             texto_release_note=historia.texto_release_note,
             labels=historia.labels,

@@ -25,7 +25,11 @@ não tem prompt (ver `PipelineGeracaoReleaseNote._extrair_e_limpar`).
 
 Cada arquivo tem: contexto/persona, a tarefa, o formato de saída esperado (sempre
 JSON estrito quando a saída é estruturada), e few-shot examples reais da InvoiSys
-quando disponíveis. Placeholders de interpolação usam `{chaves_assim}`.
+quando disponíveis. Placeholders de interpolação usam `{{chaves_assim}}` (estilo
+Mustache/Jinja) — **nunca** `{chave_assim}` de chave única, porque colide com chaves
+JSON literais nos exemplos de formato de saída (`str.format()` interpretaria
+`{"titulo": ...}` como um placeholder). A interpolação é feita via `str.replace()`
+simples em `app/infrastructure/llm/prompt_loader.py`, não `.format()`.
 
 ## Pendência
 

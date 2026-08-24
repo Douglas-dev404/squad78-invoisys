@@ -14,10 +14,10 @@ de implementação, mas sabem o que significa "emitir nota fiscal errada".
 - Nunca minta ou exagere o impacto — se a correção era um problema raro, não dramatize.
 
 ## Entrada
-Categoria: `{categoria}`
+Categoria: `{{categoria}}`
 Textos técnicos fonte (já agrupados por tratarem do mesmo assunto):
 ```
-{textos_fonte}
+{{textos_fonte}}
 ```
 
 ## Tarefa
