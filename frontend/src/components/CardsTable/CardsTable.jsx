@@ -1,8 +1,8 @@
 export function CardsTable({ cards, isLoading, onRowClick }) {
   if (isLoading) {
     return (
-      <section className="bg-surface rounded-xl shadow-[0px_4px_12px_rgba(27,67,50,0.04)] border border-outline-variant/30 overflow-hidden">
-        <div className="px-md py-sm border-b border-outline-variant/30 flex justify-between items-center bg-surface-container-lowest">
+      <section className="bg-surface-container-lowest rounded-xl shadow-[0px_4px_12px_rgba(27,67,50,0.08)] border border-surface-variant/50 overflow-hidden">
+        <div className="px-md py-sm border-b border-surface-variant/30 flex justify-between items-center bg-surface-container-lowest">
           <h3 className="font-headline-sm text-headline-sm text-primary">
             Últimos Cards Formalizados
           </h3>
@@ -21,8 +21,8 @@ export function CardsTable({ cards, isLoading, onRowClick }) {
 
   if (!cards || cards.data.length === 0) {
     return (
-      <section className="bg-surface rounded-xl shadow-[0px_4px_12px_rgba(27,67,50,0.04)] border border-outline-variant/30 overflow-hidden">
-        <div className="px-md py-sm border-b border-outline-variant/30 flex justify-between items-center bg-surface-container-lowest">
+      <section className="bg-surface-container-lowest rounded-xl shadow-[0px_4px_12px_rgba(27,67,50,0.08)] border border-surface-variant/50 overflow-hidden">
+        <div className="px-md py-sm border-b border-surface-variant/30 flex justify-between items-center bg-surface-container-lowest">
           <h3 className="font-headline-sm text-headline-sm text-primary">
             Últimos Cards Formalizados
           </h3>
@@ -41,8 +41,8 @@ export function CardsTable({ cards, isLoading, onRowClick }) {
   };
 
   return (
-    <section className="bg-surface rounded-xl shadow-[0px_4px_12px_rgba(27,67,50,0.04)] border border-outline-variant/30 overflow-hidden">
-      <div className="px-md py-sm border-b border-outline-variant/30 flex justify-between items-center bg-surface-container-lowest">
+    <section className="bg-surface-container-lowest rounded-xl shadow-[0px_4px_12px_rgba(27,67,50,0.08)] border border-surface-variant/50 overflow-hidden">
+      <div className="px-md py-sm border-b border-surface-variant/30 flex justify-between items-center bg-surface-container-lowest">
         <h3 className="font-headline-sm text-headline-sm text-primary">
           Últimos Cards Formalizados
         </h3>

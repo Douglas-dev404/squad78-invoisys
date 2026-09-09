@@ -18,7 +18,7 @@ export function SearchBar({ onSearch, isLoading }) {
   };
 
   return (
-    <div className="mb-lg bg-surface-container-lowest border border-outline-variant/30 rounded-xl p-xs shadow-[0px_4px_12px_rgba(27,67,50,0.04)] flex items-center justify-between gap-sm transition-all focus-within:border-primary focus-within:ring-2 focus-within:ring-secondary-container/50">
+    <div className="mb-lg bg-surface-container-lowest border border-surface-variant/50 rounded-xl p-xs shadow-[0px_4px_12px_rgba(27,67,50,0.08)] flex items-center justify-between gap-sm transition-all focus-within:border-primary focus-within:ring-2 focus-within:ring-primary/20">
       <div className="flex items-center gap-sm flex-1 pl-sm">
         <span className="material-symbols-outlined text-outline">search</span>
         <input

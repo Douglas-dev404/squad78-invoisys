@@ -27,7 +27,7 @@ export function DashboardPage() {
   };
 
   return (
-    <div className="bg-background text-on-background min-h-screen">
+    <div className="bg-surface-bright text-on-background min-h-screen">
       {/* Navigation */}
       <SideNavBar />
       <TopNavBar />

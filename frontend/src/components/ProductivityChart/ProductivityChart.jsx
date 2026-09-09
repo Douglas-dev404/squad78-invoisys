@@ -12,7 +12,7 @@ export function ProductivityChart({ data, isLoading }) {
   );
 
   return (
-    <section className="bg-surface rounded-xl p-lg shadow-[0px_4px_12px_rgba(27,67,50,0.04)] mb-lg border border-outline-variant/30">
+    <section className="bg-surface-container-lowest rounded-xl p-lg shadow-[0px_4px_12px_rgba(27,67,50,0.08)] mb-lg border border-surface-variant/50">
       <div className="flex justify-between items-center mb-xl">
         <h3 className="font-headline-sm text-headline-sm text-primary">
           Produtividade da Semana
