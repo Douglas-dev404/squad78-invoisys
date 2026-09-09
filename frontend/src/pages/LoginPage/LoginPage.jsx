@@ -20,7 +20,6 @@ export function LoginPage({ onNavigateToForgotPassword, onLoginSuccess }) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [fieldErrors, setFieldErrors] = useState({});
-  const [successMessage, setSuccessMessage] = useState(null);
 
   // Custom hook para operações de autenticação
   const {
@@ -65,18 +64,15 @@ export function LoginPage({ onNavigateToForgotPassword, onLoginSuccess }) {
     }
 
     try {
-      const response = await login({ email, password });
-      setSuccessMessage(`Bem-vindo, ${response.user.name}!`);
+      await login({ email, password });
 
-      // Redirecionar para o dashboard após 500ms para dar tempo de ver a mensagem
-      setTimeout(() => {
-        if (onLoginSuccess) {
-          onLoginSuccess();
-        } else {
-          // TODO: Integrar com react-router-dom para navegação definitiva
-          window.location.href = '/dashboard';
-        }
-      }, 500);
+      // Redirecionar para o dashboard imediatamente após login bem-sucedido
+      if (onLoginSuccess) {
+        onLoginSuccess();
+      } else {
+        // TODO: Integrar com react-router-dom para navegação definitiva
+        window.location.href = '/dashboard';
+      }
     } catch (err) {
       // O erro já é tratado e armazenado no estado do hook useAuth
       console.error('Falha ao autenticar usuário:', err);
@@ -121,14 +117,6 @@ export function LoginPage({ onNavigateToForgotPassword, onLoginSuccess }) {
               type="error"
               message={authError}
               onClose={clearAuthError}
-            />
-          )}
-
-          {successMessage && (
-            <Alert
-              type="success"
-              message={successMessage}
-              onClose={() => setSuccessMessage(null)}
             />
           )}
 
