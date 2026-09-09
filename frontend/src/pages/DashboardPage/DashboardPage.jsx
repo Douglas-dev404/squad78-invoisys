@@ -7,7 +7,7 @@ import { ProductivityChart } from '../../components/ProductivityChart/Productivi
 import { CardsTable } from '../../components/CardsTable/CardsTable';
 import { AlertError } from '../../components/AlertError/AlertError';
 
-export function DashboardPage() {
+export function DashboardPage({ onLogout }) {
   const {
     kpi,
     chart,
@@ -30,7 +30,7 @@ export function DashboardPage() {
     <div className="bg-surface-bright text-on-background min-h-screen">
       {/* Navigation */}
       <SideNavBar />
-      <TopNavBar />
+      <TopNavBar onLogout={onLogout} />
 
       {/* Main Content */}
       <main className="ml-[260px] mt-16 p-lg pb-xl">
@@ -85,7 +85,7 @@ export function DashboardPage() {
                 </>
               }
               icon={kpi.inReview.icon}
-              backgroundColor="bg-secondary-container"
+              backgroundColor="bg-primary-container"
             />
             <KPICard
               label="Enviados (Cliente)"

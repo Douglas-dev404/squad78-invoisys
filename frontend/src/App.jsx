@@ -22,7 +22,11 @@ function App() {
   // </Routes>
 
   if (currentScreen === 'dashboard') {
-    return <DashboardPage />;
+    return (
+      <DashboardPage
+        onLogout={() => setCurrentScreen('login')}
+      />
+    );
   }
 
   if (currentScreen === 'email-confirmation') {

@@ -1,7 +1,13 @@
-export function TopNavBar() {
+export function TopNavBar({ onLogout }) {
+  const handleLogout = () => {
+    if (onLogout) {
+      onLogout();
+    }
+  };
+
   return (
     <header className="fixed top-0 ml-[260px] w-[calc(100%-260px)] bg-surface-container-lowest border-b border-surface-variant/50 z-40">
-      <div className="flex justify-between items-center w-full px-gutter h-16">
+      <div className="flex justify-end items-center w-full px-gutter h-16">
         {/* Actions */}
         <div className="flex items-center gap-sm">
           <button
@@ -18,6 +24,14 @@ export function TopNavBar() {
           </button>
           <button className="bg-primary text-on-primary px-sm py-xs rounded-lg font-label-md text-label-md hover:bg-primary/90 transition-colors ml-sm">
             Formalize
+          </button>
+          <button
+            onClick={handleLogout}
+            className="w-10 h-10 rounded-full flex items-center justify-center text-on-surface-variant hover:bg-surface-container-low transition-colors ml-sm"
+            aria-label="Sair da conta"
+            title="Sair"
+          >
+            <span className="material-symbols-outlined">logout</span>
           </button>
           <div className="ml-sm pl-sm border-l border-surface-variant">
             <img
