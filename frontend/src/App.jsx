@@ -52,6 +52,7 @@ function App() {
   return (
     <LoginPage
       onNavigateToForgotPassword={() => setCurrentScreen('forgot-password')}
+      onLoginSuccess={() => setCurrentScreen('dashboard')}
     />
   );
 }

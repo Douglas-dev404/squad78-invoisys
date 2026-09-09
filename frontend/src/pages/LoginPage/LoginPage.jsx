@@ -14,8 +14,9 @@ import { BRAND_NAME, BRAND_DEFAULT_ICON, UI_STRINGS } from '../../utils/constant
  *
  * @param {Object} props
  * @param {Function} [props.onNavigateToForgotPassword] - Callback para navegar até a tela de recuperação de senha
+ * @param {Function} [props.onLoginSuccess] - Callback para navegar ao dashboard após login bem-sucedido
  */
-export function LoginPage({ onNavigateToForgotPassword }) {
+export function LoginPage({ onNavigateToForgotPassword, onLoginSuccess }) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [fieldErrors, setFieldErrors] = useState({});
@@ -67,8 +68,15 @@ export function LoginPage({ onNavigateToForgotPassword }) {
       const response = await login({ email, password });
       setSuccessMessage(`Bem-vindo, ${response.user.name}!`);
 
-      // TODO: Redirecionar para o painel principal de releases (ex: navigate('/releases') com react-router-dom)
-      // window.location.href = '/dashboard';
+      // Redirecionar para o dashboard após 500ms para dar tempo de ver a mensagem
+      setTimeout(() => {
+        if (onLoginSuccess) {
+          onLoginSuccess();
+        } else {
+          // TODO: Integrar com react-router-dom para navegação definitiva
+          window.location.href = '/dashboard';
+        }
+      }, 500);
     } catch (err) {
       // O erro já é tratado e armazenado no estado do hook useAuth
       console.error('Falha ao autenticar usuário:', err);
