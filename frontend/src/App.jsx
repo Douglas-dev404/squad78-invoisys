@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { LoginPage } from './pages/LoginPage/LoginPage';
 import { ForgotPasswordPage } from './pages/ForgotPasswordPage/ForgotPasswordPage';
 import { EmailConfirmationPage } from './pages/EmailConfirmationPage/EmailConfirmationPage';
+import { DashboardPage } from './pages/DashboardPage/DashboardPage';
 
 /**
  * Componente raiz da aplicação.
@@ -15,9 +16,14 @@ function App() {
   // TODO: Substituir controle de estado local por roteamento definitivo via react-router-dom:
   // <Routes>
   //   <Route path="/login" element={<LoginPage />} />
+  //   <Route path="/dashboard" element={<DashboardPage />} />
   //   <Route path="/recuperar-senha" element={<ForgotPasswordPage />} />
   //   <Route path="/email-confirmacao" element={<EmailConfirmationPage />} />
   // </Routes>
+
+  if (currentScreen === 'dashboard') {
+    return <DashboardPage />;
+  }
 
   if (currentScreen === 'email-confirmation') {
     return (
