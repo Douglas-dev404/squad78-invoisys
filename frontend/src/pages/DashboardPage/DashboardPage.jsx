@@ -1,6 +1,5 @@
 import { useDashboard } from '../../hooks/useDashboard';
-import { SideNavBar } from '../../components/SideNavBar/SideNavBar';
-import { TopNavBar } from '../../components/TopNavBar/TopNavBar';
+import { Layout } from '../../components/Layout/Layout';
 import { SearchBar } from '../../components/SearchBar/SearchBar';
 import { KPICard } from '../../components/KPICard/KPICard';
 import { ProductivityChart } from '../../components/ProductivityChart/ProductivityChart';
@@ -27,14 +26,8 @@ export function DashboardPage({ onLogout }) {
   };
 
   return (
-    <div className="bg-surface-bright text-on-background min-h-screen">
-      {/* Navigation */}
-      <SideNavBar />
-      <TopNavBar onLogout={onLogout} />
-
-      {/* Main Content */}
-      <main className="ml-[260px] mt-16 p-lg pb-xl">
-        {/* Header */}
+    <Layout onLogout={onLogout}>
+      {/* Header */}
         <header className="mb-lg">
           <h2 className="font-headline-lg text-headline-lg text-primary">
             Dashboard Principal
@@ -107,13 +100,12 @@ export function DashboardPage({ onLogout }) {
         {/* Chart */}
         <ProductivityChart data={chart} isLoading={loading} />
 
-        {/* Table */}
-        <CardsTable
-          cards={cards}
-          isLoading={loading}
-          onRowClick={handleCardRowClick}
-        />
-      </main>
-    </div>
+      {/* Table */}
+      <CardsTable
+        cards={cards}
+        isLoading={loading}
+        onRowClick={handleCardRowClick}
+      />
+    </Layout>
   );
 }
