@@ -1,4 +1,4 @@
-export function TopNavBar({ onLogout }) {
+export function TopNavBar({ onLogout, isMinimized = false }) {
   const handleLogout = () => {
     if (onLogout) {
       onLogout();
@@ -6,7 +6,11 @@ export function TopNavBar({ onLogout }) {
   };
 
   return (
-    <header className="fixed top-0 ml-[260px] w-[calc(100%-260px)] bg-surface-container-lowest border-b border-surface-variant/50 z-40">
+    <header
+      className={`fixed top-0 bg-surface-container-lowest border-b border-surface-variant/50 z-40 transition-all duration-300 ${
+        isMinimized ? 'ml-20 w-[calc(100%-80px)]' : 'ml-[260px] w-[calc(100%-260px)]'
+      }`}
+    >
       <div className="flex justify-end items-center w-full px-gutter h-16">
         {/* Actions */}
         <div className="flex items-center gap-sm">
