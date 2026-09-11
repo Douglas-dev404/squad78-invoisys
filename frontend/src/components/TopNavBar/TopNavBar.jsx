@@ -1,4 +1,4 @@
-export function TopNavBar({ onLogout, isMinimized = false }) {
+export function TopNavBar({ onLogout, onProfileClick, isMinimized = false }) {
   const handleLogout = () => {
     if (onLogout) {
       onLogout();
@@ -38,11 +38,18 @@ export function TopNavBar({ onLogout, isMinimized = false }) {
             <span className="material-symbols-outlined">logout</span>
           </button>
           <div className="ml-sm pl-sm border-l border-surface-variant">
-            <img
-              className="w-8 h-8 rounded-full object-cover border border-surface-variant/50"
-              alt="Foto de perfil"
-              src="https://lh3.googleusercontent.com/aida-public/AB6AXuCKLcr-v89KoV9oSKV-9JPg_L-t1F-Sv8gJoP3E8f2mTajVf5NcsZVIjTJqB6HA9JzmG8r-v-LjiUp4GBRW_unG63RYRCjo38mRKsAxg-X4UmEBuOH72pM4xvWZcnZH19QUkCALyNgW_7oxl7JCsjtSTe471M2QlRoAVzaNV-mXUPFV5osGBDCwAmmops2g1TuYf8geKxyqWvZpGmKjsiG15IWDEoX6tHpMXRmV-g1hyz8ZCNzczIU69A"
-            />
+            <button
+              onClick={onProfileClick}
+              className="rounded-full focus:outline-none focus:ring-2 focus:ring-primary/40 transition-shadow"
+              aria-label="Ver meu perfil"
+              title="Meu perfil"
+            >
+              <img
+                className="w-8 h-8 rounded-full object-cover border border-surface-variant/50"
+                alt="Foto de perfil"
+                src="https://lh3.googleusercontent.com/aida-public/AB6AXuCKLcr-v89KoV9oSKV-9JPg_L-t1F-Sv8gJoP3E8f2mTajVf5NcsZVIjTJqB6HA9JzmG8r-v-LjiUp4GBRW_unG63RYRCjo38mRKsAxg-X4UmEBuOH72pM4xvWZcnZH19QUkCALyNgW_7oxl7JCsjtSTe471M2QlRoAVzaNV-mXUPFV5osGBDCwAmmops2g1TuYf8geKxyqWvZpGmKjsiG15IWDEoX6tHpMXRmV-g1hyz8ZCNzczIU69A"
+              />
+            </button>
           </div>
         </div>
       </div>

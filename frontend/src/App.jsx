@@ -3,6 +3,7 @@ import { LoginPage } from './pages/LoginPage/LoginPage';
 import { ForgotPasswordPage } from './pages/ForgotPasswordPage/ForgotPasswordPage';
 import { EmailConfirmationPage } from './pages/EmailConfirmationPage/EmailConfirmationPage';
 import { DashboardPage } from './pages/DashboardPage/DashboardPage';
+import { ProfilePage } from './pages/ProfilePage/ProfilePage';
 
 /**
  * Componente raiz da aplicação.
@@ -17,14 +18,25 @@ function App() {
   // <Routes>
   //   <Route path="/login" element={<LoginPage />} />
   //   <Route path="/dashboard" element={<DashboardPage />} />
+  //   <Route path="/perfil" element={<ProfilePage />} />
   //   <Route path="/recuperar-senha" element={<ForgotPasswordPage />} />
   //   <Route path="/email-confirmacao" element={<EmailConfirmationPage />} />
   // </Routes>
+
+  if (currentScreen === 'profile') {
+    return (
+      <ProfilePage
+        onLogout={() => setCurrentScreen('login')}
+        onProfileClick={() => setCurrentScreen('profile')}
+      />
+    );
+  }
 
   if (currentScreen === 'dashboard') {
     return (
       <DashboardPage
         onLogout={() => setCurrentScreen('login')}
+        onProfileClick={() => setCurrentScreen('profile')}
       />
     );
   }
