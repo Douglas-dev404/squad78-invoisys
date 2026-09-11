@@ -14,12 +14,23 @@ function formatDate(isoDate) {
   });
 }
 
-export function ProfilePage({ onLogout, onProfileClick }) {
+export function ProfilePage({ onLogout, onProfileClick, onBack }) {
   const { profile, loading, error, clearError, refetch } = useProfile();
 
   return (
     <Layout onLogout={onLogout} onProfileClick={onProfileClick}>
       <header className="mb-lg">
+        {onBack && (
+          <button
+            onClick={onBack}
+            className="flex items-center gap-1 text-on-surface-variant hover:text-primary font-label-md text-label-md mb-sm transition-colors"
+          >
+            <span className="material-symbols-outlined text-[18px]">
+              arrow_back
+            </span>
+            Voltar
+          </button>
+        )}
         <h2 className="font-headline-lg text-headline-lg text-primary">
           Meu Perfil
         </h2>

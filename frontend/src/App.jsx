@@ -12,7 +12,13 @@ import { ProfilePage } from './pages/ProfilePage/ProfilePage';
  */
 function App() {
   const [currentScreen, setCurrentScreen] = useState('login');
+  const [previousScreen, setPreviousScreen] = useState('dashboard');
   const [recoveryEmail, setRecoveryEmail] = useState('');
+
+  const navigateToProfile = () => {
+    setPreviousScreen(currentScreen);
+    setCurrentScreen('profile');
+  };
 
   // TODO: Substituir controle de estado local por roteamento definitivo via react-router-dom:
   // <Routes>
@@ -27,7 +33,8 @@ function App() {
     return (
       <ProfilePage
         onLogout={() => setCurrentScreen('login')}
-        onProfileClick={() => setCurrentScreen('profile')}
+        onProfileClick={navigateToProfile}
+        onBack={() => setCurrentScreen(previousScreen)}
       />
     );
   }
@@ -36,7 +43,7 @@ function App() {
     return (
       <DashboardPage
         onLogout={() => setCurrentScreen('login')}
-        onProfileClick={() => setCurrentScreen('profile')}
+        onProfileClick={navigateToProfile}
       />
     );
   }
