@@ -4,6 +4,15 @@ import { ForgotPasswordPage } from './pages/ForgotPasswordPage/ForgotPasswordPag
 import { EmailConfirmationPage } from './pages/EmailConfirmationPage/EmailConfirmationPage';
 import { DashboardPage } from './pages/DashboardPage/DashboardPage';
 import { ProfilePage } from './pages/ProfilePage/ProfilePage';
+import { UnderConstructionPage } from './pages/UnderConstructionPage/UnderConstructionPage';
+
+const UNDER_CONSTRUCTION_SCREENS = {
+  'review-queue': 'Review Queue',
+  'sent-history': 'Sent History',
+  'system-logs': 'System Logs',
+  'user-management': 'User Management',
+  'technical-settings': 'Technical Settings',
+};
 
 /**
  * Componente raiz da aplicação.
@@ -20,6 +29,10 @@ function App() {
     setCurrentScreen('profile');
   };
 
+  const handleSidebarNavigate = (screenKey) => {
+    setCurrentScreen(screenKey);
+  };
+
   // TODO: Substituir controle de estado local por roteamento definitivo via react-router-dom:
   // <Routes>
   //   <Route path="/login" element={<LoginPage />} />
@@ -34,6 +47,7 @@ function App() {
       <ProfilePage
         onLogout={() => setCurrentScreen('login')}
         onProfileClick={navigateToProfile}
+        onNavigate={handleSidebarNavigate}
         onBack={() => setCurrentScreen(previousScreen)}
       />
     );
@@ -42,6 +56,19 @@ function App() {
   if (currentScreen === 'dashboard') {
     return (
       <DashboardPage
+        onLogout={() => setCurrentScreen('login')}
+        onProfileClick={navigateToProfile}
+        onNavigate={handleSidebarNavigate}
+      />
+    );
+  }
+
+  if (UNDER_CONSTRUCTION_SCREENS[currentScreen]) {
+    return (
+      <UnderConstructionPage
+        title={UNDER_CONSTRUCTION_SCREENS[currentScreen]}
+        activeScreen={currentScreen}
+        onNavigate={handleSidebarNavigate}
         onLogout={() => setCurrentScreen('login')}
         onProfileClick={navigateToProfile}
       />

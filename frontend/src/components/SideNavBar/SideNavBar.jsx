@@ -1,11 +1,16 @@
-export function SideNavBar({ isMinimized = false, onToggleMinimize }) {
+export function SideNavBar({
+  isMinimized = false,
+  onToggleMinimize,
+  activeScreen = 'dashboard',
+  onNavigate,
+}) {
   const navItems = [
-    { icon: 'dashboard', label: 'Dashboard', href: '#', active: true },
-    { icon: 'rate_review', label: 'Review Queue', href: '#', active: false },
-    { icon: 'history', label: 'Sent History', href: '#', active: false },
-    { icon: 'receipt_long', label: 'System Logs', href: '#', active: false },
-    { icon: 'group', label: 'User Management', href: '#', active: false },
-    { icon: 'settings', label: 'Technical Settings', href: '#', active: false },
+    { icon: 'dashboard', label: 'Dashboard', screenKey: 'dashboard' },
+    { icon: 'rate_review', label: 'Review Queue', screenKey: 'review-queue' },
+    { icon: 'history', label: 'Sent History', screenKey: 'sent-history' },
+    { icon: 'receipt_long', label: 'System Logs', screenKey: 'system-logs' },
+    { icon: 'group', label: 'User Management', screenKey: 'user-management' },
+    { icon: 'settings', label: 'Technical Settings', screenKey: 'technical-settings' },
   ];
 
   return (
@@ -74,30 +79,37 @@ export function SideNavBar({ isMinimized = false, onToggleMinimize }) {
 
         {/* Navigation Links */}
         <ul className={`flex flex-col flex-1 gap-xs transition-all duration-300 ${isMinimized ? 'px-1' : 'px-sm'}`}>
-          {navItems.map((item) => (
-            <li key={item.label}>
-              <a
-                href={item.href}
-                className={`flex items-center gap-sm py-sm rounded-lg transition-colors duration-200 active:scale-[0.98] ${
-                  isMinimized ? 'px-2 justify-center' : 'px-sm justify-start'
-                } ${
-                  item.active
-                    ? 'text-primary font-bold border-r-4 border-primary bg-secondary-container/20 hover:bg-secondary-container/10'
-                    : 'text-on-surface-variant hover:text-primary hover:bg-secondary-container/10'
-                }`}
-                title={isMinimized ? item.label : undefined}
-              >
-                <span className="material-symbols-outlined flex-shrink-0">
-                  {item.icon}
-                </span>
-                {!isMinimized && (
-                  <span className="font-body-md text-body-md whitespace-nowrap">
-                    {item.label}
+          {navItems.map((item) => {
+            const isActive = item.screenKey === activeScreen;
+            return (
+              <li key={item.screenKey}>
+                <a
+                  href="#"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    onNavigate?.(item.screenKey);
+                  }}
+                  className={`flex items-center gap-sm py-sm rounded-lg transition-colors duration-200 active:scale-[0.98] ${
+                    isMinimized ? 'px-2 justify-center' : 'px-sm justify-start'
+                  } ${
+                    isActive
+                      ? 'text-primary font-bold border-r-4 border-primary bg-secondary-container/20 hover:bg-secondary-container/10'
+                      : 'text-on-surface-variant hover:text-primary hover:bg-secondary-container/10'
+                  }`}
+                  title={isMinimized ? item.label : undefined}
+                >
+                  <span className="material-symbols-outlined flex-shrink-0">
+                    {item.icon}
                   </span>
-                )}
-              </a>
-            </li>
-          ))}
+                  {!isMinimized && (
+                    <span className="font-body-md text-body-md whitespace-nowrap">
+                      {item.label}
+                    </span>
+                  )}
+                </a>
+              </li>
+            );
+          })}
         </ul>
 
         {/* CTA */}

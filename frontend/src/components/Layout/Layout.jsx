@@ -2,13 +2,18 @@ import { SideNavBar } from '../SideNavBar/SideNavBar';
 import { TopNavBar } from '../TopNavBar/TopNavBar';
 import { useSidebarMinimize } from '../../hooks/useSidebarMinimize';
 
-export function Layout({ children, onLogout, onProfileClick }) {
+export function Layout({ children, onLogout, onProfileClick, activeScreen, onNavigate }) {
   const { isMinimized, toggle } = useSidebarMinimize();
 
   return (
     <div className="bg-surface-bright text-on-background min-h-screen">
       {/* Navigation */}
-      <SideNavBar isMinimized={isMinimized} onToggleMinimize={toggle} />
+      <SideNavBar
+        isMinimized={isMinimized}
+        onToggleMinimize={toggle}
+        activeScreen={activeScreen}
+        onNavigate={onNavigate}
+      />
       <TopNavBar
         onLogout={onLogout}
         onProfileClick={onProfileClick}

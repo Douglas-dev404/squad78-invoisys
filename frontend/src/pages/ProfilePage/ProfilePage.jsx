@@ -14,11 +14,16 @@ function formatDate(isoDate) {
   });
 }
 
-export function ProfilePage({ onLogout, onProfileClick, onBack }) {
+export function ProfilePage({ onLogout, onProfileClick, onBack, onNavigate }) {
   const { profile, loading, error, clearError, refetch } = useProfile();
 
   return (
-    <Layout onLogout={onLogout} onProfileClick={onProfileClick}>
+    <Layout
+      onLogout={onLogout}
+      onProfileClick={onProfileClick}
+      activeScreen="profile"
+      onNavigate={onNavigate}
+    >
       <header className="mb-lg">
         {onBack && (
           <button
