@@ -2,7 +2,14 @@ import { SideNavBar } from '../SideNavBar/SideNavBar';
 import { TopNavBar } from '../TopNavBar/TopNavBar';
 import { useSidebarMinimize } from '../../hooks/useSidebarMinimize';
 
-export function Layout({ children, onLogout, onProfileClick, activeScreen, onNavigate }) {
+export function Layout({
+  children,
+  onLogout,
+  onProfileClick,
+  activeScreen,
+  onNavigate,
+  fullBleed = false,
+}) {
   const { isMinimized, toggle } = useSidebarMinimize();
 
   return (
@@ -22,8 +29,12 @@ export function Layout({ children, onLogout, onProfileClick, activeScreen, onNav
 
       {/* Main Content */}
       <main
-        className={`mt-16 p-lg pb-xl transition-all duration-300 ${
+        className={`mt-16 transition-all duration-300 ${
           isMinimized ? 'ml-20' : 'ml-[260px]'
+        } ${
+          fullBleed
+            ? 'h-[calc(100vh-4rem)] overflow-hidden flex'
+            : 'p-lg pb-xl'
         }`}
       >
         {children}

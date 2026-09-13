@@ -5,12 +5,12 @@ import { EmailConfirmationPage } from './pages/EmailConfirmationPage/EmailConfir
 import { DashboardPage } from './pages/DashboardPage/DashboardPage';
 import { ProfilePage } from './pages/ProfilePage/ProfilePage';
 import { UnderConstructionPage } from './pages/UnderConstructionPage/UnderConstructionPage';
+import { UserManagementPage } from './pages/UserManagementPage/UserManagementPage';
 
 const UNDER_CONSTRUCTION_SCREENS = {
   'review-queue': 'Review Queue',
   'sent-history': 'Sent History',
   'system-logs': 'System Logs',
-  'user-management': 'User Management',
   'technical-settings': 'Technical Settings',
 };
 
@@ -56,6 +56,16 @@ function App() {
   if (currentScreen === 'dashboard') {
     return (
       <DashboardPage
+        onLogout={() => setCurrentScreen('login')}
+        onProfileClick={navigateToProfile}
+        onNavigate={handleSidebarNavigate}
+      />
+    );
+  }
+
+  if (currentScreen === 'user-management') {
+    return (
+      <UserManagementPage
         onLogout={() => setCurrentScreen('login')}
         onProfileClick={navigateToProfile}
         onNavigate={handleSidebarNavigate}
