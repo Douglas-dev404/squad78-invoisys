@@ -4,7 +4,12 @@ import { UserListItem } from '../../components/UserListItem/UserListItem';
 import { UserProfilePanel } from '../../components/UserProfilePanel/UserProfilePanel';
 import { AlertError } from '../../components/AlertError/AlertError';
 
-export function UserManagementPage({ onLogout, onProfileClick, onNavigate }) {
+export function UserManagementPage({
+  onLogout,
+  onProfileClick,
+  onNavigate,
+  onCreateUser,
+}) {
   const {
     users,
     loading,
@@ -41,7 +46,10 @@ export function UserManagementPage({ onLogout, onProfileClick, onNavigate }) {
               Gerencie acessos, permissões e histórico da equipe.
             </p>
           </div>
-          <button className="bg-primary text-on-primary font-label-md text-label-md py-sm px-md rounded-lg flex items-center justify-center gap-xs hover:bg-primary/90 transition-colors shadow-sm flex-shrink-0 whitespace-nowrap self-start lg:self-auto">
+          <button
+            onClick={onCreateUser}
+            className="bg-primary text-on-primary font-label-md text-label-md py-sm px-md rounded-lg flex items-center justify-center gap-xs hover:bg-primary/90 transition-colors shadow-sm flex-shrink-0 whitespace-nowrap self-start lg:self-auto"
+          >
             <span className="material-symbols-outlined text-[18px]">
               person_add
             </span>

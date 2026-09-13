@@ -6,6 +6,7 @@ import { DashboardPage } from './pages/DashboardPage/DashboardPage';
 import { ProfilePage } from './pages/ProfilePage/ProfilePage';
 import { UnderConstructionPage } from './pages/UnderConstructionPage/UnderConstructionPage';
 import { UserManagementPage } from './pages/UserManagementPage/UserManagementPage';
+import { CreateUserPage } from './pages/CreateUserPage/CreateUserPage';
 
 const UNDER_CONSTRUCTION_SCREENS = {
   'review-queue': 'Review Queue',
@@ -63,12 +64,25 @@ function App() {
     );
   }
 
+  if (currentScreen === 'create-user') {
+    return (
+      <CreateUserPage
+        onLogout={() => setCurrentScreen('login')}
+        onProfileClick={navigateToProfile}
+        onNavigate={handleSidebarNavigate}
+        onCancel={() => setCurrentScreen('user-management')}
+        onCreated={() => setCurrentScreen('user-management')}
+      />
+    );
+  }
+
   if (currentScreen === 'user-management') {
     return (
       <UserManagementPage
         onLogout={() => setCurrentScreen('login')}
         onProfileClick={navigateToProfile}
         onNavigate={handleSidebarNavigate}
+        onCreateUser={() => setCurrentScreen('create-user')}
       />
     );
   }
