@@ -1,0 +1,11 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/InvoiSys.Api/InvoiSys.Api.csproj" />
+    <Project Path="src/InvoiSys.Application/InvoiSys.Application.csproj" />
+    <Project Path="src/InvoiSys.Domain/InvoiSys.Domain.csproj" />
+    <Project Path="src/InvoiSys.Infrastructure/InvoiSys.Infrastructure.csproj" />
+  </Folder>
+  <Folder Name="/tests-dotnet/">
+    <Project Path="tests-dotnet/InvoiSys.Tests/InvoiSys.Tests.csproj" />
+  </Folder>
+</Solution>

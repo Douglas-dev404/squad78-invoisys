@@ -11,3 +11,8 @@ htmlcov/
 .coverage
 dist/
 build/
+
+# .NET
+bin/
+obj/
+*.user
