@@ -11,6 +11,10 @@ services:
       # Host "db" é o nome do serviço na rede do compose, não localhost: dentro do
       # container, localhost seria o próprio container da API.
       ConnectionStrings__Default: Host=db;Port=5432;Database=${POSTGRES_DB:-invoisys};Username=${POSTGRES_USER:-invoisys};Password=${POSTGRES_PASSWORD:-invoisys}
+      # O compose é ambiente descartável: o banco sobe vazio a cada `up -d` com volume
+      # novo, então a API aplica as migrations sozinha. Em produção isso fica desligado
+      # (padrão do appsettings) e a migration é passo próprio do deploy.
+      Database__MigrarAoIniciar: "true"
     depends_on:
       db:
         condition: service_healthy

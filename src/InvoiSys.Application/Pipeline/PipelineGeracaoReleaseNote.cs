@@ -94,12 +94,33 @@ public sealed class PipelineGeracaoReleaseNote(
         IReadOnlyList<IReadOnlyList<string>> grupos,
         CancellationToken cancellationToken)
     {
-        var porChave = historias.ToDictionary(h => h.Chave);
+        // ToDictionary lançaria se o Jira devolvesse a mesma chave duas vezes (issue em
+        // duas páginas da paginação, por exemplo). A primeira ocorrência vence — são o
+        // mesmo dado, e derrubar o processamento por isso seria desproporcional.
+        var porChave = new Dictionary<string, HistoriaJira>(historias.Count);
+        foreach (var historia in historias)
+        {
+            porChave.TryAdd(historia.Chave, historia);
+        }
         var itens = new List<ItemComunicado>();
 
         foreach (var grupoChaves in grupos)
         {
-            var historiasDoGrupo = grupoChaves.Select(chave => porChave[chave]).ToList();
+            // O LLM pode alucinar uma chave que nunca veio do Jira. Indexar direto
+            // (porChave[chave]) lançaria KeyNotFoundException e derrubaria a Release
+            // inteira por causa de uma linha inventada — filtramos em vez de confiar.
+            // O caso inverso (chave real que o modelo esqueceu) é tratado no adapter,
+            // que a reinsere como grupo próprio: história real nunca se perde.
+            var chavesConhecidas = grupoChaves.Where(porChave.ContainsKey).ToList();
+
+            if (chavesConhecidas.Count == 0)
+            {
+                // Grupo formado só por chaves inexistentes: não há texto real para
+                // reescrever, e gerar um item a partir do nada seria pior que omiti-lo.
+                continue;
+            }
+
+            var historiasDoGrupo = chavesConhecidas.Select(chave => porChave[chave]).ToList();
 
             // Categoriza pela primeira história do grupo — elas já foram agrupadas por
             // serem semanticamente equivalentes, então compartilham categoria.
@@ -112,7 +133,7 @@ public sealed class PipelineGeracaoReleaseNote(
                 categoria,
                 cancellationToken);
 
-            itens.Add(new ItemComunicado(categoria, texto, grupoChaves));
+            itens.Add(new ItemComunicado(categoria, texto, chavesConhecidas));
         }
 
         return itens;
