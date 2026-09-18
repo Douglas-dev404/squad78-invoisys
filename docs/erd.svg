@@ -1,0 +1,364 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1400" height="940" viewBox="0 0 1400 940" font-family="ui-monospace, 'Cascadia Code', 'JetBrains Mono', Consolas, monospace">
+<defs>
+<pattern id="grid" width="28" height="28" patternUnits="userSpaceOnUse"><path d="M28 0H0V28" fill="none" stroke="#1a2030" stroke-width="1"/></pattern>
+<marker id="crow" viewBox="0 0 12 12" refX="11" refY="6" markerWidth="11" markerHeight="11" orient="auto-start-reverse"><path d="M12 6H2M12 6 2 1M12 6 2 11" fill="none" stroke="#46536b" stroke-width="1.5"/></marker>
+<marker id="crowR" viewBox="0 0 12 12" refX="11" refY="6" markerWidth="11" markerHeight="11" orient="auto-start-reverse"><path d="M12 6H2M12 6 2 1M12 6 2 11" fill="none" stroke="#fb7185" stroke-width="1.5"/></marker>
+<marker id="one" viewBox="0 0 12 12" refX="1" refY="6" markerWidth="11" markerHeight="11" orient="auto-start-reverse"><path d="M4 1V11" fill="none" stroke="#46536b" stroke-width="1.8"/></marker>
+<marker id="oneR" viewBox="0 0 12 12" refX="1" refY="6" markerWidth="11" markerHeight="11" orient="auto-start-reverse"><path d="M4 1V11" fill="none" stroke="#fb7185" stroke-width="1.8"/></marker>
+<filter id="sh" x="-20%" y="-20%" width="150%" height="150%"><feDropShadow dx="0" dy="3" stdDeviation="5" flood-color="#000" flood-opacity="0.45"/></filter>
+</defs>
+<rect width="1400" height="940" fill="#0f1420"/>
+<rect width="1400" height="940" fill="url(#grid)"/>
+<text x="40" y="922" font-family="ui-sans-serif, 'Segoe UI', system-ui, sans-serif" font-size="12" fill="#8b98ad">InvoiSys — modelo relacional (PostgreSQL 16). Gerado do schema real aplicado pela migration.</text>
+<path d="M351 93.0 H428 Q440 93.0 440 105.0 V294.0 Q440 306.0 428 306.0 H351" fill="none" stroke="#46536b" stroke-width="1.6" marker-start="url(#crow)" marker-end="url(#one)"/>
+<g transform="translate(440,199.5) rotate(-90)">
+<rect x="-36.25" y="-8" width="72.5" height="16" rx="4" fill="#0f1420" stroke="#46536b" stroke-width="0.8"/>
+<text x="0" y="3.5" font-size="9" fill="#46536b" text-anchor="middle">1:N CASCADE</text>
+</g>
+<path d="M370 583.0 H403 Q415 583.0 415 571.0 V318.0 Q415 306.0 403 306.0 H351" fill="none" stroke="#46536b" stroke-width="1.6" marker-start="url(#crow)" marker-end="url(#one)"/>
+<g transform="translate(415,444.5) rotate(-90)">
+<rect x="-36.25" y="-8" width="72.5" height="16" rx="4" fill="#0f1420" stroke="#46536b" stroke-width="0.8"/>
+<text x="0" y="3.5" font-size="9" fill="#46536b" text-anchor="middle">1:N CASCADE</text>
+</g>
+<path d="M500 273.0 H478 Q466 273.0 466 285.0 V294.0 Q466 306.0 454 306.0 H351" fill="none" stroke="#46536b" stroke-width="1.6" marker-start="url(#crow)" marker-end="url(#one)"/>
+<g transform="translate(466,289.5) rotate(-90)">
+<rect x="-36.25" y="-8" width="72.5" height="16" rx="4" fill="#0f1420" stroke="#46536b" stroke-width="0.8"/>
+<text x="0" y="3.5" font-size="9" fill="#46536b" text-anchor="middle">1:N CASCADE</text>
+</g>
+<path d="M603.6800000000001 545 V463" fill="none" stroke="#46536b" stroke-width="1.6" marker-start="url(#crow)" marker-end="url(#one)"/>
+<g transform="translate(603.6800000000001,504.0) rotate(-90)">
+<rect x="-36.25" y="-8" width="72.5" height="16" rx="4" fill="#0f1420" stroke="#46536b" stroke-width="0.8"/>
+<text x="0" y="3.5" font-size="9" fill="#46536b" text-anchor="middle">1:N CASCADE</text>
+</g>
+<path d="M1266 325.0 H1274 Q1286 325.0 1286 313.0 V266.0 Q1286 254.0 1274 254.0 H830" fill="none" stroke="#fb7185" stroke-width="1.6" stroke-dasharray="6 4" marker-start="url(#crowR)" marker-end="url(#oneR)"/>
+<g transform="translate(1286,289.5) rotate(-90)">
+<rect x="-39.0" y="-8" width="78.0" height="16" rx="4" fill="#0f1420" stroke="#fb7185" stroke-width="0.8"/>
+<text x="0" y="3.5" font-size="9" fill="#fb7185" text-anchor="middle">1:N RESTRICT</text>
+</g>
+<path d="M1266 344.0 H1318 Q1330 344.0 1330 332.0 V318.0 Q1330 306.0 1318 306.0 H351" fill="none" stroke="#46536b" stroke-width="1.6" marker-start="url(#crow)" marker-end="url(#one)"/>
+<g transform="translate(1330,325.0) rotate(-90)">
+<rect x="-36.25" y="-8" width="72.5" height="16" rx="4" fill="#0f1420" stroke="#46536b" stroke-width="0.8"/>
+<text x="0" y="3.5" font-size="9" fill="#46536b" text-anchor="middle">1:N CASCADE</text>
+</g>
+<g filter="url(#sh)">
+<rect x="40" y="262" width="311" height="139" rx="9" fill="#161d2b" stroke="#2b3648" stroke-width="1.2"/>
+</g>
+<path d="M40 296 h311" stroke="#2b3648" stroke-width="1.2"/>
+<path d="M49 262 h293 a9 9 0 0 1 9 9 v25 h-311 v-25 a9 9 0 0 1 9 -9 z" fill="#1f2937"/>
+<text x="50" y="278" font-size="12.5" font-weight="700" fill="#e5e9f0">releases</text>
+<text x="50" y="290" font-size="9" fill="#8b98ad" font-family="ui-sans-serif, 'Segoe UI', system-ui, sans-serif">agregado raiz</text>
+<rect x="50" y="300" width="19" height="12.5" rx="3" fill="#f5b93c" fill-opacity="0.16" stroke="#f5b93c" stroke-width="0.7"/>
+<text x="59.5" y="309.5" font-size="7.8" font-weight="700" fill="#f5b93c" text-anchor="middle">PK</text>
+<text x="74" y="309" font-size="10.5" font-weight="600" fill="#e5e9f0">id</text>
+<text x="95.1" y="309" font-size="9.5" fill="#8b98ad">uuid</text>
+<rect x="41" y="315" width="309" height="19" fill="#ffffff" fill-opacity="0.018"/>
+<rect x="50" y="319" width="19" height="12.5" rx="3" fill="#c084fc" fill-opacity="0.16" stroke="#c084fc" stroke-width="0.7"/>
+<text x="59.5" y="328.5" font-size="7.8" font-weight="700" fill="#c084fc" text-anchor="middle">UK</text>
+<text x="74" y="328" font-size="10.5" font-weight="600" fill="#e5e9f0">chave_jira</text>
+<text x="147.5" y="328" font-size="9.5" fill="#8b98ad">varchar(50)</text>
+<text x="221.4" y="328" font-size="8.6" fill="#6e7e96" font-style="italic">RELEASE-2026-08</text>
+<rect x="50" y="338" width="19" height="12.5" rx="3" fill="#4ade80" fill-opacity="0.16" stroke="#4ade80" stroke-width="0.7"/>
+<text x="59.5" y="347.5" font-size="7.8" font-weight="700" fill="#4ade80" text-anchor="middle">IX</text>
+<text x="74" y="347" font-size="10.5" font-weight="400" fill="#e5e9f0">status</text>
+<text x="121.3" y="347" font-size="9.5" fill="#8b98ad">varchar(30)</text>
+<text x="195.2" y="347" font-size="8.6" fill="#6e7e96" font-style="italic">StatusPipeline</text>
+<rect x="41" y="353" width="309" height="19" fill="#ffffff" fill-opacity="0.018"/>
+<text x="74" y="366" font-size="10.5" font-weight="400" fill="#c9d1e0">criado_em</text>
+<text x="140.95" y="366" font-size="9.5" fill="#8b98ad">timestamptz</text>
+<text x="74" y="385" font-size="10.5" font-weight="400" fill="#c9d1e0">atualizado_em</text>
+<text x="167.14999999999998" y="385" font-size="9.5" fill="#8b98ad">timestamptz</text>
+<text x="241.04999999999998" y="385" font-size="8.6" fill="#6e7e96" font-style="italic">trigger</text>
+<g filter="url(#sh)">
+<rect x="40" y="30" width="311" height="215" rx="9" fill="#161d2b" stroke="#2b3648" stroke-width="1.2"/>
+</g>
+<path d="M40 64 h311" stroke="#2b3648" stroke-width="1.2"/>
+<path d="M49 30 h293 a9 9 0 0 1 9 9 v25 h-311 v-25 a9 9 0 0 1 9 -9 z" fill="#1f2937"/>
+<text x="50" y="46" font-size="12.5" font-weight="700" fill="#e5e9f0">historias_jira</text>
+<text x="50" y="58" font-size="9" fill="#8b98ad" font-family="ui-sans-serif, 'Segoe UI', system-ui, sans-serif">dado bruto do Jira</text>
+<rect x="50" y="68" width="19" height="12.5" rx="3" fill="#f5b93c" fill-opacity="0.16" stroke="#f5b93c" stroke-width="0.7"/>
+<text x="59.5" y="77.5" font-size="7.8" font-weight="700" fill="#f5b93c" text-anchor="middle">PK</text>
+<text x="74" y="77" font-size="10.5" font-weight="600" fill="#e5e9f0">id</text>
+<text x="95.1" y="77" font-size="9.5" fill="#8b98ad">uuid</text>
+<rect x="41" y="83" width="309" height="19" fill="#ffffff" fill-opacity="0.018"/>
+<rect x="50" y="87" width="19" height="12.5" rx="3" fill="#5eb3f6" fill-opacity="0.16" stroke="#5eb3f6" stroke-width="0.7"/>
+<text x="59.5" y="96.5" font-size="7.8" font-weight="700" fill="#5eb3f6" text-anchor="middle">FK</text>
+<text x="74" y="96" font-size="10.5" font-weight="600" fill="#e5e9f0">release_id</text>
+<text x="147.5" y="96" font-size="9.5" fill="#8b98ad">uuid</text>
+<rect x="50" y="106" width="19" height="12.5" rx="3" fill="#c084fc" fill-opacity="0.16" stroke="#c084fc" stroke-width="0.7"/>
+<text x="59.5" y="115.5" font-size="7.8" font-weight="700" fill="#c084fc" text-anchor="middle">UK</text>
+<text x="74" y="115" font-size="10.5" font-weight="600" fill="#e5e9f0">chave</text>
+<text x="114.75" y="115" font-size="9.5" fill="#8b98ad">varchar(50)</text>
+<text x="188.65" y="115" font-size="8.6" fill="#6e7e96" font-style="italic">unique c/ release_id</text>
+<rect x="41" y="121" width="309" height="19" fill="#ffffff" fill-opacity="0.018"/>
+<text x="74" y="134" font-size="10.5" font-weight="400" fill="#c9d1e0">titulo</text>
+<text x="121.3" y="134" font-size="9.5" fill="#8b98ad">text</text>
+<text x="74" y="153" font-size="10.5" font-weight="400" fill="#c9d1e0">descricao_tecnica</text>
+<text x="193.35" y="153" font-size="9.5" fill="#8b98ad">text</text>
+<rect x="41" y="159" width="309" height="19" fill="#ffffff" fill-opacity="0.018"/>
+<text x="74" y="172" font-size="10.5" font-weight="400" fill="#c9d1e0">tipo_issue</text>
+<text x="147.5" y="172" font-size="9.5" fill="#8b98ad">varchar(50)</text>
+<text x="74" y="191" font-size="10.5" font-weight="400" fill="#c9d1e0">texto_release_note</text>
+<text x="199.89999999999998" y="191" font-size="9.5" fill="#8b98ad">text</text>
+<text x="232.49999999999997" y="191" font-size="8.6" fill="#6e7e96" font-style="italic">nullable</text>
+<rect x="41" y="197" width="309" height="19" fill="#ffffff" fill-opacity="0.018"/>
+<text x="74" y="210" font-size="10.5" font-weight="400" fill="#c9d1e0">labels</text>
+<text x="121.3" y="210" font-size="9.5" fill="#8b98ad">text[]</text>
+<text x="74" y="229" font-size="10.5" font-weight="400" fill="#c9d1e0">criado_em</text>
+<text x="140.95" y="229" font-size="9.5" fill="#8b98ad">timestamptz</text>
+<g filter="url(#sh)">
+<rect x="40" y="520" width="330" height="177" rx="9" fill="#161d2b" stroke="#2b3648" stroke-width="1.2"/>
+</g>
+<path d="M40 554 h330" stroke="#2b3648" stroke-width="1.2"/>
+<path d="M49 520 h312 a9 9 0 0 1 9 9 v25 h-330 v-25 a9 9 0 0 1 9 -9 z" fill="#1f2937"/>
+<text x="50" y="536" font-size="12.5" font-weight="700" fill="#e5e9f0">execucoes_pipeline</text>
+<text x="50" y="548" font-size="9" fill="#8b98ad" font-family="ui-sans-serif, 'Segoe UI', system-ui, sans-serif">rastreabilidade</text>
+<rect x="50" y="558" width="19" height="12.5" rx="3" fill="#f5b93c" fill-opacity="0.16" stroke="#f5b93c" stroke-width="0.7"/>
+<text x="59.5" y="567.5" font-size="7.8" font-weight="700" fill="#f5b93c" text-anchor="middle">PK</text>
+<text x="74" y="567" font-size="10.5" font-weight="600" fill="#e5e9f0">id</text>
+<text x="95.1" y="567" font-size="9.5" fill="#8b98ad">uuid</text>
+<rect x="41" y="573" width="328" height="19" fill="#ffffff" fill-opacity="0.018"/>
+<rect x="50" y="577" width="19" height="12.5" rx="3" fill="#5eb3f6" fill-opacity="0.16" stroke="#5eb3f6" stroke-width="0.7"/>
+<text x="59.5" y="586.5" font-size="7.8" font-weight="700" fill="#5eb3f6" text-anchor="middle">FK</text>
+<text x="74" y="586" font-size="10.5" font-weight="600" fill="#e5e9f0">release_id</text>
+<text x="147.5" y="586" font-size="9.5" fill="#8b98ad">uuid</text>
+<text x="74" y="605" font-size="10.5" font-weight="400" fill="#c9d1e0">status</text>
+<text x="121.3" y="605" font-size="9.5" fill="#8b98ad">varchar(30)</text>
+<text x="195.2" y="605" font-size="8.6" fill="#6e7e96" font-style="italic">StatusExecucaoPipeline</text>
+<rect x="41" y="611" width="328" height="19" fill="#ffffff" fill-opacity="0.018"/>
+<text x="74" y="624" font-size="10.5" font-weight="400" fill="#c9d1e0">modelo_llm</text>
+<text x="147.5" y="624" font-size="9.5" fill="#8b98ad">varchar(100)</text>
+<text x="227.3" y="624" font-size="8.6" fill="#6e7e96" font-style="italic">nullable</text>
+<text x="74" y="643" font-size="10.5" font-weight="400" fill="#c9d1e0">erro</text>
+<text x="108.2" y="643" font-size="9.5" fill="#8b98ad">text</text>
+<text x="140.8" y="643" font-size="8.6" fill="#6e7e96" font-style="italic">nullable</text>
+<rect x="41" y="649" width="328" height="19" fill="#ffffff" fill-opacity="0.018"/>
+<text x="74" y="662" font-size="10.5" font-weight="400" fill="#c9d1e0">iniciado_em</text>
+<text x="154.05" y="662" font-size="9.5" fill="#8b98ad">timestamptz</text>
+<text x="74" y="681" font-size="10.5" font-weight="400" fill="#c9d1e0">concluido_em</text>
+<text x="160.6" y="681" font-size="9.5" fill="#8b98ad">timestamptz</text>
+<text x="234.5" y="681" font-size="8.6" fill="#6e7e96" font-style="italic">nullable</text>
+<g filter="url(#sh)">
+<rect x="500" y="210" width="330" height="253" rx="9" fill="#161d2b" stroke="#2b3648" stroke-width="1.2"/>
+</g>
+<path d="M500 244 h330" stroke="#2b3648" stroke-width="1.2"/>
+<path d="M509 210 h312 a9 9 0 0 1 9 9 v25 h-330 v-25 a9 9 0 0 1 9 -9 z" fill="#1f2937"/>
+<text x="510" y="226" font-size="12.5" font-weight="700" fill="#e5e9f0">versoes_comunicado</text>
+<text x="510" y="238" font-size="9" fill="#8b98ad" font-family="ui-sans-serif, 'Segoe UI', system-ui, sans-serif">1 por publico-alvo</text>
+<rect x="510" y="248" width="19" height="12.5" rx="3" fill="#f5b93c" fill-opacity="0.16" stroke="#f5b93c" stroke-width="0.7"/>
+<text x="519.5" y="257.5" font-size="7.8" font-weight="700" fill="#f5b93c" text-anchor="middle">PK</text>
+<text x="534" y="257" font-size="10.5" font-weight="600" fill="#e5e9f0">id</text>
+<text x="555.1" y="257" font-size="9.5" fill="#8b98ad">uuid</text>
+<rect x="501" y="263" width="328" height="19" fill="#ffffff" fill-opacity="0.018"/>
+<rect x="510" y="267" width="19" height="12.5" rx="3" fill="#5eb3f6" fill-opacity="0.16" stroke="#5eb3f6" stroke-width="0.7"/>
+<text x="519.5" y="276.5" font-size="7.8" font-weight="700" fill="#5eb3f6" text-anchor="middle">FK</text>
+<text x="534" y="276" font-size="10.5" font-weight="600" fill="#e5e9f0">release_id</text>
+<text x="607.5" y="276" font-size="9.5" fill="#8b98ad">uuid</text>
+<text x="640.1" y="276" font-size="8.6" fill="#6e7e96" font-style="italic">unique c/ publico</text>
+<rect x="510" y="286" width="19" height="12.5" rx="3" fill="#c084fc" fill-opacity="0.16" stroke="#c084fc" stroke-width="0.7"/>
+<text x="519.5" y="295.5" font-size="7.8" font-weight="700" fill="#c084fc" text-anchor="middle">UK</text>
+<text x="534" y="295" font-size="10.5" font-weight="600" fill="#e5e9f0">publico</text>
+<text x="587.85" y="295" font-size="9.5" fill="#8b98ad">varchar(30)</text>
+<text x="661.75" y="295" font-size="8.6" fill="#6e7e96" font-style="italic">PublicoAlvo</text>
+<rect x="501" y="301" width="328" height="19" fill="#ffffff" fill-opacity="0.018"/>
+<rect x="510" y="305" width="19" height="12.5" rx="3" fill="#4ade80" fill-opacity="0.16" stroke="#4ade80" stroke-width="0.7"/>
+<text x="519.5" y="314.5" font-size="7.8" font-weight="700" fill="#4ade80" text-anchor="middle">IX</text>
+<text x="534" y="314" font-size="10.5" font-weight="400" fill="#e5e9f0">status</text>
+<text x="581.3" y="314" font-size="9.5" fill="#8b98ad">varchar(30)</text>
+<text x="655.1999999999999" y="314" font-size="8.6" fill="#6e7e96" font-style="italic">StatusRevisao</text>
+<text x="534" y="333" font-size="10.5" font-weight="400" fill="#c9d1e0">titulo_executivo</text>
+<text x="646.8" y="333" font-size="9.5" fill="#8b98ad">text</text>
+<text x="679.4" y="333" font-size="8.6" fill="#6e7e96" font-style="italic">nullable</text>
+<rect x="501" y="339" width="328" height="19" fill="#ffffff" fill-opacity="0.018"/>
+<text x="534" y="352" font-size="10.5" font-weight="400" fill="#c9d1e0">resumo_executivo</text>
+<text x="646.8" y="352" font-size="9.5" fill="#8b98ad">text</text>
+<text x="679.4" y="352" font-size="8.6" fill="#6e7e96" font-style="italic">nullable</text>
+<text x="534" y="371" font-size="10.5" font-weight="400" fill="#c9d1e0">revisado_por</text>
+<text x="620.6" y="371" font-size="9.5" fill="#8b98ad">varchar(200)</text>
+<text x="700.4000000000001" y="371" font-size="8.6" fill="#6e7e96" font-style="italic">nullable</text>
+<rect x="501" y="377" width="328" height="19" fill="#ffffff" fill-opacity="0.018"/>
+<text x="534" y="390" font-size="10.5" font-weight="400" fill="#c9d1e0">revisado_em</text>
+<text x="614.05" y="390" font-size="9.5" fill="#8b98ad">timestamptz</text>
+<text x="687.9499999999999" y="390" font-size="8.6" fill="#6e7e96" font-style="italic">nullable</text>
+<text x="534" y="409" font-size="10.5" font-weight="400" fill="#c9d1e0">motivo_reprovacao</text>
+<text x="653.35" y="409" font-size="9.5" fill="#8b98ad">text</text>
+<text x="685.95" y="409" font-size="8.6" fill="#6e7e96" font-style="italic">CHECK se reprovado</text>
+<rect x="501" y="415" width="328" height="19" fill="#ffffff" fill-opacity="0.018"/>
+<text x="534" y="428" font-size="10.5" font-weight="400" fill="#c9d1e0">criado_em</text>
+<text x="600.95" y="428" font-size="9.5" fill="#8b98ad">timestamptz</text>
+<text x="534" y="447" font-size="10.5" font-weight="400" fill="#c9d1e0">atualizado_em</text>
+<text x="627.15" y="447" font-size="9.5" fill="#8b98ad">timestamptz</text>
+<text x="701.05" y="447" font-size="8.6" fill="#6e7e96" font-style="italic">trigger</text>
+<g filter="url(#sh)">
+<rect x="500" y="545" width="324" height="234" rx="9" fill="#161d2b" stroke="#2b3648" stroke-width="1.2"/>
+</g>
+<path d="M500 579 h324" stroke="#2b3648" stroke-width="1.2"/>
+<path d="M509 545 h306 a9 9 0 0 1 9 9 v25 h-324 v-25 a9 9 0 0 1 9 -9 z" fill="#1f2937"/>
+<text x="510" y="561" font-size="12.5" font-weight="700" fill="#e5e9f0">itens_comunicado</text>
+<text x="510" y="573" font-size="9" fill="#8b98ad" font-family="ui-sans-serif, 'Segoe UI', system-ui, sans-serif">paragrafo do comunicado</text>
+<rect x="510" y="583" width="19" height="12.5" rx="3" fill="#f5b93c" fill-opacity="0.16" stroke="#f5b93c" stroke-width="0.7"/>
+<text x="519.5" y="592.5" font-size="7.8" font-weight="700" fill="#f5b93c" text-anchor="middle">PK</text>
+<text x="534" y="592" font-size="10.5" font-weight="600" fill="#e5e9f0">id</text>
+<text x="555.1" y="592" font-size="9.5" fill="#8b98ad">uuid</text>
+<rect x="501" y="598" width="322" height="19" fill="#ffffff" fill-opacity="0.018"/>
+<rect x="510" y="602" width="19" height="12.5" rx="3" fill="#5eb3f6" fill-opacity="0.16" stroke="#5eb3f6" stroke-width="0.7"/>
+<text x="519.5" y="611.5" font-size="7.8" font-weight="700" fill="#5eb3f6" text-anchor="middle">FK</text>
+<text x="534" y="611" font-size="10.5" font-weight="600" fill="#e5e9f0">versao_comunicado_id</text>
+<text x="673.0" y="611" font-size="9.5" fill="#8b98ad">uuid</text>
+<text x="534" y="630" font-size="10.5" font-weight="400" fill="#c9d1e0">categoria</text>
+<text x="600.95" y="630" font-size="9.5" fill="#8b98ad">varchar(30)</text>
+<text x="674.85" y="630" font-size="8.6" fill="#6e7e96" font-style="italic">CategoriaAlteracao</text>
+<rect x="501" y="636" width="322" height="19" fill="#ffffff" fill-opacity="0.018"/>
+<text x="534" y="649" font-size="10.5" font-weight="400" fill="#c9d1e0">texto</text>
+<text x="574.75" y="649" font-size="9.5" fill="#8b98ad">text</text>
+<text x="607.35" y="649" font-size="8.6" fill="#6e7e96" font-style="italic">gerado pela IA</text>
+<text x="534" y="668" font-size="10.5" font-weight="400" fill="#c9d1e0">texto_editado_manualmente</text>
+<text x="705.75" y="668" font-size="9.5" fill="#8b98ad">text</text>
+<text x="738.35" y="668" font-size="8.6" fill="#6e7e96" font-style="italic">nullable</text>
+<rect x="501" y="674" width="322" height="19" fill="#ffffff" fill-opacity="0.018"/>
+<rect x="510" y="678" width="19" height="12.5" rx="3" fill="#4ade80" fill-opacity="0.16" stroke="#4ade80" stroke-width="0.7"/>
+<text x="519.5" y="687.5" font-size="7.8" font-weight="700" fill="#4ade80" text-anchor="middle">IX</text>
+<text x="534" y="687" font-size="10.5" font-weight="400" fill="#e5e9f0">origens</text>
+<text x="587.85" y="687" font-size="9.5" fill="#8b98ad">text[]</text>
+<text x="632.25" y="687" font-size="8.6" fill="#4ade80" font-style="italic">GIN - chaves Jira</text>
+<text x="534" y="706" font-size="10.5" font-weight="400" fill="#c9d1e0">incluido</text>
+<text x="594.4" y="706" font-size="9.5" fill="#8b98ad">boolean</text>
+<text x="644.6999999999999" y="706" font-size="8.6" fill="#6e7e96" font-style="italic">default true</text>
+<rect x="501" y="712" width="322" height="19" fill="#ffffff" fill-opacity="0.018"/>
+<text x="534" y="725" font-size="10.5" font-weight="400" fill="#c9d1e0">motivo_exclusao</text>
+<text x="640.25" y="725" font-size="9.5" fill="#8b98ad">text</text>
+<text x="672.85" y="725" font-size="8.6" fill="#6e7e96" font-style="italic">nullable</text>
+<text x="534" y="744" font-size="10.5" font-weight="400" fill="#c9d1e0">criado_em</text>
+<text x="600.95" y="744" font-size="9.5" fill="#8b98ad">timestamptz</text>
+<rect x="501" y="750" width="322" height="19" fill="#ffffff" fill-opacity="0.018"/>
+<text x="534" y="763" font-size="10.5" font-weight="400" fill="#c9d1e0">atualizado_em</text>
+<text x="627.15" y="763" font-size="9.5" fill="#8b98ad">timestamptz</text>
+<text x="701.05" y="763" font-size="8.6" fill="#6e7e96" font-style="italic">trigger</text>
+<g filter="url(#sh)">
+<rect x="962" y="262" width="304" height="215" rx="9" fill="#161d2b" stroke="#2b3648" stroke-width="1.2"/>
+</g>
+<path d="M962 296 h304" stroke="#2b3648" stroke-width="1.2"/>
+<path d="M971 262 h286 a9 9 0 0 1 9 9 v25 h-304 v-25 a9 9 0 0 1 9 -9 z" fill="#1f2937"/>
+<text x="972" y="278" font-size="12.5" font-weight="700" fill="#e5e9f0">comunicados_exportados</text>
+<text x="972" y="290" font-size="9" fill="#8b98ad" font-family="ui-sans-serif, 'Segoe UI', system-ui, sans-serif">historico de publicacao</text>
+<rect x="972" y="300" width="19" height="12.5" rx="3" fill="#f5b93c" fill-opacity="0.16" stroke="#f5b93c" stroke-width="0.7"/>
+<text x="981.5" y="309.5" font-size="7.8" font-weight="700" fill="#f5b93c" text-anchor="middle">PK</text>
+<text x="996" y="309" font-size="10.5" font-weight="600" fill="#e5e9f0">id</text>
+<text x="1017.1" y="309" font-size="9.5" fill="#8b98ad">uuid</text>
+<rect x="963" y="315" width="302" height="19" fill="#ffffff" fill-opacity="0.018"/>
+<rect x="972" y="319" width="19" height="12.5" rx="3" fill="#5eb3f6" fill-opacity="0.16" stroke="#5eb3f6" stroke-width="0.7"/>
+<text x="981.5" y="328.5" font-size="7.8" font-weight="700" fill="#5eb3f6" text-anchor="middle">FK</text>
+<text x="996" y="328" font-size="10.5" font-weight="600" fill="#e5e9f0">versao_comunicado_id</text>
+<text x="1135.0" y="328" font-size="9.5" fill="#8b98ad">uuid</text>
+<text x="1167.6" y="328" font-size="8.6" fill="#fb7185" font-style="italic">RESTRICT</text>
+<rect x="972" y="338" width="19" height="12.5" rx="3" fill="#5eb3f6" fill-opacity="0.16" stroke="#5eb3f6" stroke-width="0.7"/>
+<text x="981.5" y="347.5" font-size="7.8" font-weight="700" fill="#5eb3f6" text-anchor="middle">FK</text>
+<text x="996" y="347" font-size="10.5" font-weight="600" fill="#e5e9f0">release_id</text>
+<text x="1069.5" y="347" font-size="9.5" fill="#8b98ad">uuid</text>
+<text x="1102.1" y="347" font-size="8.6" fill="#6e7e96" font-style="italic">CASCADE</text>
+<rect x="963" y="353" width="302" height="19" fill="#ffffff" fill-opacity="0.018"/>
+<text x="996" y="366" font-size="10.5" font-weight="400" fill="#c9d1e0">publico</text>
+<text x="1049.85" y="366" font-size="9.5" fill="#8b98ad">varchar(30)</text>
+<text x="1123.75" y="366" font-size="8.6" fill="#6e7e96" font-style="italic">espelha a versao</text>
+<text x="996" y="385" font-size="10.5" font-weight="400" fill="#c9d1e0">formato</text>
+<text x="1049.85" y="385" font-size="9.5" fill="#8b98ad">varchar(20)</text>
+<text x="1123.75" y="385" font-size="8.6" fill="#6e7e96" font-style="italic">FormatoExportacao</text>
+<rect x="963" y="391" width="302" height="19" fill="#ffffff" fill-opacity="0.018"/>
+<text x="996" y="404" font-size="10.5" font-weight="400" fill="#c9d1e0">conteudo</text>
+<text x="1056.4" y="404" font-size="9.5" fill="#8b98ad">text</text>
+<text x="1089.0" y="404" font-size="8.6" fill="#6e7e96" font-style="italic">MD / HTML</text>
+<text x="996" y="423" font-size="10.5" font-weight="400" fill="#c9d1e0">caminho_arquivo</text>
+<text x="1102.25" y="423" font-size="9.5" fill="#8b98ad">text</text>
+<text x="1134.85" y="423" font-size="8.6" fill="#6e7e96" font-style="italic">PDF</text>
+<rect x="963" y="429" width="302" height="19" fill="#ffffff" fill-opacity="0.018"/>
+<text x="996" y="442" font-size="10.5" font-weight="400" fill="#c9d1e0">gerado_por</text>
+<text x="1069.5" y="442" font-size="9.5" fill="#8b98ad">varchar(200)</text>
+<text x="1149.3" y="442" font-size="8.6" fill="#6e7e96" font-style="italic">nullable</text>
+<text x="996" y="461" font-size="10.5" font-weight="400" fill="#c9d1e0">gerado_em</text>
+<text x="1062.95" y="461" font-size="9.5" fill="#8b98ad">timestamptz</text>
+<g filter="url(#sh)">
+<rect x="962" y="30" width="268" height="196" rx="9" fill="#161d2b" stroke="#2b3648" stroke-width="1.2"/>
+</g>
+<path d="M962 64 h268" stroke="#2b3648" stroke-width="1.2"/>
+<path d="M971 30 h250 a9 9 0 0 1 9 9 v25 h-268 v-25 a9 9 0 0 1 9 -9 z" fill="#1f2937"/>
+<rect x="962" y="30" width="268" height="196" rx="9" fill="none" stroke="#8b98ad" stroke-width="1.2" stroke-dasharray="5 4" opacity="0.5"/>
+<text x="972" y="46" font-size="12.5" font-weight="700" fill="#e5e9f0">usuarios</text>
+<text x="972" y="58" font-size="9" fill="#8b98ad" font-family="ui-sans-serif, 'Segoe UI', system-ui, sans-serif">auth (sem FK ainda)</text>
+<rect x="972" y="68" width="19" height="12.5" rx="3" fill="#f5b93c" fill-opacity="0.16" stroke="#f5b93c" stroke-width="0.7"/>
+<text x="981.5" y="77.5" font-size="7.8" font-weight="700" fill="#f5b93c" text-anchor="middle">PK</text>
+<text x="996" y="77" font-size="10.5" font-weight="600" fill="#e5e9f0">id</text>
+<text x="1017.1" y="77" font-size="9.5" fill="#8b98ad">uuid</text>
+<rect x="963" y="83" width="266" height="19" fill="#ffffff" fill-opacity="0.018"/>
+<text x="996" y="96" font-size="10.5" font-weight="400" fill="#c9d1e0">nome</text>
+<text x="1030.2" y="96" font-size="9.5" fill="#8b98ad">varchar(200)</text>
+<rect x="972" y="106" width="19" height="12.5" rx="3" fill="#c084fc" fill-opacity="0.16" stroke="#c084fc" stroke-width="0.7"/>
+<text x="981.5" y="115.5" font-size="7.8" font-weight="700" fill="#c084fc" text-anchor="middle">UK</text>
+<text x="996" y="115" font-size="10.5" font-weight="600" fill="#e5e9f0">email</text>
+<text x="1036.75" y="115" font-size="9.5" fill="#8b98ad">varchar(320)</text>
+<rect x="963" y="121" width="266" height="19" fill="#ffffff" fill-opacity="0.018"/>
+<text x="996" y="134" font-size="10.5" font-weight="400" fill="#c9d1e0">senha_hash</text>
+<text x="1069.5" y="134" font-size="9.5" fill="#8b98ad">varchar(255)</text>
+<text x="996" y="153" font-size="10.5" font-weight="400" fill="#c9d1e0">papel</text>
+<text x="1036.75" y="153" font-size="9.5" fill="#8b98ad">varchar(50)</text>
+<text x="1110.65" y="153" font-size="8.6" fill="#6e7e96" font-style="italic">texto livre</text>
+<rect x="963" y="159" width="266" height="19" fill="#ffffff" fill-opacity="0.018"/>
+<text x="996" y="172" font-size="10.5" font-weight="400" fill="#c9d1e0">avatar_url</text>
+<text x="1069.5" y="172" font-size="9.5" fill="#8b98ad">text</text>
+<text x="1102.1" y="172" font-size="8.6" fill="#6e7e96" font-style="italic">nullable</text>
+<text x="996" y="191" font-size="10.5" font-weight="400" fill="#c9d1e0">ativo</text>
+<text x="1036.75" y="191" font-size="9.5" fill="#8b98ad">boolean</text>
+<text x="1087.05" y="191" font-size="8.6" fill="#6e7e96" font-style="italic">default true</text>
+<rect x="963" y="197" width="266" height="19" fill="#ffffff" fill-opacity="0.018"/>
+<text x="996" y="210" font-size="10.5" font-weight="400" fill="#c9d1e0">criado_em</text>
+<text x="1062.95" y="210" font-size="9.5" fill="#8b98ad">timestamptz</text>
+<g filter="url(#sh)">
+<rect x="962" y="545" width="268" height="177" rx="9" fill="#161d2b" stroke="#2b3648" stroke-width="1.2"/>
+</g>
+<path d="M962 579 h268" stroke="#2b3648" stroke-width="1.2"/>
+<path d="M971 545 h250 a9 9 0 0 1 9 9 v25 h-268 v-25 a9 9 0 0 1 9 -9 z" fill="#1f2937"/>
+<rect x="962" y="545" width="268" height="177" rx="9" fill="none" stroke="#8b98ad" stroke-width="1.2" stroke-dasharray="5 4" opacity="0.5"/>
+<text x="972" y="561" font-size="12.5" font-weight="700" fill="#e5e9f0">destaques_hero</text>
+<text x="972" y="573" font-size="9" fill="#8b98ad" font-family="ui-sans-serif, 'Segoe UI', system-ui, sans-serif">conteudo da tela de login</text>
+<rect x="972" y="583" width="19" height="12.5" rx="3" fill="#f5b93c" fill-opacity="0.16" stroke="#f5b93c" stroke-width="0.7"/>
+<text x="981.5" y="592.5" font-size="7.8" font-weight="700" fill="#f5b93c" text-anchor="middle">PK</text>
+<text x="996" y="592" font-size="10.5" font-weight="600" fill="#e5e9f0">id</text>
+<text x="1017.1" y="592" font-size="9.5" fill="#8b98ad">uuid</text>
+<rect x="963" y="598" width="266" height="19" fill="#ffffff" fill-opacity="0.018"/>
+<text x="996" y="611" font-size="10.5" font-weight="400" fill="#c9d1e0">titulo</text>
+<text x="1043.3" y="611" font-size="9.5" fill="#8b98ad">varchar(200)</text>
+<text x="996" y="630" font-size="10.5" font-weight="400" fill="#c9d1e0">descricao</text>
+<text x="1062.95" y="630" font-size="9.5" fill="#8b98ad">text</text>
+<rect x="963" y="636" width="266" height="19" fill="#ffffff" fill-opacity="0.018"/>
+<text x="996" y="649" font-size="10.5" font-weight="400" fill="#c9d1e0">icone</text>
+<text x="1036.75" y="649" font-size="9.5" fill="#8b98ad">varchar(50)</text>
+<rect x="972" y="659" width="19" height="12.5" rx="3" fill="#4ade80" fill-opacity="0.16" stroke="#4ade80" stroke-width="0.7"/>
+<text x="981.5" y="668.5" font-size="7.8" font-weight="700" fill="#4ade80" text-anchor="middle">IX</text>
+<text x="996" y="668" font-size="10.5" font-weight="400" fill="#e5e9f0">ordem</text>
+<text x="1036.75" y="668" font-size="9.5" fill="#8b98ad">integer</text>
+<text x="1087.05" y="668" font-size="8.6" fill="#4ade80" font-style="italic">idx c/ ativo</text>
+<rect x="963" y="674" width="266" height="19" fill="#ffffff" fill-opacity="0.018"/>
+<text x="996" y="687" font-size="10.5" font-weight="400" fill="#c9d1e0">ativo</text>
+<text x="1036.75" y="687" font-size="9.5" fill="#8b98ad">boolean</text>
+<text x="1087.05" y="687" font-size="8.6" fill="#6e7e96" font-style="italic">default true</text>
+<text x="996" y="706" font-size="10.5" font-weight="400" fill="#c9d1e0">criado_em</text>
+<text x="1062.95" y="706" font-size="9.5" fill="#8b98ad">timestamptz</text>
+<rect x="40" y="800" width="1320" height="92" rx="9" fill="#161d2b" stroke="#2b3648" stroke-width="1.2"/>
+<text x="56" y="821" font-size="10.5" font-weight="700" fill="#e5e9f0">LEGENDA</text>
+<rect x="56" y="833" width="19" height="12.5" rx="3" fill="#f5b93c" fill-opacity="0.16" stroke="#f5b93c" stroke-width="0.7"/>
+<text x="65.5" y="842.5" font-size="7.8" font-weight="700" fill="#f5b93c" text-anchor="middle">PK</text>
+<text x="83" y="842" font-size="9.5" fill="#8b98ad">chave primaria (uuid, gen_random_uuid())</text>
+<rect x="356" y="833" width="19" height="12.5" rx="3" fill="#5eb3f6" fill-opacity="0.16" stroke="#5eb3f6" stroke-width="0.7"/>
+<text x="365.5" y="842.5" font-size="7.8" font-weight="700" fill="#5eb3f6" text-anchor="middle">FK</text>
+<text x="383" y="842" font-size="9.5" fill="#8b98ad">chave estrangeira</text>
+<rect x="56" y="854" width="19" height="12.5" rx="3" fill="#c084fc" fill-opacity="0.16" stroke="#c084fc" stroke-width="0.7"/>
+<text x="65.5" y="863.5" font-size="7.8" font-weight="700" fill="#c084fc" text-anchor="middle">UK</text>
+<text x="83" y="863" font-size="9.5" fill="#8b98ad">restricao unique</text>
+<rect x="356" y="854" width="19" height="12.5" rx="3" fill="#4ade80" fill-opacity="0.16" stroke="#4ade80" stroke-width="0.7"/>
+<text x="365.5" y="863.5" font-size="7.8" font-weight="700" fill="#4ade80" text-anchor="middle">IX</text>
+<text x="383" y="863" font-size="9.5" fill="#8b98ad">indice nao-unico</text>
+<path d="M680 836 h34" stroke="#46536b" stroke-width="1.6" marker-start="url(#crow)" marker-end="url(#one)"/>
+<text x="726 " y="839" font-size="9.5" fill="#8b98ad">1:N — ON DELETE CASCADE</text>
+<path d="M680 860 h34" stroke="#fb7185" stroke-width="1.6" stroke-dasharray="6 4" marker-start="url(#crowR)" marker-end="url(#oneR)"/>
+<text x="726" y="863" font-size="9.5" fill="#fb7185">1:N — ON DELETE RESTRICT (protege auditoria)</text>
+<rect x="680" y="872" width="20" height="11" rx="3" fill="none" stroke="#8b98ad" stroke-width="1.1" stroke-dasharray="4 3" opacity="0.7"/>
+<text x="726" y="881" font-size="9.5" fill="#8b98ad">borda tracejada — tabela sem FK (ver pendencias)</text>
+</svg>

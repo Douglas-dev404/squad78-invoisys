@@ -13,10 +13,16 @@ namespace InvoiSys.Application.Pipeline;
 /// aqui mesmo como método auxiliar. Estágios 2-5 chamam a porta ILlmProvider.
 /// Ver documentação interna de Regras de Negócio para o desenho completo.
 /// </summary>
-public sealed class PipelineGeracaoReleaseNote(IJiraClient jiraClient, ILlmProvider llmProvider)
+public sealed class PipelineGeracaoReleaseNote(
+    IJiraClient jiraClient,
+    ILlmProvider llmProvider,
+    string? modeloLlm = null)
 {
     private readonly IJiraClient _jira = jiraClient;
     private readonly ILlmProvider _llm = llmProvider;
+
+    /// <summary>Identificação do modelo usado, só para registro no log de execução.</summary>
+    private readonly string? _modeloLlm = modeloLlm;
 
     public async Task<Release> ExecutarAsync(
         string chaveRelease,
@@ -25,6 +31,10 @@ public sealed class PipelineGeracaoReleaseNote(IJiraClient jiraClient, ILlmProvi
         var historias = await _jira.BuscarHistoriasDaReleaseAsync(chaveRelease, cancellationToken);
         var release = new Release(chaveRelease, historias);
         release.MarcarProcessando();
+
+        // Rastreabilidade: cada rodada vira uma linha no histórico da Release, mesmo
+        // que falhe — o rastro da tentativa é justamente o que o requisito de log pede.
+        var execucao = release.RegistrarExecucao(_modeloLlm);
 
         try
         {
@@ -41,10 +51,12 @@ public sealed class PipelineGeracaoReleaseNote(IJiraClient jiraClient, ILlmProvi
                 cancellationToken);
 
             release.ConcluirProcessamento(itens, titulo, resumo);
+            execucao.MarcarConcluida();
         }
-        catch
+        catch (Exception exc)
         {
             release.MarcarFalha();
+            execucao.MarcarFalha(exc.Message);
             throw;
         }
 
