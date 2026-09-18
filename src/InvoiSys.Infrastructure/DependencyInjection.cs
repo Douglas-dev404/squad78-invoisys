@@ -3,8 +3,10 @@ using System.Net.Http.Headers;
 using System.Text;
 using InvoiSys.Domain.Ports;
 using InvoiSys.Infrastructure.Configuration;
+using InvoiSys.Infrastructure.Database;
 using InvoiSys.Infrastructure.Jira;
 using InvoiSys.Infrastructure.Llm;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
@@ -34,8 +36,23 @@ public static class DependencyInjection
 
         AddJiraClient(services);
         AddLlmProvider(services);
+        AddDatabase(services, configuration);
 
         return services;
+    }
+
+    private static void AddDatabase(IServiceCollection services, IConfiguration configuration)
+    {
+        var connectionString = configuration.GetConnectionString("Default")
+            ?? throw new InvalidOperationException(
+                "ConnectionStrings:Default não configurada. Defina via appsettings, " +
+                "variável de ambiente ConnectionStrings__Default, ou .env (Docker Compose).");
+
+        services.AddDbContext<InvoiSysDbContext>(options => options
+            .UseNpgsql(connectionString)
+            // snake_case é o idiomático em PostgreSQL; as entidades/propriedades do
+            // domínio continuam PascalCase em C# — a convenção só afeta o SQL gerado.
+            .UseSnakeCaseNamingConvention());
     }
 
     private static void AddJiraClient(IServiceCollection services)

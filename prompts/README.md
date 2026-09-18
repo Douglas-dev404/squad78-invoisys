@@ -2,14 +2,14 @@
 
 Cada estágio do pipeline (ver documentação interna de Regras de Negócio,
 projeto `InvoiSys`) tem um arquivo de prompt versionado aqui — nunca hardcoded como
-string dentro do código Python. Isso permite:
+string dentro do código C#. Isso permite:
 
 - Revisar/ajustar tom de voz sem tocar em código.
 - Versionar mudança de prompt separada de mudança de lógica (diff limpo).
 - Trocar de LLM provider sem reescrever o prompt em si (o adapter em
-  `app/infrastructure/llm/` carrega o arquivo, não o contrário).
+  `InvoiSys.Infrastructure/Llm/` carrega o arquivo, não o contrário).
 
-## Estágios (ver `app/domain/ports/llm_provider.py` para o contrato de cada um)
+## Estágios (ver `src/InvoiSys.Domain/Ports/ILlmProvider.cs` para o contrato de cada um)
 
 | Arquivo | Estágio | Chamado por |
 |---|---|---|
@@ -29,7 +29,7 @@ quando disponíveis. Placeholders de interpolação usam `{{chaves_assim}}` (est
 Mustache/Jinja) — **nunca** `{chave_assim}` de chave única, porque colide com chaves
 JSON literais nos exemplos de formato de saída (`str.format()` interpretaria
 `{"titulo": ...}` como um placeholder). A interpolação é feita via `str.replace()`
-simples em `app/infrastructure/llm/prompt_loader.py`, não `.format()`.
+simples em `src/InvoiSys.Infrastructure/Llm/PromptLoader.cs`, não interpolação nativa.
 
 ## Pendência
 
