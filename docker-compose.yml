@@ -4,31 +4,29 @@ services:
       context: .
       dockerfile: Dockerfile
     ports:
-      - "8000:8000"
+      - "${API_PORT:-8080}:8080"
     env_file:
       - .env
     environment:
-      DATABASE_URL: postgresql+asyncpg://invoisys:invoisys@db:5432/invoisys
+      # Host "db" é o nome do serviço na rede do compose, não localhost: dentro do
+      # container, localhost seria o próprio container da API.
+      ConnectionStrings__Default: Host=db;Port=5432;Database=${POSTGRES_DB:-invoisys};Username=${POSTGRES_USER:-invoisys};Password=${POSTGRES_PASSWORD:-invoisys}
     depends_on:
       db:
         condition: service_healthy
-    volumes:
-      - ./app:/app/app
-      - ./prompts:/app/prompts
-    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
 
   db:
     image: postgres:16-alpine
     environment:
-      POSTGRES_USER: invoisys
-      POSTGRES_PASSWORD: invoisys
-      POSTGRES_DB: invoisys
+      POSTGRES_USER: ${POSTGRES_USER:-invoisys}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-invoisys}
+      POSTGRES_DB: ${POSTGRES_DB:-invoisys}
     ports:
-      - "5432:5432"
+      - "${POSTGRES_PORT:-5432}:5432"
     volumes:
       - invoisys_db_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U invoisys"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-invoisys} -d ${POSTGRES_DB:-invoisys}"]
       interval: 5s
       timeout: 5s
       retries: 5

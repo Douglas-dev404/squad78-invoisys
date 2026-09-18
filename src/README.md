@@ -1,16 +1,17 @@
 # InvoiSys — Release Notes via IA (.NET)
 
-Fundação arquitetural em .NET 10 do gerador de Release Notes. Só a arquitetura: domínio,
-portas, pipeline, adapters e testes. Sem CI/CD, sem banco, sem front — o modelo de dados
-está sendo feito em paralelo por outra pessoa.
+Backend em .NET 10 do gerador de Release Notes: domínio, portas, pipeline, adapters,
+persistência (EF Core + PostgreSQL) e testes.
 
-O projeto Python original segue em [app/](../app/) e não foi tocado.
+Modelagem de dados completa, com ERD e explicação tabela a tabela, em
+[docs/modelagem-de-dominio.md](../docs/modelagem-de-dominio.md). O frontend
+(React + Vite) vive em [frontend/](../frontend/).
 
 ## Como rodar
 
 ```bash
-dotnet build                          # na raiz do repositório
-dotnet test tests-dotnet/InvoiSys.Tests
+dotnet build InvoiSys.slnx            # na raiz do repositório
+dotnet test InvoiSys.slnx
 dotnet run --project src/InvoiSys.Api
 ```
 
@@ -65,14 +66,16 @@ domínio ou no pipeline muda.
 4. **Reescrita** — linguagem técnica vira linguagem de negócio
 5. **Título e resumo executivos**
 
-Os prompts vivem versionados em [prompts/](../prompts/), nunca em string no código —
-são compartilhados com a versão Python.
+Os prompts vivem versionados em [prompts/](../prompts/), nunca em string no código.
 
 ## Invariantes que o código garante
 
-- **Revisão humana é obrigatória.** `Release.Aprovar` é o único caminho para o status
-  aprovado, e exige itens processados + status `AguardandoRevisao`. O pipeline nunca
-  entrega nada publicável direto.
+- **Revisão humana é obrigatória, por público.** `VersaoComunicado.Aprovar` (exposto
+  por `Release.Aprovar`) é o único caminho para o status aprovado, e exige itens
+  processados, ao menos um item não excluído, e status `AguardandoRevisao`. O pipeline
+  nunca entrega nada publicável direto.
+- **Exportação sem aprovação é impossível.** O construtor de `ComunicadoExportado`
+  rejeita versão não aprovada — não existe caminho de código que burle o gate.
 - **Edição humana ganha da IA.** `ItemComunicado.TextoFinal` prioriza o texto revisado.
 - **Nenhuma história se perde no agrupamento.** Se o LLM omite uma chave, ela vira um
   grupo próprio, com log de aviso — some do comunicado seria pior.
@@ -80,5 +83,7 @@ são compartilhados com a versão Python.
 
 ## O que falta
 
-Persistência (não há repositório nem banco), endpoint de aprovação, exportação
-(Markdown/HTML/PDF), autenticação e a interface de revisão.
+Camada de Repository ligando o pipeline ao banco (o schema existe, o pipeline ainda roda
+em memória), endpoints de revisão/aprovação, exportação (Markdown/HTML/PDF), autenticação
+JWT e a interface de revisão no frontend. Lista completa em
+[docs/modelagem-de-dominio.md](../docs/modelagem-de-dominio.md#pendências-conhecidas).

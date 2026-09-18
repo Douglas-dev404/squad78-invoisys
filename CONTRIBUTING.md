@@ -16,9 +16,21 @@ feature/xyz → PR → develop → (quando pronto pra release) → PR → main
 
 ## Antes de abrir PR
 
-1. Testes passando localmente: `pytest`
-2. Lint/format limpos: `pre-commit run --all-files` (ou deixe o hook de commit fazer
-   isso automaticamente — ver `pre-commit install` no [AGENTS.md](AGENTS.md))
+1. Testes passando localmente: `dotnet test InvoiSys.slnx` (e `npm run build` em `frontend/`, se tocou no front)
+2. Formatação limpa: `dotnet format InvoiSys.slnx` (o CI reprova com
+   `--verify-no-changes` se houver pendência)
+
+   Opcional, para não descobrir quebra só no PR — hook local de pre-push:
+
+   ```sh
+   cat > .git/hooks/pre-push <<'HOOK'
+   #!/bin/sh
+   set -e
+   dotnet format InvoiSys.slnx --verify-no-changes
+   dotnet test InvoiSys.slnx --nologo --verbosity quiet
+   HOOK
+   chmod +x .git/hooks/pre-push
+   ```
 3. Se a mudança tocar em regra de negócio, invariante de domínio, ou decisão de
    arquitetura: atualizar a documentação relevante do projeto, ou ao menos deixar
    comentário no código explicando o porquê.
@@ -30,7 +42,7 @@ checkbox sem marcar sem justificar por quê.
 
 ## CI
 
-Todo PR roda automaticamente: lint (ruff), testes (pytest). PR não pode ser mergeado
+Todo PR roda automaticamente: build + format check + testes (.NET) e lint + build (frontend). PR não pode ser mergeado
 com CI vermelho.
 
 ## Revisão de segurança
