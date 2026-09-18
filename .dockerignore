@@ -1,16 +1,23 @@
-.venv/
-venv/
-__pycache__/
-*.pyc
+# Artefatos de build .NET — a imagem compila do zero no estágio de build; copiar
+# bin/obj locais invalidaria o cache de camadas e poderia levar binários de outra
+# plataforma para dentro do container.
+**/bin/
+**/obj/
+*.user
+
+# Frontend: build próprio, não entra na imagem da API.
+frontend/node_modules/
+frontend/dist/
+
 .git/
 .github/
-.pytest_cache/
-.mypy_cache/
-.ruff_cache/
-.coverage
-htmlcov/
-tests/
+.vs/
+.vscode/
+.idea/
+
 .env
 .env.example
+
+docs/
 *.md
 !README.md

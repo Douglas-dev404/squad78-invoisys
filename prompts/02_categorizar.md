@@ -14,7 +14,7 @@ em exatamente uma categoria de negócio.
 
 ## Entrada
 ```
-{texto_fonte}
+{{texto_fonte}}
 ```
 
 ## Tarefa

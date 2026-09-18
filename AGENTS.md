@@ -20,7 +20,7 @@ Não escreva código para uma tarefa não-trivial sem primeiro confirmar, para s
    está mapeado e respeitado pela mudança.
 4. **Padrão de referência identificado** — existe módulo/componente similar no
    código atual que mostra o padrão a seguir (camadas, nomenclatura, tratamento de erro).
-5. **Dependências conhecidas** — você sabe quais libs, portas (`Protocol`) e
+5. **Dependências conhecidas** — você sabe quais libs, portas (interfaces) e
    convenções de erro a mudança precisa respeitar.
 
 Se qualquer um desses estiver incerto: pare e pergunte ao humano, ou releia este
@@ -30,14 +30,16 @@ arquivo e o código de referência — não assuma.
 
 1. **Revisão humana é obrigatória antes de publicar.** Nenhum comunicado sai sem que
    um humano visualize, edite se necessário, e aprove. Isso está implementado como
-   método em `app/domain/entities/release.py` (`Release.aprovar()`) — qualquer código
-   novo que precise "aprovar" ou "publicar" uma Release **deve** passar por esse
-   método, nunca setar `status = APROVADO` diretamente.
+   método em `src/InvoiSys.Domain/Entities/VersaoComunicado.cs`
+   (`VersaoComunicado.Aprovar()`, exposto por `Release.Aprovar()`) — qualquer código
+   novo que precise "aprovar" ou "publicar" **deve** passar por esse método, nunca
+   setar `Status = Aprovado` diretamente. A revisão é **por público-alvo**: aprovar a
+   versão do Cliente não libera a do Suporte.
 2. **Categorias são fixas**: `nova_funcionalidade`, `melhoria`, `correcao`, `outros`
-   (ver `app/domain/enums/categoria_alteracao.py`). Não crie categoria nova sem
+   (ver `src/InvoiSys.Domain/Enums/CategoriaAlteracao.cs`). Não crie categoria nova sem
    confirmação explícita do humano.
 3. **Subtarefa Release Note tem prioridade sobre descrição técnica** como fonte de
-   texto para a IA, quando existir (ver `HistoriaJira.texto_fonte`).
+   texto para a IA, quando existir (ver `HistoriaJira.TextoFonte`).
 4. **Fonte de dados é só a API real do Jira** — sem fallback de JSON/CSV colado
    (decisão de projeto, não é limitação técnica esquecida).
 
@@ -46,55 +48,82 @@ arquivo e o código de referência — não assuma.
 Hexagonal leve (Ports & Adapters). Estrutura:
 
 ```
-app/
-├── domain/          # entidades, enums, portas (Protocol) — ZERO import de infra
-│   ├── entities/
-│   ├── enums/
-│   └── ports/        # JiraClient, LLMProvider — interfaces que infra implementa
-├── infrastructure/   # adapters concretos — implementam as portas do domain
-│   ├── jira/          # JiraRestClient real
-│   ├── llm/            # ProviderPendente (stub) até LLM provider ser decidido
-│   └── database/        # SQLAlchemy — ainda não implementado
-├── services/         # orquestração de casos de uso, depende só de PORTAS, nunca de adapter concreto
-├── api/v1/           # FastAPI — camada fina, só traduz HTTP <-> service, zero regra de negócio
-├── core/             # config (Settings) e composition root (dependencies.py)
-└── export/           # Markdown/HTML/PDF — ainda não implementado
+src/
+├── InvoiSys.Domain/          # entidades, enums, portas — ZERO dependência de infra
+│   ├── Entities/             # Release (raiz), VersaoComunicado, ItemComunicado, ...
+│   ├── Enums/
+│   └── Ports/                # IJiraClient, ILlmProvider — interfaces que infra implementa
+├── InvoiSys.Application/     # orquestração de casos de uso, depende só de PORTAS
+│   └── Pipeline/             # PipelineGeracaoReleaseNote (5 estágios)
+├── InvoiSys.Infrastructure/  # adapters concretos — implementam as portas do domínio
+│   ├── Jira/                 # JiraRestClient real
+│   ├── Llm/                  # OpenRouterProvider real; ProviderPendente se sem API key
+│   ├── Database/             # EF Core: DbContext, Configurations, Migrations
+│   └── DependencyInjection.cs  # composition root
+└── InvoiSys.Api/             # ASP.NET Minimal API — camada fina, zero regra de negócio
+    ├── Endpoints/
+    └── Contracts/            # DTOs — nunca expor entidade de domínio direto
+
+tests-dotnet/InvoiSys.Tests/  # xUnit — unit + integração
+frontend/                     # React + Vite (telas de login e recuperação de senha)
+prompts/                      # prompts do pipeline, versionados como arquivo
+docs/                         # modelagem de domínio + ERD
 ```
 
-**Regra dura**: `app/domain/` nunca importa nada de `app/infrastructure/`. Se você
+**Regra dura**: `InvoiSys.Domain` nunca referencia `InvoiSys.Infrastructure`. Se você
 precisa que o domínio "converse" com Jira ou LLM, isso passa por uma porta em
-`app/domain/ports/`, nunca por um import direto de SDK.
+`InvoiSys.Domain/Ports/`, nunca por um using direto de SDK. A direção das referências
+de projeto (`.csproj`) já força isso — se precisar inverter, você está errando.
 
 **Composition root único**: a amarração porta → adapter concreto acontece só em
-`app/core/dependencies.py`. Não instancie um adapter direto dentro de um endpoint ou
-service — sempre via `Depends()`.
+`InvoiSys.Infrastructure/DependencyInjection.cs`. Não instancie um adapter direto
+dentro de um endpoint ou serviço — sempre via injeção de dependência.
 
 ## Decisões já tomadas — não reabrir sem motivo novo
 
-- Stack: Python 3.12+ / FastAPI / PostgreSQL / SQLAlchemy 2.0.
-- LangChain mantido no pipeline de IA (decisão registrada com ressalva — ver documentação interna
-  do projeto se você tiver acesso; peso morto para o escopo atual, aceito porque a
-  visão é evoluir para RAG/agents depois).
-- LLM provider: **ainda não decidido**. Não implemente um adapter real em
-  `app/infrastructure/llm/` sem confirmação explícita de qual provider usar — até lá,
-  `ProviderPendente` é o adapter ativo, e isso é esperado, não um bug a "corrigir"
-  sozinho.
-- Um único LLM provider no MVP, nunca dois em paralelo.
+- Stack: **.NET 10 / ASP.NET Minimal API / PostgreSQL 16 / EF Core 10**. A fundação
+  original era Python + FastAPI; foi reescrita em .NET no commit `3b3a75a`, alinhando
+  com a preferência sinalizada pela InvoiSys (Node ou .NET). A arquitetura hexagonal
+  foi preservada na migração — o que mudou foi a linguagem, não o desenho. O código
+  Python foi removido do repositório; se precisar consultá-lo, está no histórico do
+  git antes de `3b3a75a`.
+- LangChain **removido**. Avaliado e descartado: o adapter real de LLM (OpenRouter)
+  usa só `httpx`, schema compatível com OpenAI, sem necessidade de SDK de orquestração
+  pra um pipeline linear de 5 estágios sem RAG.
+- LLM provider: **OpenRouter** (`src/InvoiSys.Infrastructure/Llm/OpenRouterProvider.cs`),
+  gateway único pra múltiplos modelos via um schema de API compatível com OpenAI.
+  Modelo configurável via `OPENROUTER_MODEL` (formato `provedor/modelo`). Sem
+  `OPENROUTER_API_KEY` configurada, o composition root cai para `ProviderPendente` —
+  isso é esperado em ambiente sem chave, não um bug a "corrigir" trocando o fallback.
+- Um único LLM provider no MVP, nunca dois em paralelo (fallback entre *modelos* via
+  `OPENROUTER_FALLBACK_MODELS` é diferente disso — mesma OpenRouter, resiliência).
 - Sem fallback de input JSON/CSV — só API real do Jira.
+- Interpolação de prompt usa `{{chave}}` (Mustache-like) via `PromptLoader.Montar()` em
+  `src/InvoiSys.Infrastructure/Llm/PromptLoader.cs`, nunca interpolação de string nativa
+  — os prompts têm JSON literal de exemplo no formato de saída, que seria interpretado
+  como placeholder e quebraria (bug real já corrigido uma vez, não reintroduza).
+- **Múltiplos públicos-alvo** (Cliente, Comercial, Suporte, Interno) são modelados como
+  `VersaoComunicado`, uma por público, cada uma com seu próprio ciclo de revisão. Ver
+  [docs/modelagem-de-dominio.md](docs/modelagem-de-dominio.md).
 
 ## Padrões de código
 
 - Nomes de domínio em **português** (é o vocabulário de negócio da InvoiSys/Jira
   deles) — `Release`, `HistoriaJira`, `CategoriaAlteracao`. Nomes técnicos genéricos
   (framework, infra) seguem convenção inglesa normal (`JiraClient`, `LLMProvider`).
-- Toda chamada externa (Jira, LLM) passa por retry com `tenacity` — não é opcional.
+- Toda chamada externa (Jira, LLM) passa por retry via
+  `Microsoft.Extensions.Http.Resilience` — não é opcional.
 - Prompts do pipeline de IA vivem em `prompts/*.md`, versionados como arquivo — nunca
-  hardcoded como string no Python.
-- Testes usam fakes das portas (`Protocol`), não mocks de biblioteca externa — ver
-  `tests/unit/test_pipeline_geracao_release_note.py` como referência de padrão.
+  hardcoded como string no C#.
+- Testes usam fakes das portas (interfaces), não mocks de biblioteca externa — ver
+  `tests-dotnet/InvoiSys.Tests/Unit/PipelineGeracaoReleaseNoteTests.cs` como referência.
 - Erros de infraestrutura viram exceção de domínio explícita antes de subir pra API
-  (ex: `JiraApiError`, `ProviderNaoConfiguradoError`), nunca uma exception crua de
-  `httpx` vazando até o endpoint.
+  (ex: `JiraApiException`, `ProviderNaoConfiguradoException`), nunca uma exception crua
+  de `HttpClient` vazando até o endpoint.
+- Entidades de domínio são **ricas**: invariante vive dentro do objeto, coleções são
+  expostas como `IReadOnlyList` e mutadas só pelos métodos de ciclo de vida. Não
+  adicione setter público "porque o EF precisa" — use `private init` e construtor
+  privado, como nas entidades existentes.
 
 ## Workflow de git
 
@@ -104,12 +133,29 @@ com checklist preenchido, CI precisa passar antes de merge.
 
 ## Rodando o projeto
 
+Backend:
+
 ```bash
-python -m venv .venv && source .venv/Scripts/activate  # Windows Git Bash
-pip install -e ".[dev]"
-pre-commit install     # hooks de git — roda lint/format antes de cada commit
-pytest                 # roda a suíte de testes
-uvicorn app.main:app --reload
+dotnet restore InvoiSys.slnx
+dotnet build InvoiSys.slnx
+dotnet test InvoiSys.slnx          # suíte completa
+dotnet format InvoiSys.slnx        # formatação (o CI verifica com --verify-no-changes)
+dotnet run --project src/InvoiSys.Api
 ```
 
-Ou via Docker: `docker compose up`.
+Frontend:
+
+```bash
+cd frontend
+npm ci
+npm run dev
+```
+
+Banco (migrations EF Core):
+
+```bash
+dotnet ef migrations add <Nome> --project src/InvoiSys.Infrastructure --startup-project src/InvoiSys.Api --output-dir Database/Migrations
+dotnet ef database update --project src/InvoiSys.Infrastructure --startup-project src/InvoiSys.Api
+```
+
+Tudo junto via Docker: `docker compose up --build` (API em `:8080`, Postgres em `:5432`).

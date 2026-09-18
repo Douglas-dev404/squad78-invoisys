@@ -9,7 +9,7 @@ detalhada por categoria.
 ## Entrada
 Itens do comunicado (já em linguagem de negócio):
 ```
-{itens_texto}
+{{itens_texto}}
 ```
 
 ## Tarefa

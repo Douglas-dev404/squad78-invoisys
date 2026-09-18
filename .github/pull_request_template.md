@@ -13,12 +13,12 @@
 ## Checklist
 
 - [ ] Testes novos/atualizados cobrindo a mudança
-- [ ] `pytest` passa localmente
+- [ ] `dotnet test InvoiSys.slnx` passa localmente
 - [ ] `pre-commit run --all-files` limpo (lint + format)
 - [ ] Nenhum segredo/credencial commitado (`.env`, token, chave de API)
 - [ ] Se toca em regra de negócio ou invariante de domínio: documentação atualizada
       (documentação interna do projeto, ou comentário explicando o porquê no código)
-- [ ] Se toca em `app/domain/`: nenhum import de `app/infrastructure/` foi introduzido
+- [ ] Se toca em `InvoiSys.Domain`: nenhuma referência a `InvoiSys.Infrastructure` foi introduzida
 
 ## Como testar
 

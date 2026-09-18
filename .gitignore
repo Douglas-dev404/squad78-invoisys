@@ -1,15 +1,27 @@
-__pycache__/
-*.pyc
-.venv/
-venv/
-.env
-*.egg-info/
-.pytest_cache/
-.mypy_cache/
-.ruff_cache/
-htmlcov/
-.coverage
+# .NET
+bin/
+obj/
+*.user
+*.suo
+.vs/
+
+# Frontend
+node_modules/
 dist/
 build/
-node_modules/
+*.local
+
+# Ambiente
+.env
+
+# IDE
+.idea/
+.vscode/*
+!.vscode/extensions.json
+
+# SO
 .DS_Store
+Thumbs.db
+
+# Material de estudo pessoal — não é artefato do projeto
+docs/roteiro-apresentacao.md

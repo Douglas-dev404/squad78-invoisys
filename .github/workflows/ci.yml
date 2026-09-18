@@ -7,29 +7,52 @@ on:
     branches: [main, develop]
 
 jobs:
-  lint-and-test:
+  backend:
+    name: Backend (.NET)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
-      - name: Setup Python
-        uses: actions/setup-python@v5
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
         with:
-          python-version: "3.12"
-          cache: pip
+          dotnet-version: "10.0.x"
 
-      - name: Instalar dependências
-        run: pip install -e ".[dev]"
+      - name: Restore
+        run: dotnet restore InvoiSys.slnx
 
-      - name: Lint (ruff)
-        run: ruff check .
+      # --no-restore em todos os passos seguintes: o restore acima já rodou, repetir
+      # só gasta tempo de CI.
+      - name: Build
+        run: dotnet build InvoiSys.slnx --no-restore --configuration Release
 
-      - name: Format check (ruff)
-        run: ruff format --check .
+      - name: Format check
+        run: dotnet format InvoiSys.slnx --verify-no-changes --no-restore
 
       - name: Testes
-        run: pytest --cov=app --cov-report=term-missing
+        run: dotnet test InvoiSys.slnx --no-build --configuration Release --verbosity normal
 
-      - name: Type check (mypy)
-        run: mypy app
-        continue-on-error: true # ainda endurecendo tipagem — não bloqueia merge por ora
+  frontend:
+    name: Frontend (React + Vite)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Instalar dependências
+        run: npm ci
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Build
+        run: npm run build
