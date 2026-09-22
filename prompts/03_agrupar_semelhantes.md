@@ -10,7 +10,7 @@ evitando que o cliente leia "3 correções de ICMS" separadas quando é, na prá
 ## Entrada
 Lista de pares (chave, texto):
 ```json
-{lista_chave_texto}
+{{lista_chave_texto}}
 ```
 
 ## Tarefa
