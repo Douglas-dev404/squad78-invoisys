@@ -67,7 +67,7 @@ src/
 tests-dotnet/InvoiSys.Tests/  # xUnit — unit + integração
 frontend/                     # React + Vite (telas de login e recuperação de senha)
 prompts/                      # prompts do pipeline, versionados como arquivo
-docs/                         # modelagem de domínio + ERD
+docs/                         # modelagem de domínio + ERD + contratos de integração
 ```
 
 **Regra dura**: `InvoiSys.Domain` nunca referencia `InvoiSys.Infrastructure`. Se você
@@ -98,6 +98,9 @@ dentro de um endpoint ou serviço — sempre via injeção de dependência.
 - Um único LLM provider no MVP, nunca dois em paralelo (fallback entre *modelos* via
   `OPENROUTER_FALLBACK_MODELS` é diferente disso — mesma OpenRouter, resiliência).
 - Sem fallback de input JSON/CSV — só API real do Jira.
+- Contrato completo das duas integrações externas (endpoints, paginação, auth, o que
+  já foi verificado contra doc oficial vs. o que ainda é suposição pendente) em
+  [docs/contratos-integracao.md](docs/contratos-integracao.md).
 - Interpolação de prompt usa `{{chave}}` (Mustache-like) via `PromptLoader.Montar()` em
   `src/InvoiSys.Infrastructure/Llm/PromptLoader.cs`, nunca interpolação de string nativa
   — os prompts têm JSON literal de exemplo no formato de saída, que seria interpretado

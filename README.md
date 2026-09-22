@@ -93,7 +93,7 @@ src/
 tests-dotnet/InvoiSys.Tests/  # xUnit — unit + integração
 frontend/                     # React + Vite
 prompts/                      # prompts do pipeline, versionados como arquivo
-docs/                         # modelagem de domínio + ERD
+docs/                         # modelagem de domínio + ERD + contratos de integração
 ```
 
 ## Rodando o projeto
