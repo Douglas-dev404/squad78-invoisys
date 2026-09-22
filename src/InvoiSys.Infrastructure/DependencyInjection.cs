@@ -53,6 +53,8 @@ public static class DependencyInjection
             // snake_case é o idiomático em PostgreSQL; as entidades/propriedades do
             // domínio continuam PascalCase em C# — a convenção só afeta o SQL gerado.
             .UseSnakeCaseNamingConvention());
+
+        services.AddScoped<IReleaseRepository, ReleaseRepository>();
     }
 
     private static void AddJiraClient(IServiceCollection services)
