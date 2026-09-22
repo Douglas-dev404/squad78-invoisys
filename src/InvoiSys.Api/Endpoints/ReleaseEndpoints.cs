@@ -83,12 +83,9 @@ public static class ReleaseEndpoints
     /// </summary>
     private static async Task<IResult> ProcessarReleaseAsync(
         string chaveRelease,
-        [FromServices] IJiraClient jiraClient,
-        [FromServices] ILlmProvider llmProvider,
+        [FromServices] PipelineGeracaoReleaseNote pipeline,
         CancellationToken cancellationToken)
     {
-        var pipeline = new PipelineGeracaoReleaseNote(jiraClient, llmProvider);
-
         try
         {
             var release = await pipeline.ExecutarAsync(chaveRelease, cancellationToken);

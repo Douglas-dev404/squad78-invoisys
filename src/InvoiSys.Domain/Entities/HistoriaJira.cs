@@ -9,6 +9,9 @@ namespace InvoiSys.Domain.Entities;
 /// </summary>
 public sealed record HistoriaJira
 {
+    /// <summary>Identidade técnica — chave estável para FK, independente da chave do Jira.</summary>
+    public Guid Id { get; init; } = Guid.NewGuid();
+
     /// <summary>Ex: "INV-1234".</summary>
     public required string Chave { get; init; }
 

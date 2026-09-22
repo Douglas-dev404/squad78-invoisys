@@ -1,47 +1,56 @@
 # syntax=docker/dockerfile:1
 #
-# Multi-stage build: estágio de build instala dependências num venv isolado,
-# estágio final copia só o venv + código — nada de cache de pip, headers de
-# compilação, ou uv sobrando na imagem que vai rodar.
-#
-# Por padrão instala só as dependências principais (sem LangChain, que fica no
-# grupo opcional [llm] — só entra quando o adapter real do LLM for implementado,
-# evitando pesar a imagem com uma lib que ainda não está em uso).
+# Multi-stage build da API .NET. O estágio de build carrega o SDK completo; a imagem
+# final leva apenas o runtime ASP.NET + os binários publicados — sem SDK, sem código
+# fonte, sem cache de NuGet sobrando.
 
-FROM python:3.12-slim AS builder
+FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
+
+WORKDIR /src
+
+# Copia só os arquivos de projeto antes do restore: enquanto as dependências não
+# mudarem, o Docker reaproveita a camada de restore mesmo que o código mude.
+COPY InvoiSys.slnx ./
+COPY src/InvoiSys.Domain/InvoiSys.Domain.csproj src/InvoiSys.Domain/
+COPY src/InvoiSys.Application/InvoiSys.Application.csproj src/InvoiSys.Application/
+COPY src/InvoiSys.Infrastructure/InvoiSys.Infrastructure.csproj src/InvoiSys.Infrastructure/
+COPY src/InvoiSys.Api/InvoiSys.Api.csproj src/InvoiSys.Api/
+RUN dotnet restore src/InvoiSys.Api/InvoiSys.Api.csproj
+
+COPY src/ src/
+RUN dotnet publish src/InvoiSys.Api/InvoiSys.Api.csproj \
+    --configuration Release \
+    --no-restore \
+    --output /app/publish
+
+FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS runtime
+
+# A imagem oficial do runtime ASP.NET já traz o usuário sem privilégios "app" —
+# criar outro aqui falharia, e a API não tem motivo para rodar como root.
 
 WORKDIR /app
 
-RUN pip install --no-cache-dir uv
+COPY --from=build /app/publish ./
 
-COPY pyproject.toml ./
-COPY app ./app
-
-# --no-cache mantém a camada de build enxuta; troque para "-e .[llm]" se algum dia
-# o build padrão precisar já vir com LangChain instalado.
-RUN uv venv /opt/venv \
-    && . /opt/venv/bin/activate \
-    && uv pip install --no-cache -e .
-
-FROM python:3.12-slim AS runtime
-
-RUN groupadd --system app && useradd --system --gid app app
-
-WORKDIR /app
-
-COPY --from=builder /opt/venv /opt/venv
-COPY app ./app
+# Os prompts do pipeline de IA são carregados em runtime pelo PromptLoader, que sobe
+# a partir do diretório da aplicação procurando a pasta "prompts/" — por isso eles
+# precisam existir na imagem, versionados como conteúdo, não embutidos no código.
 COPY prompts ./prompts
 
-ENV PATH="/opt/venv/bin:$PATH" \
-    PYTHONDONTWRITEBYTECODE=1 \
-    PYTHONUNBUFFERED=1
+# ASPNETCORE_HTTP_PORTS define a porta de escuta, e o modo --healthcheck lê a mesma
+# variável — mudar a porta aqui mantém o health check correto sozinho.
+ENV ASPNETCORE_HTTP_PORTS=8080 \
+    DOTNET_RUNNING_IN_CONTAINER=true \
+    DOTNET_NOLOGO=1
 
 USER app
 
-EXPOSE 8000
+EXPOSE 8080
 
-HEALTHCHECK --interval=30s --timeout=5s --start-period=10s \
-    CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')" || exit 1
+# A imagem aspnet não traz curl nem wget. Em vez de instalar um pacote na imagem
+# final só para o health check, a própria aplicação responde ao argumento
+# --healthcheck consultando /health e saindo com o código apropriado.
+HEALTHCHECK --interval=30s --timeout=5s --start-period=15s --retries=3 \
+    CMD ["dotnet", "InvoiSys.Api.dll", "--healthcheck"]
 
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["dotnet", "InvoiSys.Api.dll"]

@@ -21,6 +21,40 @@ public class PipelineGeracaoReleaseNoteTests
         };
 
     [Fact]
+    public async Task Chave_inventada_pelo_LLM_e_ignorada_em_vez_de_derrubar_o_pipeline()
+    {
+        // Cenário real: o modelo alucina e devolve no agrupamento uma chave Jira que
+        // nunca existiu na Release. Antes da correção, o lookup por chave lançava
+        // KeyNotFoundException e a Release inteira falhava com 500.
+        var jira = new FakeJiraClient { Historias = [Historia("INV-1"), Historia("INV-2")] };
+        var llm = new FakeLlmProvider
+        {
+            GruposFixos = [["INV-1", "INV-INEXISTENTE"], ["INV-2"]],
+        };
+
+        var release = await new PipelineGeracaoReleaseNote(jira, llm).ExecutarAsync("REL-1");
+
+        release.Status.Should().Be(StatusPipeline.AguardandoRevisao);
+        release.Itens.Should().HaveCount(2, "nenhuma história real pode se perder");
+        release.Itens.SelectMany(i => i.Origens)
+            .Should().BeEquivalentTo(["INV-1", "INV-2"], "a chave inventada não vira origem");
+    }
+
+    [Fact]
+    public async Task Grupo_inteiro_de_chaves_inventadas_nao_vira_item()
+    {
+        var jira = new FakeJiraClient { Historias = [Historia("INV-1")] };
+        var llm = new FakeLlmProvider
+        {
+            GruposFixos = [["INV-1"], ["INV-FANTASMA-1", "INV-FANTASMA-2"]],
+        };
+
+        var release = await new PipelineGeracaoReleaseNote(jira, llm).ExecutarAsync("REL-1");
+
+        release.Itens.Should().HaveCount(1, "um grupo só de chaves inexistentes não gera item");
+    }
+
+    [Fact]
     public async Task Pipeline_completo_deixa_a_release_aguardando_revisao()
     {
         var jira = new FakeJiraClient { Historias = [Historia("INV-1"), Historia("INV-2")] };
