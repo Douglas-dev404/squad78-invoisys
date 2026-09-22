@@ -68,14 +68,56 @@ Ao final do projeto: um protótipo funcional (MVP) que demonstre a viabilidade d
 
 ## Stack
 
-Em aberto — a InvoiSys usa principalmente .NET na plataforma deles, mas o desafio deixa a
-escolha de tecnologias livre para o squad.
+- **Backend**: .NET 10, ASP.NET Minimal API, arquitetura hexagonal (Ports & Adapters).
+- **Persistência**: PostgreSQL 16 + EF Core 10 (Code-First).
+- **IA**: OpenRouter como provider de LLM (gateway único, formato `provedor/modelo`).
+- **Frontend**: React + Vite.
+- **Infra**: Docker + Docker Compose.
+
+Detalhes de arquitetura, camadas e decisões técnicas em [AGENTS.md](AGENTS.md).
 
 ## Escopo deste repositório
 
-Foco no **backend**. Frontend é apoio pontual quando o squad precisar, não a frente principal
-de trabalho aqui.
+Backend é a frente principal, com frontend de apoio para a interface de revisão humana antes
+da publicação dos comunicados.
 
 ## Estrutura
 
-_A definir — decisão em andamento com o squad._
+```
+src/
+├── InvoiSys.Domain/          # entidades, enums, portas — zero dependência de infra
+├── InvoiSys.Application/     # orquestração de casos de uso (pipeline de IA)
+├── InvoiSys.Infrastructure/  # adapters concretos (Jira, LLM, EF Core)
+└── InvoiSys.Api/             # ASP.NET Minimal API
+
+tests-dotnet/InvoiSys.Tests/  # xUnit — unit + integração
+frontend/                     # React + Vite
+prompts/                      # prompts do pipeline, versionados como arquivo
+docs/                         # modelagem de domínio + ERD
+```
+
+## Rodando o projeto
+
+Backend:
+
+```bash
+dotnet restore InvoiSys.slnx
+dotnet build InvoiSys.slnx
+dotnet test InvoiSys.slnx
+dotnet run --project src/InvoiSys.Api
+```
+
+Frontend:
+
+```bash
+cd frontend
+npm ci
+npm run dev
+```
+
+Tudo junto via Docker: `docker compose up --build` (API em `:8080`, Postgres em `:5432`).
+
+## Contribuindo
+
+Veja [CONTRIBUTING.md](CONTRIBUTING.md) para o fluxo de branches/PR e [AGENTS.md](AGENTS.md)
+para as decisões de arquitetura e os invariantes de negócio.
