@@ -1,5 +1,6 @@
 using FluentAssertions;
 using InvoiSys.Domain.Entities;
+using InvoiSys.Domain.Enums;
 using InvoiSys.Infrastructure.Database;
 using Microsoft.EntityFrameworkCore;
 
@@ -166,5 +167,32 @@ public class ReleaseRepositoryTests(PostgresContainerFixture fixture)
         var sobraram = await leitura.HistoriasJira.AnyAsync(h => idsDasHistorias.Contains(h.Id));
 
         sobraram.Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task SalvarAsync_sobre_release_existente_nao_duplica_as_historias_ja_persistidas()
+    {
+        var release = new Release(ChaveJiraUnica(), [UmaHistoria("INV-1"), UmaHistoria("INV-2")]);
+
+        await using (var criacao = fixture.CriarContexto())
+        {
+            await new ReleaseRepository(criacao).SalvarAsync(release);
+        }
+
+        // Segundo Save sobre uma Release já rastreada: cai no ramo de update do
+        // SalvarAsync (estado != Detached), não no Add.
+        await using (var atualizacao = fixture.CriarContexto())
+        {
+            var repositorio = new ReleaseRepository(atualizacao);
+            var persistida = await repositorio.BuscarPorIdAsync(release.Id);
+            persistida!.MarcarProcessando();
+            await repositorio.SalvarAsync(persistida);
+        }
+
+        await using var leitura = fixture.CriarContexto();
+        var recarregada = await new ReleaseRepository(leitura).BuscarPorIdAsync(release.Id);
+
+        recarregada!.Status.Should().Be(StatusPipeline.Processando);
+        recarregada.Historias.Should().HaveCount(2);
     }
 }

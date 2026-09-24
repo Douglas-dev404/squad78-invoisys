@@ -68,7 +68,7 @@ Plano completo em [plano-historias-jira-data-access.md](plano-historias-jira-dat
   - Comentar no teste: `Remove` direto é intencional (porta não expõe delete); o alvo
     é validar `OnDelete(DeleteBehavior.Cascade)`
 
-- [ ] **Teste 7** — `SalvarAsync_sobre_release_existente_nao_duplica_historias_ja_persistidas`
+- [x] **Teste 7** — `SalvarAsync_sobre_release_existente_nao_duplica_historias_ja_persistidas`
   - Salvar → reler → `release.MarcarProcessando()` → salvar de novo (branch update)
   - Reler de novo: contagem de `Historias` igual, `Status` persistido
 
