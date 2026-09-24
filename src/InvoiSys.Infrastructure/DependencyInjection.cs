@@ -55,6 +55,7 @@ public static class DependencyInjection
             .UseSnakeCaseNamingConvention());
 
         services.AddScoped<IReleaseRepository, ReleaseRepository>();
+        services.AddScoped<IHistoriaJiraRepository, HistoriaJiraRepository>();
     }
 
     private static void AddJiraClient(IServiceCollection services)
