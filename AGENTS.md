@@ -108,15 +108,17 @@ dentro de um endpoint ou serviço — sempre via injeção de dependência.
 - **Múltiplos públicos-alvo** (Cliente, Comercial, Suporte, Interno) são modelados como
   `VersaoComunicado`, uma por público, cada uma com seu próprio ciclo de revisão. Ver
   [docs/modelagem-de-dominio.md](docs/modelagem-de-dominio.md).
-- **Sem `IHistoriaJiraRepository`/`HistoriaJiraRepository` dedicado.** Avaliado e
-  descartado: `HistoriaJira` é filha do agregado `Release` (1:N, FK shadow
-  `ReleaseId`, cascade delete — ver `HistoriaJiraConfiguration.cs`/
-  `ReleaseConfiguration.cs`) e já é persistida/carregada integralmente por
-  `ReleaseRepository.ConsultaComAgregadoCompleto()` via `.Include(r => r.Historias)`.
-  Repository é por agregado, não por entidade filha — regra documentada no
-  docstring de `src/InvoiSys.Domain/Ports/IReleaseRepository.cs`. Se algum código
-  precisar de fato consultar `HistoriaJira` isolada da sua `Release`, isso é motivo
-  novo para reabrir esta decisão.
+- **`IHistoriaJiraRepository` é uma porta de leitura isolada, não um repository de
+  agregado.** `HistoriaJira` é filha do agregado `Release` (1:N, FK shadow `ReleaseId`,
+  cascade delete — ver `HistoriaJiraConfiguration.cs`/`ReleaseConfiguration.cs`) e
+  continua sendo gravada só via `IReleaseRepository.SalvarAsync`. A porta existe para
+  consultar histórias (por id, por chave dentro de uma Release, ou por Release) sem
+  carregar o agregado inteiro; por isso é somente leitura e sem tracking — uma porta de
+  escrita deixaria gravar uma história por fora do agregado. A regra "repository é por
+  agregado, não por entidade filha" (docstring de
+  `src/InvoiSys.Domain/Ports/IReleaseRepository.cs`) segue valendo para as demais
+  filhas (`VersaoComunicado`, `ExecucaoPipeline`, `ItemComunicado`): nenhuma ganha
+  repository próprio sem um caso real de consulta isolada.
 - **Testes de banco usam Testcontainers com Postgres real** (`postgres:16-alpine`,
   mesma imagem do `docker-compose.yml`), não EF InMemory nem SQLite — o mapeamento de
   `text[]` de `HistoriaJira.Labels` via value converter customizado

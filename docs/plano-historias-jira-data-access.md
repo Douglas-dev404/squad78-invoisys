@@ -1,5 +1,16 @@
 # Plano: camada de acesso a dados para `historias_jira`
 
+> **Atualização — decisão revista.** O plano abaixo foi escrito assumindo *não* criar o
+> repository de `HistoriaJira`, e os testes do `ReleaseRepository` (7 casos) foram
+> entregues nessa base. Depois, a decisão mudou: a porta foi criada, como **leitura
+> isolada** (somente consulta, sem tracking), porque escrita por fora do agregado
+> violaria o invariante de que histórias só entram pelo construtor de `Release`.
+> Entregue além do plano: `IHistoriaJiraRepository` (`Domain/Ports`),
+> `HistoriaJiraRepository` (`Infrastructure/Database`), registro em
+> `DependencyInjection.cs` e 7 testes em `HistoriaJiraRepositoryTests.cs`. As seções
+> abaixo continuam válidas para o `ReleaseRepository`; onde dizem "não criar", vale a
+> atualização acima.
+
 ## Contexto
 
 A task original pedia um `IHistoriaJiraRepository`/`HistoriaJiraRepository`, seguindo o

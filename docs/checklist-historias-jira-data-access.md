@@ -7,9 +7,9 @@ Plano completo em [plano-historias-jira-data-access.md](plano-historias-jira-dat
 
 ## 0. Decisão de arquitetura (já confirmada, não reabrir)
 
-- [x] Confirmado: **não** criar `IHistoriaJiraRepository`/`HistoriaJiraRepository` —
-      `HistoriaJira` é filha do agregado `Release`, já coberta por
-      `ReleaseRepository.ConsultaComAgregadoCompleto()`.
+- [x] ~~Confirmado: **não** criar `IHistoriaJiraRepository`/`HistoriaJiraRepository`~~ —
+      **revisto**: a porta foi criada como leitura isolada (ver seção 7).
+      `HistoriaJira` segue sendo gravada só via `IReleaseRepository.SalvarAsync`.
 - [x] Confirmado: cobrir a lacuna real (zero testes em `ReleaseRepository`) com
       Testcontainers + Postgres real, não EF InMemory/SQLite.
 
@@ -102,10 +102,33 @@ Plano completo em [plano-historias-jira-data-access.md](plano-historias-jira-dat
 
 ## 6. Antes de abrir o PR
 
-- [x] Confirmar que nenhuma porta/implementação/registro de `HistoriaJira` foi criada
-      (`IReleaseRepository.cs`, `ReleaseRepository.cs`, `DependencyInjection.cs`
-      permanecem intocados)
-- [ ] Descrição do PR explica a decisão "não criar repository" (linkar
-      `docs/plano-historias-jira-data-access.md` ou copiar o resumo do Contexto)
+- [x] ~~Confirmar que nenhuma porta/implementação/registro de `HistoriaJira` foi criada~~
+      — superado pela seção 7. `IReleaseRepository.cs` e `ReleaseRepository.cs`
+      permanecem intocados; `DependencyInjection.cs` ganhou uma linha.
+- [ ] **Atualizar a descrição do PR**: ela ainda diz que não há repository novo. Deve
+      passar a descrever a porta de leitura isolada e a mudança de decisão
 - [ ] Mencionar no PR: primeira execução em CI baixa a imagem `postgres:16-alpine`
       (tempo de job aumenta um pouco, é esperado)
+
+## 7. Revisão da decisão: repository de leitura isolada de `HistoriaJira`
+
+- [x] Porta `src/InvoiSys.Domain/Ports/IHistoriaJiraRepository.cs` — somente leitura:
+      `BuscarPorIdAsync`, `BuscarPorChaveAsync(releaseId, chave)`, `ListarPorReleaseAsync`
+- [x] Implementação `src/InvoiSys.Infrastructure/Database/HistoriaJiraRepository.cs`
+      (`AsNoTracking`; filtro por Release via `EF.Property` na shadow FK `ReleaseId`)
+- [x] Registro em `DependencyInjection.cs`:
+      `services.AddScoped<IHistoriaJiraRepository, HistoriaJiraRepository>();`
+- [x] Testes `tests-dotnet/InvoiSys.Tests/Integration/HistoriaJiraRepositoryTests.cs` (7 casos)
+- [x] `dotnet format --verify-no-changes` limpo e suíte completa 78/78
+      *(71 anteriores + 7 novos; rodada em container Docker)*
+- [x] `AGENTS.md` reescrito para refletir a decisão revista
+- [ ] Descrição do PR atualizada (ver seção 6)
+
+Decisão de desenho: a porta **não tem escrita**. `HistoriaJira` só entra no agregado pelo
+construtor de `Release` e a FK é shadow property; gravar por aqui permitiria persistir
+histórias por fora do agregado.
+
+Pendência fora do escopo: os docstrings de `IReleaseRepository`/`ReleaseRepository`
+dizem que as filhas do agregado "não ganham repository próprio". Continua valendo para
+`VersaoComunicado`/`ExecucaoPipeline`, mas agora há uma exceção de leitura para
+`HistoriaJira` — vale ajustar esses textos numa revisão.
