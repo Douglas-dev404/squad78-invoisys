@@ -77,7 +77,7 @@ Plano completo em [plano-historias-jira-data-access.md](plano-historias-jira-dat
   - Salvar → reler → `release.MarcarProcessando()` → salvar de novo (branch update)
   - Reler de novo: contagem de `Historias` igual, `Status` persistido
 
-- [ ] Rodar isolado durante o desenvolvimento:
+- [x] Rodar isolado durante o desenvolvimento:
       `dotnet test InvoiSys.slnx --filter "FullyQualifiedName~ReleaseRepositoryTests"`
 
 ## 4. Documentar a decisão em `AGENTS.md`
@@ -90,14 +90,19 @@ Plano completo em [plano-historias-jira-data-access.md](plano-historias-jira-dat
 
 ## 5. Verificação final
 
-- [ ] `dotnet test InvoiSys.slnx --filter "FullyQualifiedName~ReleaseRepositoryTests"` — 7/7 passando
-- [ ] `dotnet format InvoiSys.slnx` — sem alterações pendentes
-- [ ] `dotnet test InvoiSys.slnx` — suíte completa (unit + integration) passando, sem regressão
-- [ ] Revisar `AGENTS.md` — bullets coerentes em estilo/tom com o resto da seção
+- [x] `dotnet test InvoiSys.slnx --filter "FullyQualifiedName~ReleaseRepositoryTests"` — 7/7 passando
+- [x] `dotnet format InvoiSys.slnx` — sem alterações pendentes
+      *(`--verify-no-changes`, o mesmo do CI: exit 0)*
+- [x] `dotnet test InvoiSys.slnx` — suíte completa (unit + integration) passando, sem regressão
+      *(71/71: 64 anteriores + 7 novos)*
+- [x] Revisar `AGENTS.md` — bullets coerentes em estilo/tom com o resto da seção
+
+> Verificação rodada com o SDK .NET 10.0.401 em container Docker (a máquina não tem
+> `dotnet` instalado), com o socket do Docker montado para o Testcontainers.
 
 ## 6. Antes de abrir o PR
 
-- [ ] Confirmar que nenhuma porta/implementação/registro de `HistoriaJira` foi criada
+- [x] Confirmar que nenhuma porta/implementação/registro de `HistoriaJira` foi criada
       (`IReleaseRepository.cs`, `ReleaseRepository.cs`, `DependencyInjection.cs`
       permanecem intocados)
 - [ ] Descrição do PR explica a decisão "não criar repository" (linkar
