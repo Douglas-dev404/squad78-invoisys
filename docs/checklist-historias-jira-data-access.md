@@ -58,7 +58,7 @@ Plano completo em [plano-historias-jira-data-access.md](plano-historias-jira-dat
   - Duas `HistoriaJira` com `Chave = "INV-1"` na mesma Release
   - `await acao.Should().ThrowAsync<DbUpdateException>()`
 
-- [ ] **Teste 5** — `SalvarAsync_permite_a_mesma_chave_de_historia_em_releases_diferentes`
+- [x] **Teste 5** — `SalvarAsync_permite_a_mesma_chave_de_historia_em_releases_diferentes`
   - Prova que o índice único é composto `(ReleaseId, Chave)`, não global em `Chave`
 
 - [ ] **Teste 6** — `Remover_release_apaga_historias_filhas_em_cascata`

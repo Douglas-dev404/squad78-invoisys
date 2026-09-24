@@ -115,4 +115,28 @@ public class ReleaseRepositoryTests(PostgresContainerFixture fixture)
 
         await acao.Should().ThrowAsync<DbUpdateException>();
     }
+
+    [Fact]
+    public async Task SalvarAsync_permite_a_mesma_chave_de_historia_em_releases_diferentes()
+    {
+        // O índice é composto (release_id, chave), não global em chave: se fosse global,
+        // o SaveChanges abaixo lançaria DbUpdateException e o teste falharia.
+        var primeira = new Release(ChaveJiraUnica(), [UmaHistoria("INV-1")]);
+        var segunda = new Release(ChaveJiraUnica(), [UmaHistoria("INV-1")]);
+
+        await using (var escrita = fixture.CriarContexto())
+        {
+            var repositorio = new ReleaseRepository(escrita);
+            await repositorio.SalvarAsync(primeira);
+            await repositorio.SalvarAsync(segunda);
+        }
+
+        await using var leitura = fixture.CriarContexto();
+        var repositorioDeLeitura = new ReleaseRepository(leitura);
+        var primeiraRecarregada = await repositorioDeLeitura.BuscarPorIdAsync(primeira.Id);
+        var segundaRecarregada = await repositorioDeLeitura.BuscarPorIdAsync(segunda.Id);
+
+        primeiraRecarregada!.Historias.Should().ContainSingle(h => h.Chave == "INV-1");
+        segundaRecarregada!.Historias.Should().ContainSingle(h => h.Chave == "INV-1");
+    }
 }
