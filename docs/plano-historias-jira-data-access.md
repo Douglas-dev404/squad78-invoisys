@@ -65,6 +65,14 @@ Adiciona `Testcontainers.PostgreSql` ao `ItemGroup` de pacotes de
 `dotnet add` como a última estável — não fixar de memória). `Npgsql` já vem transitivo
 via `InvoiSys.Infrastructure`.
 
+**Descoberto na verificação:** o projeto de testes também precisa de
+`Microsoft.EntityFrameworkCore.Relational` 10.0.12. A Infrastructure compila contra EF
+Core 10.0.12 via `Microsoft.EntityFrameworkCore.Design` (`PrivateAssets=all`, não flui
+para quem a referencia); o teste só recebia o 10.0.4 transitivo do Npgsql, e o primeiro
+código de teste a tocar em `DbContext` falhou com `CS1705`. A causa-raiz está no
+`InvoiSys.Infrastructure.csproj` (fora do escopo desta task) — a referência no projeto
+de testes é o conserto contido.
+
 ### 2. `tests-dotnet/InvoiSys.Tests/Integration/PostgresContainerFixture.cs` (novo)
 
 Fixture de collection (`ICollectionFixture` + `[CollectionDefinition("Postgres")]`, não

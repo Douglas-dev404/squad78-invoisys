@@ -21,6 +21,11 @@ Plano completo em [plano-historias-jira-data-access.md](plano-historias-jira-dat
 - [x] Confirmar que `tests-dotnet/InvoiSys.Tests/InvoiSys.Tests.csproj` ganhou a nova
       `<PackageReference>` (versão decidida pelo próprio comando, não fixar de memória)
 
+- [x] *(descoberto na verificação)* Referenciar `Microsoft.EntityFrameworkCore.Relational`
+      10.0.12 no projeto de testes: sem isso, tocar em `DbContext` falha com `CS1705`
+      (a Infrastructure compila contra EF Core 10.0.12; o teste só recebia o 10.0.4
+      transitivo do Npgsql)
+
 ## 2. Fixture do container Postgres
 
 - [x] Criar `tests-dotnet/InvoiSys.Tests/Integration/PostgresContainerFixture.cs`
