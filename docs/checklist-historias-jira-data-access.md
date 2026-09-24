@@ -37,13 +37,13 @@ Plano completo em [plano-historias-jira-data-access.md](plano-historias-jira-dat
 
 ## 3. Testes de `ReleaseRepository`
 
-- [ ] Criar `tests-dotnet/InvoiSys.Tests/Integration/ReleaseRepositoryTests.cs`
-  - [ ] `[Collection("Postgres")]`, construtor recebe `PostgresContainerFixture`
-  - [ ] Helper privado `UmaHistoria(...)` (mesmo estilo de `ReleaseInvariantesTests.UmaHistoria`)
-  - [ ] Helper privado `ChaveJiraUnica()` (`$"RELEASE-TESTE-{Guid.NewGuid():N}"`) para
+- [x] Criar `tests-dotnet/InvoiSys.Tests/Integration/ReleaseRepositoryTests.cs`
+  - [x] `[Collection("Postgres")]`, construtor recebe `PostgresContainerFixture`
+  - [x] Helper privado `UmaHistoria(...)` (mesmo estilo de `ReleaseInvariantesTests.UmaHistoria`)
+  - [x] Helper privado `ChaveJiraUnica()` (`$"RELEASE-TESTE-{Guid.NewGuid():N}"`) para
         evitar colisão com o índice único global em `Release.ChaveJira`
 
-- [ ] **Teste 1** — `SalvarAsync_persiste_release_com_historias_e_releituraPorId_traz_tudo_de_volta`
+- [x] **Teste 1** — `SalvarAsync_persiste_release_com_historias_e_a_releitura_traz_tudo_de_volta`
   - Salvar Release com 2 histórias (uma com `Labels = ["backend","urgente"]` +
     `TextoReleaseNote` preenchido; outra com `Labels = []` + `TextoReleaseNote = null`)
   - Reler com `BuscarPorIdAsync` num contexto **novo**

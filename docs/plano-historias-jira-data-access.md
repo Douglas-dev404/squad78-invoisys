@@ -138,7 +138,7 @@ próprio `Id`/`ChaveJira`.
 
 Casos de teste (nomes em português, padrão do repo):
 
-1. **`SalvarAsync_persiste_release_com_historias_e_releituraPorId_traz_tudo_de_volta`**
+1. **`SalvarAsync_persiste_release_com_historias_e_a_releitura_traz_tudo_de_volta`**
    — salva `Release` com 2 histórias (uma com `Labels = ["backend", "urgente"]` e
    `TextoReleaseNote` preenchido, outra com `Labels = []` e `TextoReleaseNote = null`);
    relê via `BuscarPorIdAsync` num contexto novo; assert de todos os campos, com
