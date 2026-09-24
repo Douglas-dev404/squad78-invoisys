@@ -88,4 +88,17 @@ public class ReleaseRepositoryTests(PostgresContainerFixture fixture)
         recarregada!.Id.Should().Be(release.Id);
         recarregada.Historias.Select(h => h.Chave).Should().BeEquivalentTo(new[] { "INV-1", "INV-2" });
     }
+
+    [Fact]
+    public async Task BuscarPorIdAsync_e_BuscarPorChaveJiraAsync_devolvem_null_quando_nao_existe()
+    {
+        await using var contexto = fixture.CriarContexto();
+        var repositorio = new ReleaseRepository(contexto);
+
+        var porId = await repositorio.BuscarPorIdAsync(Guid.NewGuid());
+        var porChave = await repositorio.BuscarPorChaveJiraAsync(ChaveJiraUnica());
+
+        porId.Should().BeNull();
+        porChave.Should().BeNull();
+    }
 }
