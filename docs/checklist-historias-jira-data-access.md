@@ -23,15 +23,15 @@ Plano completo em [plano-historias-jira-data-access.md](plano-historias-jira-dat
 
 ## 2. Fixture do container Postgres
 
-- [ ] Criar `tests-dotnet/InvoiSys.Tests/Integration/PostgresContainerFixture.cs`
-  - [ ] `PostgreSqlBuilder().WithImage("postgres:16-alpine")` (mesma imagem do
-        `docker-compose.yml`)
-  - [ ] `IAsyncLifetime.InitializeAsync()` sobe o container e aplica migrations reais
+- [x] Criar `tests-dotnet/InvoiSys.Tests/Integration/PostgresContainerFixture.cs`
+  - [x] `new PostgreSqlBuilder("postgres:16-alpine")` (mesma imagem do
+        `docker-compose.yml`; o construtor sem argumentos é obsoleto na 4.15.0)
+  - [x] `IAsyncLifetime.InitializeAsync()` sobe o container e aplica migrations reais
         via `context.Database.MigrateAsync()` (não `EnsureCreatedAsync()`)
-  - [ ] `IAsyncLifetime.DisposeAsync()` derruba o container
-  - [ ] Método `CriarContexto()` devolve um `InvoiSysDbContext` **novo** por chamada,
+  - [x] `IAsyncLifetime.DisposeAsync()` derruba o container
+  - [x] Método `CriarContexto()` devolve um `InvoiSysDbContext` **novo** por chamada,
         replicando a config de produção: `UseNpgsql(...).UseSnakeCaseNamingConvention()`
-  - [ ] `[CollectionDefinition("Postgres")]` + `ICollectionFixture<PostgresContainerFixture>`
+  - [x] `[CollectionDefinition("Postgres")]` + `ICollectionFixture<PostgresContainerFixture>`
         (não `IClassFixture` direto — permite compartilhar o container se surgir outra
         classe de teste de banco no futuro)
 

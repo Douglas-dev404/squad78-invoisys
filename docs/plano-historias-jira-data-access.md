@@ -69,8 +69,9 @@ via `InvoiSys.Infrastructure`.
 
 Fixture de collection (`ICollectionFixture` + `[CollectionDefinition("Postgres")]`, não
 `IClassFixture`) — evita subir um container novo por classe de teste se outra classe de
-teste de banco aparecer no futuro. Sobe `PostgreSqlBuilder().WithImage("postgres:16-alpine")`
-(mesma imagem do `docker-compose.yml`), aplica as migrations reais uma única vez em
+teste de banco aparecer no futuro. Sobe `new PostgreSqlBuilder("postgres:16-alpine")`
+(mesma imagem do `docker-compose.yml`; na 4.15.0 o construtor sem argumentos + `.WithImage`
+é obsoleto), aplica as migrations reais uma única vez em
 `InitializeAsync` via `context.Database.MigrateAsync()` (não `EnsureCreatedAsync()` —
 senão os triggers de `TriggersAtualizadoEm` não seriam exercitados). Expõe
 `CriarContexto()`, que devolve um `InvoiSysDbContext` **novo** a cada chamada,
@@ -80,8 +81,7 @@ replicando a config de produção de `DependencyInjection.cs`:
 ```csharp
 public sealed class PostgresContainerFixture : IAsyncLifetime
 {
-    private readonly PostgreSqlContainer _container = new PostgreSqlBuilder()
-        .WithImage("postgres:16-alpine")
+    private readonly PostgreSqlContainer _container = new PostgreSqlBuilder("postgres:16-alpine")
         .WithDatabase("invoisys_test")
         .WithUsername("invoisys")
         .WithPassword("invoisys")
