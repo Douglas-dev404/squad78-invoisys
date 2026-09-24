@@ -61,7 +61,7 @@ Plano completo em [plano-historias-jira-data-access.md](plano-historias-jira-dat
 - [x] **Teste 5** — `SalvarAsync_permite_a_mesma_chave_de_historia_em_releases_diferentes`
   - Prova que o índice único é composto `(ReleaseId, Chave)`, não global em `Chave`
 
-- [ ] **Teste 6** — `Remover_release_apaga_historias_filhas_em_cascata`
+- [x] **Teste 6** — `Remover_release_apaga_historias_filhas_em_cascata`
   - Capturar `Id`s das histórias antes do delete
   - `contexto.Releases.Remove(release)` + `SaveChangesAsync()`
   - Assert que nenhum desses `Id` existe mais em `contexto.HistoriasJira`

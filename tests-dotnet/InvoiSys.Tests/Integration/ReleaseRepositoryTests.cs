@@ -139,4 +139,32 @@ public class ReleaseRepositoryTests(PostgresContainerFixture fixture)
         primeiraRecarregada!.Historias.Should().ContainSingle(h => h.Chave == "INV-1");
         segundaRecarregada!.Historias.Should().ContainSingle(h => h.Chave == "INV-1");
     }
+
+    [Fact]
+    public async Task Remover_release_apaga_as_historias_filhas_em_cascata()
+    {
+        var release = new Release(ChaveJiraUnica(), [UmaHistoria("INV-1"), UmaHistoria("INV-2")]);
+        var idsDasHistorias = release.Historias.Select(h => h.Id).ToList();
+
+        await using (var escrita = fixture.CriarContexto())
+        {
+            await new ReleaseRepository(escrita).SalvarAsync(release);
+        }
+
+        await using (var remocao = fixture.CriarContexto())
+        {
+            var persistida = await new ReleaseRepository(remocao).BuscarPorIdAsync(release.Id);
+            persistida!.Historias.Should().HaveCount(2, "sem isso o teste passaria de forma vazia");
+
+            // IReleaseRepository não expõe delete — o Remove direto no DbContext é
+            // intencional: o alvo é a config OnDelete(Cascade) do mapeamento, não o repository.
+            remocao.Releases.Remove(persistida);
+            await remocao.SaveChangesAsync();
+        }
+
+        await using var leitura = fixture.CriarContexto();
+        var sobraram = await leitura.HistoriasJira.AnyAsync(h => idsDasHistorias.Contains(h.Id));
+
+        sobraram.Should().BeFalse();
+    }
 }
