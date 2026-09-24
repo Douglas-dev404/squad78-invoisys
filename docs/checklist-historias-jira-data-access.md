@@ -15,8 +15,10 @@ Plano completo em [plano-historias-jira-data-access.md](plano-historias-jira-dat
 
 ## 1. Dependência de teste
 
-- [ ] Rodar `dotnet add tests-dotnet/InvoiSys.Tests/InvoiSys.Tests.csproj package Testcontainers.PostgreSql`
-- [ ] Confirmar que `tests-dotnet/InvoiSys.Tests/InvoiSys.Tests.csproj` ganhou a nova
+- [x] Rodar `dotnet add tests-dotnet/InvoiSys.Tests/InvoiSys.Tests.csproj package Testcontainers.PostgreSql`
+      *(sem `dotnet` CLI na máquina: edição equivalente, com a última versão estável
+      resolvida na API do NuGet — 4.15.0)*
+- [x] Confirmar que `tests-dotnet/InvoiSys.Tests/InvoiSys.Tests.csproj` ganhou a nova
       `<PackageReference>` (versão decidida pelo próprio comando, não fixar de memória)
 
 ## 2. Fixture do container Postgres
