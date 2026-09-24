@@ -1,6 +1,7 @@
 using FluentAssertions;
 using InvoiSys.Domain.Entities;
 using InvoiSys.Infrastructure.Database;
+using Microsoft.EntityFrameworkCore;
 
 namespace InvoiSys.Tests.Integration;
 
@@ -100,5 +101,18 @@ public class ReleaseRepositoryTests(PostgresContainerFixture fixture)
 
         porId.Should().BeNull();
         porChave.Should().BeNull();
+    }
+
+    [Fact]
+    public async Task SalvarAsync_com_chave_de_historia_duplicada_na_mesma_release_lanca_DbUpdateException()
+    {
+        // Índice único (release_id, chave): a mesma issue do Jira não se repete dentro da Release.
+        var release = new Release(ChaveJiraUnica(), [UmaHistoria("INV-1"), UmaHistoria("INV-1")]);
+        await using var contexto = fixture.CriarContexto();
+        var repositorio = new ReleaseRepository(contexto);
+
+        var acao = async () => await repositorio.SalvarAsync(release);
+
+        await acao.Should().ThrowAsync<DbUpdateException>();
     }
 }

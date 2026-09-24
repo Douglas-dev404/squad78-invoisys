@@ -54,7 +54,7 @@ Plano completo em [plano-historias-jira-data-access.md](plano-historias-jira-dat
 
 - [x] **Teste 3** — `BuscarPorIdAsync_e_BuscarPorChaveJiraAsync_devolvem_null_quando_nao_existe`
 
-- [ ] **Teste 4** — `SalvarAsync_com_chave_de_historia_duplicada_na_mesma_release_lanca_DbUpdateException`
+- [x] **Teste 4** — `SalvarAsync_com_chave_de_historia_duplicada_na_mesma_release_lanca_DbUpdateException`
   - Duas `HistoriaJira` com `Chave = "INV-1"` na mesma Release
   - `await acao.Should().ThrowAsync<DbUpdateException>()`
 
