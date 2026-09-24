@@ -144,7 +144,7 @@ Casos de teste (nomes em português, padrão do repo):
    relê via `BuscarPorIdAsync` num contexto novo; assert de todos os campos, com
    destaque para `Labels.Should().BeEquivalentTo(...)` — é o assert que de fato valida
    o mapeamento `text[]`.
-2. **`BuscarPorChaveJiraAsync_encontra_pela_chave_de_negocio_e_carrega_historias`**.
+2. **`BuscarPorChaveJiraAsync_encontra_pela_chave_de_negocio_e_carrega_as_historias`**.
 3. **`BuscarPorIdAsync_e_BuscarPorChaveJiraAsync_devolvem_null_quando_nao_existe`**.
 4. **`SalvarAsync_com_chave_de_historia_duplicada_na_mesma_release_lanca_DbUpdateException`**
    — duas `HistoriaJira` com `Chave = "INV-1"` na mesma `Release`; assert

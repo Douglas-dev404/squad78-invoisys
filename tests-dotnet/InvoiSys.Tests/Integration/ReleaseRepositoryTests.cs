@@ -70,4 +70,22 @@ public class ReleaseRepositoryTests(PostgresContainerFixture fixture)
         semLabels.TextoReleaseNote.Should().BeNull();
         semLabels.Labels.Should().BeEmpty();
     }
+
+    [Fact]
+    public async Task BuscarPorChaveJiraAsync_encontra_pela_chave_de_negocio_e_carrega_as_historias()
+    {
+        var release = new Release(ChaveJiraUnica(), [UmaHistoria("INV-1"), UmaHistoria("INV-2")]);
+
+        await using (var escrita = fixture.CriarContexto())
+        {
+            await new ReleaseRepository(escrita).SalvarAsync(release);
+        }
+
+        await using var leitura = fixture.CriarContexto();
+        var recarregada = await new ReleaseRepository(leitura).BuscarPorChaveJiraAsync(release.ChaveJira);
+
+        recarregada.Should().NotBeNull();
+        recarregada!.Id.Should().Be(release.Id);
+        recarregada.Historias.Select(h => h.Chave).Should().BeEquivalentTo(new[] { "INV-1", "INV-2" });
+    }
 }

@@ -50,7 +50,7 @@ Plano completo em [plano-historias-jira-data-access.md](plano-historias-jira-dat
   - Assert todos os campos, incluindo `Labels.Should().BeEquivalentTo(...)`
   - *(implementar este primeiro — valida a fixture antes dos demais)*
 
-- [ ] **Teste 2** — `BuscarPorChaveJiraAsync_encontra_pela_chave_de_negocio_e_carrega_historias`
+- [x] **Teste 2** — `BuscarPorChaveJiraAsync_encontra_pela_chave_de_negocio_e_carrega_as_historias`
 
 - [ ] **Teste 3** — `BuscarPorIdAsync_e_BuscarPorChaveJiraAsync_devolvem_null_quando_nao_existe`
 
