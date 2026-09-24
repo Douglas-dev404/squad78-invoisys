@@ -77,11 +77,11 @@ Plano completo em [plano-historias-jira-data-access.md](plano-historias-jira-dat
 
 ## 4. Documentar a decisão em `AGENTS.md`
 
-- [ ] Adicionar bullet "Sem `IHistoriaJiraRepository`/`HistoriaJiraRepository` dedicado"
+- [x] Adicionar bullet "Sem `IHistoriaJiraRepository`/`HistoriaJiraRepository` dedicado"
       na seção "Decisões já tomadas — não reabrir sem motivo novo"
-- [ ] Adicionar bullet "Testes de banco usam Testcontainers com Postgres real"
+- [x] Adicionar bullet "Testes de banco usam Testcontainers com Postgres real"
       na mesma seção
-- [ ] Texto exato de ambos os bullets está no plano (seção 4)
+- [x] Texto exato de ambos os bullets está no plano (seção 4)
 
 ## 5. Verificação final
 
