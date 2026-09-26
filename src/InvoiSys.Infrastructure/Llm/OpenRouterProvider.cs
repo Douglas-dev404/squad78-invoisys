@@ -202,10 +202,8 @@ public sealed partial class OpenRouterProvider(
         catch (JsonException exc)
         {
             throw new LlmRespostaInvalidaException(
-                $"Resposta do modelo em '{contexto}' não é JSON válido: {resposta}")
-            {
-                Source = exc.Source,
-            };
+                $"Resposta do modelo em '{contexto}' não é JSON válido: {resposta}",
+                exc);
         }
     }
 
@@ -266,8 +264,8 @@ public sealed partial class OpenRouterProvider(
 
             // Erro transitório — a policy de resiliência do HttpClient já re-tentou
             // antes de chegar aqui; envelopamos para o chamador não depender de
-            // HttpRequestException crua.
-            throw new OpenRouterApiException($"OpenRouter retornou {status}: {corpo}");
+            // HttpRequestException crua. Corpo só no log: esta mensagem chega a quem chamou.
+            throw new LlmApiException($"OpenRouter retornou {status}.");
         }
 
         return await resposta.Content.ReadFromJsonAsync<JsonElement>(cancellationToken);

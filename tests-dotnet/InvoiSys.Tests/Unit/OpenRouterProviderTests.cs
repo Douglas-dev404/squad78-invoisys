@@ -2,6 +2,7 @@ using System.Net;
 using System.Text.Json;
 using FluentAssertions;
 using InvoiSys.Domain.Enums;
+using InvoiSys.Domain.Ports;
 using InvoiSys.Infrastructure.Configuration;
 using InvoiSys.Infrastructure.Llm;
 using InvoiSys.Tests.Fakes;
@@ -140,15 +141,18 @@ public class OpenRouterProviderTests
     }
 
     [Fact]
-    public async Task Erro_HTTP_da_OpenRouter_vira_excecao_de_dominio_do_adapter()
+    public async Task Erro_HTTP_da_OpenRouter_vira_excecao_da_porta_sem_o_corpo_da_resposta()
     {
         var (provider, _) = Criar(h =>
-            h.ResponderJson("""{"error": {"message": "rate limited"}}""",
+            h.ResponderJson("""{"error": {"message": "rate limited", "conta": "segredo"}}""",
                 HttpStatusCode.TooManyRequests));
 
         var acao = async () => await provider.CategorizarAsync("qualquer coisa");
 
-        await acao.Should().ThrowAsync<OpenRouterApiException>();
+        // A mensagem chega até quem chamou a API (ProblemDetails.detail): o corpo
+        // externo fica só no log do adapter.
+        (await acao.Should().ThrowAsync<LlmApiException>())
+            .Which.Message.Should().Be("OpenRouter retornou 429.");
     }
 
     [Fact]

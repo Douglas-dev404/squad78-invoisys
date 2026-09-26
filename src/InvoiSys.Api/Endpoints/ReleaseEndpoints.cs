@@ -2,8 +2,6 @@ using InvoiSys.Api.Contracts;
 using InvoiSys.Application.Pipeline;
 using InvoiSys.Domain.Enums;
 using InvoiSys.Domain.Ports;
-using InvoiSys.Infrastructure.Jira;
-using InvoiSys.Infrastructure.Llm;
 using Microsoft.AspNetCore.Mvc;
 
 namespace InvoiSys.Api.Endpoints;
@@ -65,15 +63,9 @@ public static class ReleaseEndpoints
                     h.TipoIssue,
                     h.PossuiReleaseNoteDedicada))]));
         }
-        catch (JiraApiException exc)
+        catch (Exception exc) when (MapearFalhaDeIntegracao(exc) is { } problema)
         {
-            return Results.Problem(detail: exc.Message, statusCode: StatusCodes.Status502BadGateway);
-        }
-        catch (ProviderNaoConfiguradoException exc)
-        {
-            return Results.Problem(
-                detail: exc.Message,
-                statusCode: StatusCodes.Status501NotImplemented);
+            return problema;
         }
     }
 
@@ -100,20 +92,27 @@ public static class ReleaseEndpoints
                     i.Texto,
                     i.Origens))]));
         }
-        catch (JiraApiException exc)
+        catch (Exception exc) when (MapearFalhaDeIntegracao(exc) is { } problema)
         {
-            return Results.Problem(detail: exc.Message, statusCode: StatusCodes.Status502BadGateway);
-        }
-        catch (ProviderNaoConfiguradoException exc)
-        {
-            return Results.Problem(detail: exc.Message, statusCode: StatusCodes.Status501NotImplemented);
-        }
-        catch (Exception exc) when (exc is LlmRespostaInvalidaException or OpenRouterApiException)
-        {
-            // Falha do serviço de IA (fora do ar, ou resposta fora do formato) é falha
-            // de dependência externa, não erro interno nosso: 502 com a causa no corpo,
-            // em vez de 500 mudo que não diz nada a quem chamou.
-            return Results.Problem(detail: exc.Message, statusCode: StatusCodes.Status502BadGateway);
+            return problema;
         }
     }
+
+    /// <summary>
+    /// Traduz o contrato de erro das portas (InvoiSys.Domain.Ports) em HTTP. Pega pelo
+    /// tipo do domínio, nunca pelo do adapter: a API não sabe se o Jira/LLM por trás é o
+    /// real, o pendente ou um fake de teste.
+    ///
+    /// Falha de dependência externa (Jira/LLM fora do ar, resposta fora do formato) é
+    /// 502 com a causa no corpo, não 500 mudo; integração sem credencial é 501. Qualquer
+    /// outra exceção devolve null e segue como erro interno de verdade.
+    /// </summary>
+    private static IResult? MapearFalhaDeIntegracao(Exception exc) => exc switch
+    {
+        ProviderNaoConfiguradoException =>
+            Results.Problem(detail: exc.Message, statusCode: StatusCodes.Status501NotImplemented),
+        IntegracaoExternaException =>
+            Results.Problem(detail: exc.Message, statusCode: StatusCodes.Status502BadGateway),
+        _ => null,
+    };
 }
