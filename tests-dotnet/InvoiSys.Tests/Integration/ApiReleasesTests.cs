@@ -168,8 +168,8 @@ public class ApiReleasesTests
     {
         var jira = new FakeJiraClient
         {
-            FalhaAoBuscar = new Infrastructure.Jira.JiraApiException(
-                "Jira retornou 401", HttpStatusCode.Unauthorized),
+            FalhaAoBuscar = new JiraApiException(
+                "Jira retornou 401."),
         };
 
         using var app = CriarApp(jira);

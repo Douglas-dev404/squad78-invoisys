@@ -235,9 +235,10 @@ public sealed class JiraRestClient(HttpClient http, ILogger<JiraRestClient> logg
                 caminho,
                 corpo);
 
+            // O corpo fica só no log acima: pode trazer detalhe da conta/instância, e esta
+            // mensagem chega até quem chamou a API.
             throw new JiraApiException(
-                $"Jira retornou {(int)resposta.StatusCode} em {caminho}: {corpo}",
-                resposta.StatusCode);
+                $"Jira retornou {(int)resposta.StatusCode} em {caminho}.");
         }
 
         return await resposta.Content.ReadFromJsonAsync<JsonElement>(cancellationToken);

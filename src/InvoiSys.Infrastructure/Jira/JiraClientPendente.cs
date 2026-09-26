@@ -1,6 +1,5 @@
 using InvoiSys.Domain.Entities;
 using InvoiSys.Domain.Ports;
-using InvoiSys.Infrastructure.Llm;
 
 namespace InvoiSys.Infrastructure.Jira;
 

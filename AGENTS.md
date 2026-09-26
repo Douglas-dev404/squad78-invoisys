@@ -150,7 +150,11 @@ dentro de um endpoint ou serviço — sempre via injeção de dependência.
   `tests-dotnet/InvoiSys.Tests/Unit/PipelineGeracaoReleaseNoteTests.cs` como referência.
 - Erros de infraestrutura viram exceção de domínio explícita antes de subir pra API
   (ex: `JiraApiException`, `ProviderNaoConfiguradoException`), nunca uma exception crua
-  de `HttpClient` vazando até o endpoint.
+  de `HttpClient` vazando até o endpoint. Essas exceções são **contrato da porta** e
+  vivem em `src/InvoiSys.Domain/Ports/ExcecoesDeIntegracao.cs`, nunca no adapter — a API
+  captura pelo tipo do domínio (`IntegracaoExternaException` → 502) e **não pode ter
+  `using InvoiSys.Infrastructure.*` em `Endpoints/`** (só `Program.cs`, que é bootstrap).
+  Mensagem de exceção chega ao cliente HTTP: corpo de resposta externa vai só para log.
 - Entidades de domínio são **ricas**: invariante vive dentro do objeto, coleções são
   expostas como `IReadOnlyList` e mutadas só pelos métodos de ciclo de vida. Não
   adicione setter público "porque o EF precisa" — use `private init` e construtor
