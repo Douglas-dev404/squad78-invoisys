@@ -56,6 +56,9 @@ public static class DependencyInjection
 
         services.AddScoped<IReleaseRepository, ReleaseRepository>();
         services.AddScoped<IHistoriaJiraRepository, HistoriaJiraRepository>();
+        services.AddScoped<IExecucaoPipelineRepository, ExecucaoPipelineRepository>();
+        services.AddScoped<IComunicadoExportadoRepository, ComunicadoExportadoRepository>();
+        services.AddScoped<IUsuarioRepository, UsuarioRepository>();
     }
 
     private static void AddJiraClient(IServiceCollection services)

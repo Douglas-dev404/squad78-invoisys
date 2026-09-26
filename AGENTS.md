@@ -117,8 +117,20 @@ dentro de um endpoint ou serviço — sempre via injeção de dependência.
   escrita deixaria gravar uma história por fora do agregado. A regra "repository é por
   agregado, não por entidade filha" (docstring de
   `src/InvoiSys.Domain/Ports/IReleaseRepository.cs`) segue valendo para as demais
-  filhas (`VersaoComunicado`, `ExecucaoPipeline`, `ItemComunicado`): nenhuma ganha
-  repository próprio sem um caso real de consulta isolada.
+  filhas: `ExecucaoPipeline` ganhou a mesma porta somente leitura
+  (`IExecucaoPipelineRepository`, histórico de execuções/rastreabilidade);
+  `VersaoComunicado` e `ItemComunicado` **não têm porta própria** — aprovar, reprovar,
+  editar ou excluir item passa obrigatoriamente pela `Release` carregada (é ela que
+  recalcula o status quando todas as versões estão aprovadas). Ciclo de vida completo
+  coberto em `PersistenciaAgregadoReleaseTests`.
+- **Repositories de agregado próprio**: `IUsuarioRepository` (busca por id/e-mail +
+  `SalvarAsync`, sem delete — desligar é `Usuario.Desativar()`),
+  `IComunicadoExportadoRepository` (append-only: só inclui e consulta, nunca altera nem
+  apaga — é auditoria de publicação).
+- **Ids são gerados no domínio (`Guid.NewGuid()`), nunca no banco**: toda
+  configuration mapeia `Id` com `.ValueGeneratedNever()`. Sem isso o EF trata filho novo
+  com chave preenchida como linha existente e o save vira UPDATE de nada
+  (`DbUpdateConcurrencyException`) — bug real, já corrigido; não remova.
 - **Testes de banco usam Testcontainers com Postgres real** (`postgres:16-alpine`,
   mesma imagem do `docker-compose.yml`), não EF InMemory nem SQLite — o mapeamento de
   `text[]` de `HistoriaJira.Labels` via value converter customizado
