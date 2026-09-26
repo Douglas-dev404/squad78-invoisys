@@ -16,7 +16,9 @@ public sealed class HistoriaJiraConfiguration : IEntityTypeConfiguration<Histori
         builder.ToTable("historias_jira");
 
         builder.HasKey(h => h.Id);
-        builder.Property(h => h.Id).HasDefaultValueSql("gen_random_uuid()");
+        builder.Property(h => h.Id)
+            .HasDefaultValueSql("gen_random_uuid()")
+            .ValueGeneratedNever();
 
         builder.Property(h => h.Chave).HasMaxLength(50).IsRequired();
         builder.Property(h => h.Titulo).HasColumnType("text").IsRequired();

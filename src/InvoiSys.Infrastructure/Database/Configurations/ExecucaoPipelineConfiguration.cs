@@ -22,7 +22,9 @@ public sealed class ExecucaoPipelineConfiguration : IEntityTypeConfiguration<Exe
             $"""status IN ('{string.Join("','", Enum.GetValues<StatusExecucaoPipeline>().Select(s => s.ParaValor()))}')"""));
 
         builder.HasKey(e => e.Id);
-        builder.Property(e => e.Id).HasDefaultValueSql("gen_random_uuid()");
+        builder.Property(e => e.Id)
+            .HasDefaultValueSql("gen_random_uuid()")
+            .ValueGeneratedNever();
 
         builder.Property(e => e.ReleaseId).IsRequired();
         builder.HasIndex(e => e.ReleaseId);

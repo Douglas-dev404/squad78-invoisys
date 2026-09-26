@@ -35,7 +35,9 @@ public sealed class VersaoComunicadoConfiguration : IEntityTypeConfiguration<Ver
         });
 
         builder.HasKey(v => v.Id);
-        builder.Property(v => v.Id).HasDefaultValueSql("gen_random_uuid()");
+        builder.Property(v => v.Id)
+            .HasDefaultValueSql("gen_random_uuid()")
+            .ValueGeneratedNever();
 
         builder.Property(v => v.ReleaseId).IsRequired();
         builder.HasIndex(v => new { v.ReleaseId, v.Publico }).IsUnique();
