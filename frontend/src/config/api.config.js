@@ -1,11 +1,11 @@
 /**
  * Configuração central de rede e endpoints da API.
  * Lê a variável de ambiente VITE_API_BASE_URL configurada no .env
- * ou utiliza a porta padrão do backend FastAPI como fallback.
+ * ou utiliza a porta padrão do backend .NET como fallback.
  */
 
 export const API_BASE_URL =
-  import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api/v1';
+  import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080/api/v1';
 
 export const API_TIMEOUT_MS = 10000;
 

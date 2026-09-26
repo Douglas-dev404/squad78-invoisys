@@ -3,7 +3,7 @@ import { MOCK_AUTH_USER, MOCK_PASSWORD_RESET_RESPONSE } from '../data/auth.mock'
 
 /**
  * Camada de serviço responsável por operações de autenticação e recuperação de credenciais.
- * As assinaturas já são definitivas para integração direta com a API REST FastAPI.
+ * As assinaturas já são definitivas para integração direta com a API REST .NET.
  */
 
 /**
@@ -17,7 +17,7 @@ export async function login({ email, password }) {
   // Simulação de latência de rede (600ms)
   await new Promise((resolve) => setTimeout(resolve, 600));
 
-  // TODO: Substituir mock por chamada HTTP real com fetch ou axios ao backend FastAPI:
+  // TODO: Substituir mock por chamada HTTP real com fetch ou axios ao backend .NET:
   // const response = await fetch(ENDPOINTS.AUTH.LOGIN, {
   //   method: 'POST',
   //   headers: { 'Content-Type': 'application/json' },
@@ -57,7 +57,7 @@ export async function requestPasswordReset({ email }) {
   // Simulação de latência de rede (500ms)
   await new Promise((resolve) => setTimeout(resolve, 500));
 
-  // TODO: Substituir mock por chamada HTTP real POST ao backend FastAPI:
+  // TODO: Substituir mock por chamada HTTP real POST ao backend .NET:
   // const response = await fetch(ENDPOINTS.AUTH.FORGOT_PASSWORD, {
   //   method: 'POST',
   //   headers: { 'Content-Type': 'application/json' },
@@ -93,7 +93,7 @@ export async function resendPasswordReset({ email }) {
   // Simulação de latência de rede (500ms)
   await new Promise((resolve) => setTimeout(resolve, 500));
 
-  // TODO: Substituir mock por chamada HTTP real POST ao backend FastAPI:
+  // TODO: Substituir mock por chamada HTTP real POST ao backend .NET:
   // const response = await fetch(ENDPOINTS.AUTH.RESEND_FORGOT_PASSWORD, {
   //   method: 'POST',
   //   headers: { 'Content-Type': 'application/json' },
