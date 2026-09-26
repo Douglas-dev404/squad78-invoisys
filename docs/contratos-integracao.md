@@ -32,9 +32,10 @@ Adapter: `src/InvoiSys.Infrastructure/Jira/JiraRestClient.cs`. Configuração:
 | Formato da descrição | Vem em **ADF** (Atlassian Document Format), uma árvore de nós JSON, não texto puro. Uma instância mal configurada pode devolver string direta — o parser trata os dois casos (`ExtrairTextoDescription`). |
 | Retry | 429/5xx e falha de transporte são retentados pela policy de resiliência da composition root (3 tentativas, backoff exponencial) — o adapter em si não tem lógica de retry, só traduz HTTP em domínio. |
 
-Fonte primária: documentação oficial da Atlassian (Jira Cloud REST API v3), consultada
-em 2026-08-24. Sem link fixo aqui de propósito — a Atlassian reorganiza a doc com
-frequência; se precisar reconferir, buscar "Jira Cloud REST API v3 search/jql" direto.
+Fonte primária, consultada em 2026-08-24 e revalidada em 2026-09-22:
+- [Issue search resource](https://developer.atlassian.com/cloud/jira/platform/rest/v3/api-group-issue-search/) — endpoint `/rest/api/3/search/jql`
+- [JQL reference](https://developer.atlassian.com/cloud/jira/platform/rest/v3/api-group-jql/) — sintaxe de query
+- [Nota da Atlassian sobre a migração `/search` → `/search/jql`](https://confluence.atlassian.com/jirakb/run-jql-search-query-using-jira-cloud-rest-api-1289424308.html)
 
 ### Pendências reais — não confundir com o que já foi verificado
 
@@ -70,7 +71,8 @@ Adapter: `src/InvoiSys.Infrastructure/Llm/OpenRouterProvider.cs`. Configuração
 | Fallback entre modelos | Parâmetro `models` (lista) — se o modelo principal falhar com 5xx/429, a **própria OpenRouter** tenta o próximo da lista, sem round-trip nosso. Configurado via `OPENROUTER_FALLBACK_MODELS` (JSON de lista). Isso é diferente de "múltiplos providers em paralelo", que é decisão explicitamente descartada para o MVP. |
 | Erro 429 | Vem com header `Retry-After` e corpo `{"error": {"code", "message", "type"}}`. |
 
-Fonte primária: `openrouter.ai/docs/api_reference/overview`, consultada em 2026-08-24.
+Fonte primária, consultada em 2026-08-24 e revalidada em 2026-09-22:
+[Create a chat completion](https://openrouter.ai/docs/api/api-reference/chat/create-a-chat-completion).
 
 ### Pendências reais
 

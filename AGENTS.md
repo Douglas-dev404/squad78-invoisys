@@ -108,6 +108,34 @@ dentro de um endpoint ou serviço — sempre via injeção de dependência.
 - **Múltiplos públicos-alvo** (Cliente, Comercial, Suporte, Interno) são modelados como
   `VersaoComunicado`, uma por público, cada uma com seu próprio ciclo de revisão. Ver
   [docs/modelagem-de-dominio.md](docs/modelagem-de-dominio.md).
+- **`IHistoriaJiraRepository` é uma porta de leitura isolada, não um repository de
+  agregado.** `HistoriaJira` é filha do agregado `Release` (1:N, FK shadow `ReleaseId`,
+  cascade delete — ver `HistoriaJiraConfiguration.cs`/`ReleaseConfiguration.cs`) e
+  continua sendo gravada só via `IReleaseRepository.SalvarAsync`. A porta existe para
+  consultar histórias (por id, por chave dentro de uma Release, ou por Release) sem
+  carregar o agregado inteiro; por isso é somente leitura e sem tracking — uma porta de
+  escrita deixaria gravar uma história por fora do agregado. A regra "repository é por
+  agregado, não por entidade filha" (docstring de
+  `src/InvoiSys.Domain/Ports/IReleaseRepository.cs`) segue valendo para as demais
+  filhas: `ExecucaoPipeline` ganhou a mesma porta somente leitura
+  (`IExecucaoPipelineRepository`, histórico de execuções/rastreabilidade);
+  `VersaoComunicado` e `ItemComunicado` **não têm porta própria** — aprovar, reprovar,
+  editar ou excluir item passa obrigatoriamente pela `Release` carregada (é ela que
+  recalcula o status quando todas as versões estão aprovadas). Ciclo de vida completo
+  coberto em `PersistenciaAgregadoReleaseTests`.
+- **Repositories de agregado próprio**: `IUsuarioRepository` (busca por id/e-mail +
+  `SalvarAsync`, sem delete — desligar é `Usuario.Desativar()`),
+  `IComunicadoExportadoRepository` (append-only: só inclui e consulta, nunca altera nem
+  apaga — é auditoria de publicação).
+- **Ids são gerados no domínio (`Guid.NewGuid()`), nunca no banco**: toda
+  configuration mapeia `Id` com `.ValueGeneratedNever()`. Sem isso o EF trata filho novo
+  com chave preenchida como linha existente e o save vira UPDATE de nada
+  (`DbUpdateConcurrencyException`) — bug real, já corrigido; não remova.
+- **Testes de banco usam Testcontainers com Postgres real** (`postgres:16-alpine`,
+  mesma imagem do `docker-compose.yml`), não EF InMemory nem SQLite — o mapeamento de
+  `text[]` de `HistoriaJira.Labels` via value converter customizado
+  (`ArrayConversionHelper`) não seria validado fielmente por um provider fake. Ver
+  `tests-dotnet/InvoiSys.Tests/Integration/PostgresContainerFixture.cs`.
 
 ## Padrões de código
 
@@ -122,7 +150,11 @@ dentro de um endpoint ou serviço — sempre via injeção de dependência.
   `tests-dotnet/InvoiSys.Tests/Unit/PipelineGeracaoReleaseNoteTests.cs` como referência.
 - Erros de infraestrutura viram exceção de domínio explícita antes de subir pra API
   (ex: `JiraApiException`, `ProviderNaoConfiguradoException`), nunca uma exception crua
-  de `HttpClient` vazando até o endpoint.
+  de `HttpClient` vazando até o endpoint. Essas exceções são **contrato da porta** e
+  vivem em `src/InvoiSys.Domain/Ports/ExcecoesDeIntegracao.cs`, nunca no adapter — a API
+  captura pelo tipo do domínio (`IntegracaoExternaException` → 502) e **não pode ter
+  `using InvoiSys.Infrastructure.*` em `Endpoints/`** (só `Program.cs`, que é bootstrap).
+  Mensagem de exceção chega ao cliente HTTP: corpo de resposta externa vai só para log.
 - Entidades de domínio são **ricas**: invariante vive dentro do objeto, coleções são
   expostas como `IReadOnlyList` e mutadas só pelos métodos de ciclo de vida. Não
   adicione setter público "porque o EF precisa" — use `private init` e construtor

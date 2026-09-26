@@ -28,7 +28,9 @@ public sealed class ItemComunicadoConfiguration : IEntityTypeConfiguration<ItemC
             $"""categoria IN ('{string.Join("','", Enum.GetValues<CategoriaAlteracao>().Select(c => c.ParaValor()))}')"""));
 
         builder.HasKey(i => i.Id);
-        builder.Property(i => i.Id).HasDefaultValueSql("gen_random_uuid()");
+        builder.Property(i => i.Id)
+            .HasDefaultValueSql("gen_random_uuid()")
+            .ValueGeneratedNever();
 
         builder.Property(i => i.Categoria)
             .HasConversion(

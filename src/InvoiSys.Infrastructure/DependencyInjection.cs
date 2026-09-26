@@ -55,6 +55,10 @@ public static class DependencyInjection
             .UseSnakeCaseNamingConvention());
 
         services.AddScoped<IReleaseRepository, ReleaseRepository>();
+        services.AddScoped<IHistoriaJiraRepository, HistoriaJiraRepository>();
+        services.AddScoped<IExecucaoPipelineRepository, ExecucaoPipelineRepository>();
+        services.AddScoped<IComunicadoExportadoRepository, ComunicadoExportadoRepository>();
+        services.AddScoped<IUsuarioRepository, UsuarioRepository>();
         services.AddScoped<IDestaqueHeroRepository, DestaqueHeroRepository>();
     }
 

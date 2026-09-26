@@ -1,0 +1,6 @@
+# Espelha o .gitattributes (eol=lf): sem isto o dotnet format no Windows assume CRLF
+# e o hook de pre-push reprova arquivos que o CI (Linux) aprova.
+root = true
+
+[*]
+end_of_line = lf

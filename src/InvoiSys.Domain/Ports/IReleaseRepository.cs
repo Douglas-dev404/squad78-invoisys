@@ -6,11 +6,13 @@ namespace InvoiSys.Domain.Ports;
 /// Porta de persistência do agregado <see cref="Release"/>. Desacopla o pipeline/API do
 /// EF Core concreto — a implementação real vive em InvoiSys.Infrastructure.Database.
 ///
-/// Exemplo de referência do padrão de Repository deste projeto: as demais entidades
-/// (VersaoComunicado, ExecucaoPipeline, ...) não têm repository próprio porque só
-/// existem dentro do agregado Release — persistir/carregar a Release já persiste/carrega
-/// as filhas junto, via as navegações que o EF Core materializa (ver
-/// <c>ReleaseConfiguration</c>). Repository é por agregado, não por tabela.
+/// Exemplo de referência do padrão de Repository deste projeto: as entidades filhas
+/// (VersaoComunicado, ItemComunicado, ExecucaoPipeline, HistoriaJira) não têm repository
+/// de escrita próprio porque só existem dentro do agregado Release — persistir/carregar
+/// a Release já persiste/carrega as filhas junto, via as navegações que o EF Core
+/// materializa (ver <c>ReleaseConfiguration</c>). Repository é por agregado, não por
+/// tabela. HistoriaJira e ExecucaoPipeline têm, além disso, portas somente leitura para
+/// consulta isolada.
 /// </summary>
 public interface IReleaseRepository
 {

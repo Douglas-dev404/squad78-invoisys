@@ -11,7 +11,9 @@ public sealed class DestaqueHeroConfiguration : IEntityTypeConfiguration<Destaqu
         builder.ToTable("destaques_hero");
 
         builder.HasKey(d => d.Id);
-        builder.Property(d => d.Id).HasDefaultValueSql("gen_random_uuid()");
+        builder.Property(d => d.Id)
+            .HasDefaultValueSql("gen_random_uuid()")
+            .ValueGeneratedNever();
 
         builder.Property(d => d.Titulo).HasMaxLength(200).IsRequired();
         builder.Property(d => d.Descricao).HasColumnType("text").IsRequired();

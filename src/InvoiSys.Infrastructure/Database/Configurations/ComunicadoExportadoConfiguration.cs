@@ -30,7 +30,9 @@ public sealed class ComunicadoExportadoConfiguration : IEntityTypeConfiguration<
         });
 
         builder.HasKey(c => c.Id);
-        builder.Property(c => c.Id).HasDefaultValueSql("gen_random_uuid()");
+        builder.Property(c => c.Id)
+            .HasDefaultValueSql("gen_random_uuid()")
+            .ValueGeneratedNever();
 
         builder.Property(c => c.ReleaseId).IsRequired();
         builder.HasOne<Release>()
