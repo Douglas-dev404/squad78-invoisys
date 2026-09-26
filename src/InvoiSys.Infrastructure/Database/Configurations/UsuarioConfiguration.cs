@@ -11,7 +11,9 @@ public sealed class UsuarioConfiguration : IEntityTypeConfiguration<Usuario>
         builder.ToTable("usuarios");
 
         builder.HasKey(u => u.Id);
-        builder.Property(u => u.Id).HasDefaultValueSql("gen_random_uuid()");
+        builder.Property(u => u.Id)
+            .HasDefaultValueSql("gen_random_uuid()")
+            .ValueGeneratedNever();
 
         builder.Property(u => u.Nome).HasMaxLength(200).IsRequired();
 

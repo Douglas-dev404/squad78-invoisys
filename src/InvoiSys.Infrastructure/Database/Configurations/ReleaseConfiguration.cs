@@ -26,7 +26,16 @@ public sealed class ReleaseConfiguration : IEntityTypeConfiguration<Release>
             $"""status IN ('{string.Join("','", ValoresDe<StatusPipeline>(s => s.ParaValor()))}')"""));
 
         builder.HasKey(r => r.Id);
-        builder.Property(r => r.Id).HasDefaultValueSql("gen_random_uuid()");
+
+        // O Id nasce no construtor do domínio (Guid.NewGuid()), nunca no banco. Sem
+        // ValueGeneratedNever o EF assume que chave preenchida = linha existente: uma
+        // versão/item/execução nova adicionada a uma Release já carregada virava UPDATE
+        // de linha inexistente (DbUpdateConcurrencyException). Vale para todas as
+        // entidades; o default gen_random_uuid() fica só para INSERT via SQL direto.
+        // Ver PersistenciaAgregadoReleaseTests.
+        builder.Property(r => r.Id)
+            .HasDefaultValueSql("gen_random_uuid()")
+            .ValueGeneratedNever();
 
         builder.Property(r => r.ChaveJira)
             .HasMaxLength(50)

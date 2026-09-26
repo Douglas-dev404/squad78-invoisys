@@ -12,8 +12,8 @@ namespace InvoiSys.Tests.Integration;
 /// array nativo <c>Labels</c> — e as constraints de banco (índice único composto,
 /// cascade delete) que um provider fake não validaria.
 ///
-/// Não existe repository de HistoriaJira: ela é filha do agregado Release e é
-/// persistida/carregada por este repository (ver docstring de IReleaseRepository).
+/// HistoriaJira é filha do agregado Release e é gravada só por este repository;
+/// HistoriaJiraRepository é porta somente leitura (ver HistoriaJiraRepositoryTests).
 /// </summary>
 [Collection("Postgres")]
 public class ReleaseRepositoryTests(PostgresContainerFixture fixture)
