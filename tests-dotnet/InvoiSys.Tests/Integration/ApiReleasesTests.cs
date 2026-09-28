@@ -27,8 +27,14 @@ public class ApiReleasesTests
             {
                 services.RemoveAll<IJiraClient>();
                 services.RemoveAll<ILlmProvider>();
+                services.RemoveAll<IReleaseRepository>();
                 services.AddScoped(_ => jira ?? new FakeJiraClient());
                 services.AddScoped(_ => llm ?? new FakeLlmProvider());
+                // Testes de HTTP/roteamento/serialização não precisam de Postgres real —
+                // isso já é coberto pelos testes de integração de ReleaseRepository e do
+                // pipeline. Sem isso, o pipeline tentaria persistir contra a connection
+                // string de produção, que não existe neste host de teste.
+                services.AddScoped<IReleaseRepository>(_ => new FakeReleaseRepository());
             }));
 
     private static HistoriaJira Historia(string chave, string? releaseNote = null) => new()

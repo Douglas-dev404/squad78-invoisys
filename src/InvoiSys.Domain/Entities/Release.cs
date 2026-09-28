@@ -102,6 +102,20 @@ public sealed class Release
     public void MarcarProcessando() => Status = StatusPipeline.Processando;
 
     /// <summary>
+    /// Reprocessamento: substitui as histórias vindas do Jira nesta rodada, mantendo
+    /// Id, Versoes e Execucoes anteriores. Muda a lista no lugar (Clear + AddRange) em
+    /// vez de trocar a referência de <c>_historias</c> — o EF Core rastreia a instância
+    /// da List, então reatribuir a variável perderia o rastreamento das histórias
+    /// antigas e o delete/insert em cascata não seria gerado corretamente no
+    /// SaveChanges.
+    /// </summary>
+    public void AtualizarHistorias(IEnumerable<HistoriaJira> historias)
+    {
+        _historias.Clear();
+        _historias.AddRange(historias);
+    }
+
+    /// <summary>
     /// Registra uma nova execução do pipeline sobre esta Release e a devolve para que
     /// o orquestrador marque conclusão ou falha. Uma Release pode ser reprocessada
     /// várias vezes; cada rodada vira uma linha, preservando o rastro das anteriores.
