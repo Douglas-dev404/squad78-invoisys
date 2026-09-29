@@ -4,6 +4,7 @@ using InvoiSys.Domain.Entities;
 using InvoiSys.Domain.Enums;
 using InvoiSys.Infrastructure.Database;
 using InvoiSys.Tests.Fakes;
+using Xunit.Abstractions;
 
 namespace InvoiSys.Tests.Integration;
 
@@ -12,10 +13,19 @@ namespace InvoiSys.Tests.Integration;
 /// contra Postgres real (Testcontainers). Jira e LLM continuam fakes — o que este teste
 /// cobre é só o comportamento novo: gravar via <see cref="ReleaseRepository"/> ao fim do
 /// pipeline, inclusive no caminho de falha, e não duplicar linha ao reprocessar.
+///
+/// Cada contexto recebe a saída do teste: rodando com
+/// <c>--logger "console;verbosity=detailed"</c>, aparece o SQL que o EF Core executa
+/// (INSERT/UPDATE/SELECT com valores), intercalado com as etapas marcadas por
+/// <see cref="Etapa"/>.
 /// </summary>
 [Collection("Postgres")]
-public class PipelineGeracaoReleaseNotePersistenciaTests(PostgresContainerFixture fixture)
+public class PipelineGeracaoReleaseNotePersistenciaTests(
+    PostgresContainerFixture fixture,
+    ITestOutputHelper saida)
 {
+    private void Etapa(string descricao) => saida.WriteLine($"\n===== {descricao} =====");
+
     private static HistoriaJira Historia(string chave) => new()
     {
         Chave = chave,
@@ -38,14 +48,16 @@ public class PipelineGeracaoReleaseNotePersistenciaTests(PostgresContainerFixtur
             TituloEResumo = ("Release de agosto", "Resumo da release."),
         };
 
-        await using (var escrita = fixture.CriarContexto())
+        Etapa("1. Pipeline processa e o EF Core grava a Release no Postgres");
+        await using (var escrita = fixture.CriarContexto(saida))
         {
             var pipeline = new PipelineGeracaoReleaseNote(jira, llm, new ReleaseRepository(escrita));
             await pipeline.ExecutarAsync(chaveRelease);
         }
 
         // Contexto novo: simula o restart, a releitura vai de fato ao banco.
-        await using var leitura = fixture.CriarContexto();
+        Etapa("2. Contexto novo (simula restart): relê tudo do banco");
+        await using var leitura = fixture.CriarContexto(saida);
         var recarregada = await new ReleaseRepository(leitura).BuscarPorChaveJiraAsync(chaveRelease);
 
         recarregada.Should().NotBeNull();
@@ -66,20 +78,20 @@ public class PipelineGeracaoReleaseNotePersistenciaTests(PostgresContainerFixtur
         var llm = new FakeLlmProvider();
 
         Guid idPrimeiraRodada;
-        await using (var primeiraEscrita = fixture.CriarContexto())
+        await using (var primeiraEscrita = fixture.CriarContexto(saida))
         {
             var pipeline = new PipelineGeracaoReleaseNote(jira, llm, new ReleaseRepository(primeiraEscrita));
             idPrimeiraRodada = (await pipeline.ExecutarAsync(chaveRelease)).Id;
         }
 
         jira.Historias = [Historia("INV-2"), Historia("INV-3")];
-        await using (var segundaEscrita = fixture.CriarContexto())
+        await using (var segundaEscrita = fixture.CriarContexto(saida))
         {
             var pipeline = new PipelineGeracaoReleaseNote(jira, llm, new ReleaseRepository(segundaEscrita));
             await pipeline.ExecutarAsync(chaveRelease);
         }
 
-        await using var leitura = fixture.CriarContexto();
+        await using var leitura = fixture.CriarContexto(saida);
         var recarregada = await new ReleaseRepository(leitura).BuscarPorChaveJiraAsync(chaveRelease);
 
         recarregada.Should().NotBeNull();
@@ -96,14 +108,14 @@ public class PipelineGeracaoReleaseNotePersistenciaTests(PostgresContainerFixtur
         var jira = new FakeJiraClient { Historias = [Historia("INV-1")] };
         var llm = new FakeLlmProvider { FalhaAoChamar = new InvalidOperationException("boom") };
 
-        await using (var escrita = fixture.CriarContexto())
+        await using (var escrita = fixture.CriarContexto(saida))
         {
             var pipeline = new PipelineGeracaoReleaseNote(jira, llm, new ReleaseRepository(escrita));
             var acao = async () => await pipeline.ExecutarAsync(chaveRelease);
             await acao.Should().ThrowAsync<InvalidOperationException>();
         }
 
-        await using var leitura = fixture.CriarContexto();
+        await using var leitura = fixture.CriarContexto(saida);
         var recarregada = await new ReleaseRepository(leitura).BuscarPorChaveJiraAsync(chaveRelease);
 
         recarregada.Should().NotBeNull();
@@ -119,19 +131,22 @@ public class PipelineGeracaoReleaseNotePersistenciaTests(PostgresContainerFixtur
         var jira = new FakeJiraClient { Historias = [Historia("INV-1")] };
         var llm = new FakeLlmProvider { TextoReescrito = "Texto que o revisor aprovou." };
 
-        await using (var contexto = fixture.CriarContexto())
+        Etapa("1. Primeiro processamento: INSERT da Release, histórias, versão, itens e execução");
+        await using (var contexto = fixture.CriarContexto(saida))
         {
             await new PipelineGeracaoReleaseNote(jira, llm, new ReleaseRepository(contexto))
                 .ExecutarAsync(chaveRelease);
         }
 
+        Etapa("2. Revisor aprova a versão Cliente: UPDATE em versoes_comunicado e releases");
         await Revisar(chaveRelease, r => r.Aprovar("revisora@invoisys.com", DateTimeOffset.UtcNow));
 
         // Reprocessar sem reabrir: recusado antes de tocar no Jira, banco intacto.
         jira.Historias = [Historia("INV-2")];
         llm.TextoReescrito = "Texto novo da IA.";
         jira.ChavesConsultadas.Clear();
-        await using (var contexto = fixture.CriarContexto())
+        Etapa("3. Reprocessar sem reabrir: só o SELECT, nenhuma escrita (recusado)");
+        await using (var contexto = fixture.CriarContexto(saida))
         {
             var acao = async () => await new PipelineGeracaoReleaseNote(
                 jira, llm, new ReleaseRepository(contexto)).ExecutarAsync(chaveRelease);
@@ -146,13 +161,16 @@ public class PipelineGeracaoReleaseNotePersistenciaTests(PostgresContainerFixtur
         bloqueada.Execucoes.Should().HaveCount(1, "tentativa recusada não vira execução");
 
         // Depois que um humano reabre, o reprocessamento segue normalmente.
+        Etapa("4. Revisor reabre a revisão: UPDATE volta a versão para aguardando_revisao");
         await Revisar(chaveRelease, r => r.Reabrir());
-        await using (var contexto = fixture.CriarContexto())
+        Etapa("5. Reprocessa: troca histórias e itens (DELETE + INSERT) e registra a 2ª execução");
+        await using (var contexto = fixture.CriarContexto(saida))
         {
             await new PipelineGeracaoReleaseNote(jira, llm, new ReleaseRepository(contexto))
                 .ExecutarAsync(chaveRelease);
         }
 
+        Etapa("6. Relê do banco para conferir o resultado final");
         var reprocessada = await Recarregar(chaveRelease);
         reprocessada.VersaoCliente!.Status.Should().Be(StatusRevisao.AguardandoRevisao);
         reprocessada.Itens.Select(i => i.Texto).Should().Equal("Texto novo da IA.");
@@ -163,7 +181,7 @@ public class PipelineGeracaoReleaseNotePersistenciaTests(PostgresContainerFixtur
     /// <summary>Carrega, aplica uma ação de revisão e salva — como fará a API de revisão.</summary>
     private async Task Revisar(string chaveRelease, Action<Release> acao)
     {
-        await using var contexto = fixture.CriarContexto();
+        await using var contexto = fixture.CriarContexto(saida);
         var repositorio = new ReleaseRepository(contexto);
         var release = await repositorio.BuscarPorChaveJiraAsync(chaveRelease);
         acao(release!);
@@ -172,7 +190,7 @@ public class PipelineGeracaoReleaseNotePersistenciaTests(PostgresContainerFixtur
 
     private async Task<Release> Recarregar(string chaveRelease)
     {
-        await using var contexto = fixture.CriarContexto();
+        await using var contexto = fixture.CriarContexto(saida);
         return (await new ReleaseRepository(contexto).BuscarPorChaveJiraAsync(chaveRelease))!;
     }
 }
