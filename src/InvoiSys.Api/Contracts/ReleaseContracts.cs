@@ -1,3 +1,4 @@
+using InvoiSys.Domain.Entities;
 using InvoiSys.Domain.Enums;
 
 namespace InvoiSys.Api.Contracts;
@@ -33,3 +34,43 @@ public sealed record ReleaseProcessadaOut(
     string? TituloExecutivo,
     string? ResumoExecutivo,
     IReadOnlyList<ItemComunicadoOut> Itens);
+
+public sealed record ReleaseResumoOut(string ChaveJira, string Status);
+
+/// <summary>
+/// Diferente de <see cref="ItemComunicadoOut"/> (retorno enxuto de
+/// POST /processar, sempre recém-gerado e nunca revisado ainda): este DTO alimenta a
+/// tela de revisão, então expõe o estado de revisão em si — se o item foi excluído, e
+/// por quê. <c>Texto</c> aqui é <see cref="ItemComunicado.TextoFinal"/>
+/// (edição humana sobrescreve o texto da IA quando existir), não o texto cru gerado.
+/// </summary>
+public sealed record ItemComunicadoDetalheOut(
+    string Categoria,
+    string Texto,
+    IReadOnlyList<string> Origens,
+    bool Incluido,
+    string? MotivoExclusao);
+
+public sealed record VersaoComunicadoOut(
+    string Publico,
+    string Status,
+    string? TituloExecutivo,
+    string? ResumoExecutivo,
+    IReadOnlyList<ItemComunicadoDetalheOut> Itens,
+    string? RevisadoPor,
+    DateTimeOffset? RevisadoEm,
+    string? MotivoReprovacao);
+
+public sealed record ExecucaoPipelineOut(
+    string Status,
+    string? ModeloLlm,
+    string? Erro,
+    DateTimeOffset IniciadoEm,
+    DateTimeOffset? ConcluidoEm);
+
+public sealed record ReleaseDetalheOut(
+    string ChaveJira,
+    string Status,
+    IReadOnlyList<HistoriaJiraOut> Historias,
+    IReadOnlyList<VersaoComunicadoOut> Versoes,
+    IReadOnlyList<ExecucaoPipelineOut> Execucoes);

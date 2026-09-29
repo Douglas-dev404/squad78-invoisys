@@ -195,4 +195,71 @@ public class ReleaseRepositoryTests(PostgresContainerFixture fixture)
         recarregada!.Status.Should().Be(StatusPipeline.Processando);
         recarregada.Historias.Should().HaveCount(2);
     }
+
+    [Fact]
+    public async Task ListarAsync_sem_filtro_devolve_todas_as_releases_criadas_pelo_teste()
+    {
+        var pendente = new Release(ChaveJiraUnica(), [UmaHistoria("INV-1")]);
+        var processando = new Release(ChaveJiraUnica(), [UmaHistoria("INV-1")]);
+        processando.MarcarProcessando();
+
+        await using var contexto = fixture.CriarContexto();
+        var repositorio = new ReleaseRepository(contexto);
+        await repositorio.SalvarAsync(pendente);
+        await repositorio.SalvarAsync(processando);
+
+        var listadas = await repositorio.ListarAsync(status: null);
+
+        listadas.Select(r => r.Id).Should().Contain([pendente.Id, processando.Id]);
+    }
+
+    [Fact]
+    public async Task ListarAsync_com_filtro_de_status_so_devolve_releases_daquele_status()
+    {
+        var aguardandoRevisao = new Release(ChaveJiraUnica(), [UmaHistoria("INV-1")]);
+        aguardandoRevisao.ConcluirProcessamento(
+            [new ItemComunicado(CategoriaAlteracao.Melhoria, "Texto", ["INV-1"])],
+            "Título",
+            "Resumo");
+        var pendente = new Release(ChaveJiraUnica(), [UmaHistoria("INV-1")]);
+
+        await using var contexto = fixture.CriarContexto();
+        var repositorio = new ReleaseRepository(contexto);
+        await repositorio.SalvarAsync(aguardandoRevisao);
+        await repositorio.SalvarAsync(pendente);
+
+        var listadas = await repositorio.ListarAsync(StatusPipeline.AguardandoRevisao);
+
+        listadas.Select(r => r.Id).Should().Contain(aguardandoRevisao.Id);
+        listadas.Select(r => r.Id).Should().NotContain(pendente.Id);
+        listadas.Should().OnlyContain(r => r.Status == StatusPipeline.AguardandoRevisao);
+    }
+
+    [Fact]
+    public async Task ListarAsync_com_status_sem_nenhuma_release_devolve_lista_vazia()
+    {
+        await using var contexto = fixture.CriarContexto();
+        var repositorio = new ReleaseRepository(contexto);
+        await repositorio.SalvarAsync(new Release(ChaveJiraUnica(), [UmaHistoria("INV-1")]));
+
+        var listadas = await repositorio.ListarAsync(StatusPipeline.Falhou);
+
+        listadas.Where(r => r.ChaveJira.StartsWith("RELEASE-TESTE-")).Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task ListarAsync_nao_carrega_o_agregado_completo()
+    {
+        var release = new Release(ChaveJiraUnica(), [UmaHistoria("INV-1"), UmaHistoria("INV-2")]);
+        await using var contexto = fixture.CriarContexto();
+        var repositorio = new ReleaseRepository(contexto);
+        await repositorio.SalvarAsync(release);
+
+        var listadas = await repositorio.ListarAsync(status: null);
+
+        // Listagem é deliberadamente leve (sem Include): a Release volta, mas sem as
+        // histórias carregadas — quem precisar do agregado completo usa
+        // BuscarPorChaveJiraAsync/BuscarPorIdAsync.
+        listadas.Single(r => r.Id == release.Id).Historias.Should().BeEmpty();
+    }
 }
