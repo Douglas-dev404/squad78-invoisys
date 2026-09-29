@@ -1,4 +1,5 @@
 using InvoiSys.Domain.Entities;
+using InvoiSys.Domain.Enums;
 using InvoiSys.Domain.Ports;
 using Microsoft.EntityFrameworkCore;
 
@@ -45,6 +46,22 @@ public sealed class ReleaseRepository(InvoiSysDbContext contexto) : IReleaseRepo
         }
 
         await _contexto.SaveChangesAsync(cancellationToken);
+    }
+
+    public async Task<IReadOnlyList<Release>> ListarAsync(
+        StatusPipeline? status,
+        CancellationToken cancellationToken = default)
+    {
+        var consulta = _contexto.Releases.AsNoTracking().AsQueryable();
+
+        if (status is not null)
+        {
+            consulta = consulta.Where(r => r.Status == status);
+        }
+
+        return await consulta
+            .OrderByDescending(r => EF.Property<DateTimeOffset>(r, "CriadoEm"))
+            .ToListAsync(cancellationToken);
     }
 
     /// <summary>

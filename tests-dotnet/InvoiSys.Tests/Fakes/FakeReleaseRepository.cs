@@ -1,4 +1,5 @@
 using InvoiSys.Domain.Entities;
+using InvoiSys.Domain.Enums;
 using InvoiSys.Domain.Ports;
 
 namespace InvoiSys.Tests.Fakes;
@@ -28,5 +29,19 @@ public sealed class FakeReleaseRepository : IReleaseRepository
         _porId[release.Id] = release;
         _porChaveJira[release.ChaveJira] = release;
         return Task.CompletedTask;
+    }
+
+    public Task<IReadOnlyList<Release>> ListarAsync(
+        StatusPipeline? status,
+        CancellationToken cancellationToken = default)
+    {
+        IEnumerable<Release> releases = _porId.Values;
+
+        if (status is not null)
+        {
+            releases = releases.Where(r => r.Status == status);
+        }
+
+        return Task.FromResult<IReadOnlyList<Release>>([.. releases]);
     }
 }

@@ -69,6 +69,8 @@ public class OpenApiTests
 
         caminhos.Should().BeEquivalentTo(
             "/health",
+            "/api/v1/releases",
+            "/api/v1/releases/{chaveRelease}",
             "/api/v1/releases/{chaveRelease}/historias",
             "/api/v1/releases/{chaveRelease}/processar");
     }

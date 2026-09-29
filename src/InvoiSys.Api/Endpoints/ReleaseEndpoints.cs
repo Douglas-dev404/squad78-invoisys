@@ -20,6 +20,18 @@ public static class ReleaseEndpoints
         // Os Produces abaixo não são decoração: sem eles o gerador de OpenAPI só
         // enxerga o IResult do handler e publica um spec com "200 OK" e nenhum schema,
         // inútil para quem for consumir a API.
+        grupo.MapGet("/", ListarReleasesAsync)
+            .WithName("ListarReleases")
+            .WithSummary("Lista Releases já persistidas, opcionalmente filtrando por status.")
+            .Produces<IReadOnlyList<ReleaseResumoOut>>()
+            .ProducesProblem(StatusCodes.Status400BadRequest);
+
+        grupo.MapGet("/{chaveRelease}", BuscarReleaseAsync)
+            .WithName("BuscarRelease")
+            .WithSummary("Consulta uma Release persistida, com todas as versões por público.")
+            .Produces<ReleaseDetalheOut>()
+            .ProducesProblem(StatusCodes.Status404NotFound);
+
         grupo.MapGet("/{chaveRelease}/historias", BuscarHistoriasAsync)
             .WithName("BuscarHistorias")
             .WithSummary("Busca as histórias de uma Release direto do Jira, sem rodar a IA.")
@@ -36,6 +48,85 @@ public static class ReleaseEndpoints
             .ProducesProblem(StatusCodes.Status502BadGateway);
 
         return rotas;
+    }
+
+    /// <summary>
+    /// Lista Releases já persistidas — a fila de revisão da tela do frontend usa isto
+    /// com <c>?status=aguardando_revisao</c>. Sem filtro, lista tudo.
+    /// </summary>
+    private static async Task<IResult> ListarReleasesAsync(
+        string? status,
+        [FromServices] IReleaseRepository repositorio,
+        CancellationToken cancellationToken)
+    {
+        StatusPipeline? statusFiltro = null;
+        if (!string.IsNullOrWhiteSpace(status))
+        {
+            if (!StatusPipelineExtensions.TentarConverter(status, out var valor))
+            {
+                return Results.Problem(
+                    detail: $"Status '{status}' inválido. Valores aceitos: "
+                        + string.Join(", ", Enum.GetValues<StatusPipeline>().Select(s => s.ParaValor())),
+                    statusCode: StatusCodes.Status400BadRequest);
+            }
+
+            statusFiltro = valor;
+        }
+
+        var releases = await repositorio.ListarAsync(statusFiltro, cancellationToken);
+
+        return Results.Ok(releases
+            .Select(r => new ReleaseResumoOut(r.ChaveJira, r.Status.ParaValor()))
+            .ToList());
+    }
+
+    /// <summary>
+    /// Consulta uma Release persistida pela chave do Jira, com todas as versões por
+    /// público-alvo (não só o atalho Cliente) — o que a tela de revisão precisa pra
+    /// abrir uma Release específica.
+    /// </summary>
+    private static async Task<IResult> BuscarReleaseAsync(
+        string chaveRelease,
+        [FromServices] IReleaseRepository repositorio,
+        CancellationToken cancellationToken)
+    {
+        var release = await repositorio.BuscarPorChaveJiraAsync(chaveRelease, cancellationToken);
+
+        if (release is null)
+        {
+            return Results.Problem(
+                detail: $"Release '{chaveRelease}' não encontrada.",
+                statusCode: StatusCodes.Status404NotFound);
+        }
+
+        return Results.Ok(new ReleaseDetalheOut(
+            ChaveJira: release.ChaveJira,
+            Status: release.Status.ParaValor(),
+            Historias: [.. release.Historias.Select(h => new HistoriaJiraOut(
+                h.Chave,
+                h.Titulo,
+                h.TipoIssue,
+                h.PossuiReleaseNoteDedicada))],
+            Versoes: [.. release.Versoes.Select(v => new VersaoComunicadoOut(
+                v.Publico.ParaValor(),
+                v.Status.ParaValor(),
+                v.TituloExecutivo,
+                v.ResumoExecutivo,
+                [.. v.Itens.Select(i => new ItemComunicadoDetalheOut(
+                    i.Categoria.ParaValor(),
+                    i.TextoFinal,
+                    i.Origens,
+                    i.Incluido,
+                    i.MotivoExclusao))],
+                v.RevisadoPor,
+                v.RevisadoEm,
+                v.MotivoReprovacao))],
+            Execucoes: [.. release.Execucoes.Select(e => new ExecucaoPipelineOut(
+                e.Status.ParaValor(),
+                e.ModeloLlm,
+                e.Erro,
+                e.IniciadoEm,
+                e.ConcluidoEm))]));
     }
 
     /// <summary>

@@ -1,4 +1,5 @@
 using InvoiSys.Domain.Entities;
+using InvoiSys.Domain.Enums;
 
 namespace InvoiSys.Domain.Ports;
 
@@ -39,4 +40,15 @@ public interface IReleaseRepository
     /// porta vazaria detalhe de ORM para o domínio/aplicação.
     /// </summary>
     Task SalvarAsync(Release release, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Lista Releases, da mais recente para a mais antiga, opcionalmente filtrando por
+    /// status (ex.: fila de revisão pendente = AguardandoRevisao). Sem o Include do
+    /// agregado completo: cada Release volta com Historias/Versoes/Execucoes vazias — a
+    /// listagem não precisa disso, só de <see cref="BuscarPorChaveJiraAsync"/> depois,
+    /// se for abrir uma.
+    /// </summary>
+    Task<IReadOnlyList<Release>> ListarAsync(
+        StatusPipeline? status,
+        CancellationToken cancellationToken = default);
 }
