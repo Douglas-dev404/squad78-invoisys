@@ -9,7 +9,7 @@ namespace InvoiSys.Domain.Enums;
 /// domínio precisa saber é: a geração ainda não rodou, está rodando, terminou e
 /// aguarda revisão humana, ou já foi aprovada e publicada.
 ///
-/// Ver documentação interna de Regras de Negócio — revisão humana é invariante
+/// Ver ADR-007 em docs/decisoes-arquiteturais.md — revisão humana é invariante
 /// obrigatório, não opcional.
 /// </summary>
 public enum StatusPipeline

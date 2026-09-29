@@ -27,7 +27,7 @@ public sealed class JiraRestClient(HttpClient http, ILogger<JiraRestClient> logg
 {
     /// <summary>
     /// Nome do subtask type no Jira da InvoiSys — confirmar exato quando tivermos
-    /// acesso à instância real (pendência rastreada na documentação interna).
+    /// acesso à instância real (pendência listada em docs/contratos-integracao.md).
     /// </summary>
     private const string TipoIssueReleaseNote = "Release Note";
 

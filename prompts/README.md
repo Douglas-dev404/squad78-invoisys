@@ -1,38 +1,55 @@
 # Prompts do pipeline de IA
 
-Cada estágio do pipeline (ver documentação interna de Regras de Negócio,
-projeto `InvoiSys`) tem um arquivo de prompt versionado aqui — nunca hardcoded como
-string dentro do código C#. Isso permite:
+Cada estágio do pipeline que chama o LLM tem um prompt aqui, **versionado como arquivo**,
+nunca como string no C# ([ADR-005](../docs/decisoes-arquiteturais.md#adr-005--prompts-versionados-como-arquivo-interpolação-chave)).
+Isso permite:
 
-- Revisar/ajustar tom de voz sem tocar em código.
-- Versionar mudança de prompt separada de mudança de lógica (diff limpo).
-- Trocar de LLM provider sem reescrever o prompt em si (o adapter em
-  `InvoiSys.Infrastructure/Llm/` carrega o arquivo, não o contrário).
+- ajustar tom de voz e exemplos sem tocar em código;
+- revisar mudança de prompt como diff de texto, separado de mudança de lógica;
+- trocar de provider de LLM sem reescrever prompt (o adapter carrega o arquivo, não o
+  contrário).
 
-## Estágios (ver `src/InvoiSys.Domain/Ports/ILlmProvider.cs` para o contrato de cada um)
+## Estágios
 
-| Arquivo | Estágio | Chamado por |
-|---|---|---|
-| `02_categorizar.md` | Categorização | `LLMProvider.categorizar()` |
-| `03_agrupar_semelhantes.md` | Agrupamento semântico | `LLMProvider.agrupar_semelhantes()` |
-| `04_reescrever_linguagem_negocio.md` | Reescrita em linguagem de negócio | `LLMProvider.reescrever_linguagem_negocio()` |
-| `05_gerar_titulo_resumo.md` | Título + resumo executivo | `LLMProvider.gerar_titulo_e_resumo()` |
+Contrato de cada método em [`ILlmProvider`](../src/InvoiSys.Domain/Ports/ILlmProvider.cs);
+chamadas em [`OpenRouterProvider`](../src/InvoiSys.Infrastructure/Llm/OpenRouterProvider.cs).
 
-Estágio 1 (Extração e Limpeza) é normalização determinística de texto — não chama LLM,
-não tem prompt (ver `PipelineGeracaoReleaseNote._extrair_e_limpar`).
+| Arquivo | Estágio | Método | Placeholders | Saída esperada |
+|---|---|---|---|---|
+| [`02_categorizar.md`](02_categorizar.md) | Categorização | `CategorizarAsync` | `{{texto_fonte}}` | só o valor: `nova_funcionalidade` \| `melhoria` \| `correcao` \| `outros` |
+| [`03_agrupar_semelhantes.md`](03_agrupar_semelhantes.md) | Agrupamento semântico | `AgruparSemelhantesAsync` | `{{lista_chave_texto}}` (JSON `[[chave, texto], ...]`) | JSON: lista de listas de chaves; cada chave em exatamente um grupo |
+| [`04_reescrever_linguagem_negocio.md`](04_reescrever_linguagem_negocio.md) | Reescrita | `ReescreverLinguagemNegocioAsync` | `{{categoria}}`, `{{textos_fonte}}` | um parágrafo em linguagem de negócio |
+| [`05_gerar_titulo_resumo.md`](05_gerar_titulo_resumo.md) | Título e resumo | `GerarTituloEResumoAsync` | `{{itens_texto}}` | JSON: `{"titulo": "...", "resumo": "..."}` |
 
-## Convenção de formato
+O estágio 1 (extração e limpeza) é normalização determinística em C#
+(`PipelineGeracaoReleaseNote.ExtrairELimpar`). Não chama LLM e não tem prompt.
 
-Cada arquivo tem: contexto/persona, a tarefa, o formato de saída esperado (sempre
-JSON estrito quando a saída é estruturada), e few-shot examples reais da InvoiSys
-quando disponíveis. Placeholders de interpolação usam `{{chaves_assim}}` (estilo
-Mustache/Jinja) — **nunca** `{chave_assim}` de chave única, porque colide com chaves
-JSON literais nos exemplos de formato de saída (`str.format()` interpretaria
-`{"titulo": ...}` como um placeholder). A interpolação é feita via `str.replace()`
-simples em `src/InvoiSys.Infrastructure/Llm/PromptLoader.cs`, não interpolação nativa.
+## Convenções
 
-## Pendência
+- **Estrutura de cada arquivo:** persona → regras → entrada → tarefa → formato de saída →
+  few-shot.
+- **Placeholders `{{chave}}`**, substituídos por `string.Replace` literal em
+  [`PromptLoader.Montar`](../src/InvoiSys.Infrastructure/Llm/PromptLoader.cs). **Nunca**
+  `{chave}` com chave simples: colide com o JSON literal dos exemplos de saída. Esse bug
+  já aconteceu uma vez.
+- **Saída estruturada** pede JSON estrito. O adapter liga `response_format: json_object`
+  nesses estágios e mesmo assim extrai o JSON de dentro de ```` ```json ```` se o modelo
+  ignorar.
+- **Categorias** listadas no prompt 02 são as mesmas do enum `CategoriaAlteracao`. Mudar
+  uma sem mudar a outra quebra o parser ([ADR-018](../docs/decisoes-arquiteturais.md#adr-018--categorias-e-públicos-fixos)).
+- Renomear arquivo ou placeholder exige mudar o `OpenRouterProvider` no mesmo PR.
 
-Few-shot examples reais da InvoiSys ainda não existem — os arquivos abaixo têm
-exemplos genéricos de DF-e/fiscal como placeholder. Substituir por exemplos reais
-assim que tivermos acesso ao Jira e a Releases publicadas anteriormente.
+## Como testar uma mudança de prompt
+
+1. Configure `OpenRouter__ApiKey` e o Jira (ver [README principal](../README.md#configuração)).
+2. `POST /api/v1/releases/{chave}/processar` numa Release conhecida.
+3. Compare com a saída anterior. Hoje a comparação é manual; um dataset de regressão com
+   Releases reais é trabalho da Fase 5.
+
+## Pendências
+
+- **Few-shot reais da InvoiSys:** os exemplos atuais são genéricos de DF-e/fiscal.
+  Substituir por histórias e comunicados reais assim que houver acesso ao Jira e a
+  Releases publicadas.
+- **Prompts por público** (Comercial, Suporte, Interno): diferencial da Fase 6.
+  Provavelmente variações do `04` e do `05` por público.

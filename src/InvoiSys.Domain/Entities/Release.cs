@@ -26,7 +26,7 @@ public sealed class ReleaseSemItensProcessadosException(string mensagem) : Excep
 /// quem responde pela revisão é cada <see cref="VersaoComunicado"/>, porque o Cliente
 /// pode estar aprovado enquanto o Suporte ainda está em ajuste.
 ///
-/// Ver documentação interna de Regras de Negócio.
+/// Ver ADR-007 e ADR-008 em docs/decisoes-arquiteturais.md.
 /// </summary>
 public sealed class Release
 {

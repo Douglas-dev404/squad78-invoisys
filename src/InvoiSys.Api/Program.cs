@@ -24,6 +24,15 @@ var app = builder.Build();
 if (app.Environment.IsDevelopment())
 {
     app.MapOpenApi();
+
+    // Só a interface do Swagger, não o gerador: o spec continua vindo do
+    // Microsoft.AspNetCore.OpenApi (/openapi/v1.json), então a UI nunca diverge do
+    // contrato que os OpenApiTests validam. Fica só em Development, como o spec.
+    app.UseSwaggerUI(opcoes =>
+    {
+        opcoes.SwaggerEndpoint("/openapi/v1.json", "InvoiSys API v1");
+        opcoes.DocumentTitle = "InvoiSys API";
+    });
 }
 
 // Aplica migrations pendentes ao subir, quando explicitamente habilitado. Sem isso,
