@@ -23,6 +23,7 @@ InvoiSys.Api/
 | `GET` | `/api/v1/releases/{chaveRelease}/historias` | `BuscarHistoriasAsync` → `IJiraClient` | `ReleaseOut` | 501, 502 |
 | `POST` | `/api/v1/releases/{chaveRelease}/processar` | `ProcessarReleaseAsync` → `PipelineGeracaoReleaseNote` | `ReleaseProcessadaOut` | 501, 502 |
 | `GET` | `/openapi/v1.json` | gerado (só em Development) | spec OpenAPI 3.1 | — |
+| `GET` | `/swagger` | Swagger UI (só em Development) | tela para explorar e testar as rotas | — |
 
 ### Exemplo de resposta de `/processar`
 
@@ -58,6 +59,9 @@ Respostas de erro seguem `ProblemDetails` (`Results.Problem`).
 ## Detalhes do `Program.cs`
 
 - **Ordem de registro:** `AddOpenApi` → `AddInfrastructure` → `AddApplication`.
+- **Swagger UI** (`Swashbuckle.AspNetCore.SwaggerUI`): só a interface. Lê o mesmo
+  `/openapi/v1.json` gerado pelo `Microsoft.AspNetCore.OpenApi`, então nunca diverge do
+  contrato. Em Development apenas; `OpenApiTests` garante que não aparece em produção.
 - **Migração no startup** só com `Database:MigrarAoIniciar=true` ([ADR-016](../../docs/decisoes-arquiteturais.md#adr-016--migração-de-banco-no-startup-é-opt-in)).
 - **`--healthcheck`:** a imagem `aspnet` não tem curl/wget. O `HEALTHCHECK` do Docker
   roda `dotnet InvoiSys.Api.dll --healthcheck`, que chama `/health` e sai com 0/1.

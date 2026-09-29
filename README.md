@@ -487,7 +487,10 @@ dotnet build InvoiSys.slnx
 dotnet run --project src/InvoiSys.Api   # http://localhost:5049
 ```
 
-Contrato OpenAPI (ambiente Development): `http://localhost:5049/openapi/v1.json`.
+Com a API rodando em Development:
+
+- **Swagger UI** (explorar e testar as rotas no navegador): `http://localhost:5049/swagger`
+- Contrato OpenAPI em JSON: `http://localhost:5049/openapi/v1.json`
 
 ### Frontend
 
