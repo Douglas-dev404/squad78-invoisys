@@ -32,6 +32,32 @@ public class OpenApiTests
     }
 
     [Fact]
+    public async Task Swagger_UI_e_servido_em_development_lendo_o_spec_gerado()
+    {
+        using var app = CriarApp();
+        using var client = app.CreateClient();
+
+        var pagina = await client.GetAsync("/swagger/index.html");
+        pagina.StatusCode.Should().Be(HttpStatusCode.OK);
+
+        // A UI não gera spec próprio: tem que apontar para o /openapi/v1.json, o mesmo
+        // que os testes abaixo validam — senão a tela mostraria um contrato diferente.
+        var configuracao = await client.GetStringAsync("/swagger/index.js");
+        configuracao.Should().Contain("/openapi/v1.json");
+    }
+
+    [Fact]
+    public async Task Swagger_UI_e_spec_nao_ficam_expostos_fora_de_development()
+    {
+        using var app = new WebApplicationFactory<Program>().WithWebHostBuilder(builder =>
+            builder.UseEnvironment("Production"));
+        using var client = app.CreateClient();
+
+        (await client.GetAsync("/swagger/index.html")).StatusCode.Should().Be(HttpStatusCode.NotFound);
+        (await client.GetAsync("/openapi/v1.json")).StatusCode.Should().Be(HttpStatusCode.NotFound);
+    }
+
+    [Fact]
     public async Task Spec_publica_todas_as_rotas_da_API()
     {
         using var spec = await BuscarSpecAsync();

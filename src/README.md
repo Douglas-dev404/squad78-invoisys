@@ -48,6 +48,7 @@ dotnet run --project src/InvoiSys.Api # http://localhost:5049
 ```
 
 A API sobe sem configuração de Jira/LLM: os endpoints que dependem deles respondem
-`501 Not Implemented` com a mensagem do que falta configurar. OpenAPI em
-`http://localhost:5049/openapi/v1.json` (Development), gerado do código, então não tem
+`501 Not Implemented` com a mensagem do que falta configurar. Swagger UI em
+`http://localhost:5049/swagger` e o spec em `http://localhost:5049/openapi/v1.json`
+(Development), gerado do código, então não tem
 como divergir da implementação.
