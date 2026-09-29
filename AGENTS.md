@@ -81,6 +81,10 @@ dentro de um endpoint ou serviço — sempre via injeção de dependência.
 
 ## Decisões já tomadas — não reabrir sem motivo novo
 
+Resumo abaixo. Contexto, alternativas descartadas e consequências de cada decisão estão
+em [docs/decisoes-arquiteturais.md](docs/decisoes-arquiteturais.md) (ADRs). Decisão nova
+= ADR novo; não reescreva o antigo.
+
 - Stack: **.NET 10 / ASP.NET Minimal API / PostgreSQL 16 / EF Core 10**. A fundação
   original era Python + FastAPI; foi reescrita em .NET no commit `3b3a75a`, alinhando
   com a preferência sinalizada pela InvoiSys (Node ou .NET). A arquitetura hexagonal
@@ -88,15 +92,15 @@ dentro de um endpoint ou serviço — sempre via injeção de dependência.
   Python foi removido do repositório; se precisar consultá-lo, está no histórico do
   git antes de `3b3a75a`.
 - LangChain **removido**. Avaliado e descartado: o adapter real de LLM (OpenRouter)
-  usa só `httpx`, schema compatível com OpenAI, sem necessidade de SDK de orquestração
+  usa só `HttpClient`, schema compatível com OpenAI, sem necessidade de SDK de orquestração
   pra um pipeline linear de 5 estágios sem RAG.
 - LLM provider: **OpenRouter** (`src/InvoiSys.Infrastructure/Llm/OpenRouterProvider.cs`),
   gateway único pra múltiplos modelos via um schema de API compatível com OpenAI.
-  Modelo configurável via `OPENROUTER_MODEL` (formato `provedor/modelo`). Sem
-  `OPENROUTER_API_KEY` configurada, o composition root cai para `ProviderPendente` —
+  Modelo configurável via `OpenRouter__Modelo` (formato `provedor/modelo`). Sem
+  `OpenRouter__ApiKey` configurada, o composition root cai para `ProviderPendente` —
   isso é esperado em ambiente sem chave, não um bug a "corrigir" trocando o fallback.
 - Um único LLM provider no MVP, nunca dois em paralelo (fallback entre *modelos* via
-  `OPENROUTER_FALLBACK_MODELS` é diferente disso — mesma OpenRouter, resiliência).
+  `OpenRouter__ModelosFallback__0..N` é diferente disso — mesma OpenRouter, resiliência).
 - Sem fallback de input JSON/CSV — só API real do Jira.
 - Contrato completo das duas integrações externas (endpoints, paginação, auth, o que
   já foi verificado contra doc oficial vs. o que ainda é suposição pendente) em
