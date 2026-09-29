@@ -8,7 +8,7 @@ namespace InvoiSys.Domain.Ports;
 ///
 /// Contrato verificado contra a documentação oficial atualizada em 2026-08-24
 /// (endpoint /rest/api/3/search foi removido, substituído por /rest/api/3/search/jql;
-/// paginação por nextPageToken). Ver fontes em documentação interna de estado do projeto.
+/// paginação por nextPageToken). Ver fontes em docs/contratos-integracao.md.
 /// </summary>
 public interface IJiraClient
 {

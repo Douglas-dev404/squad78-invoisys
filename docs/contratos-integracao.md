@@ -16,8 +16,8 @@ InvoiSys) perguntar "qual é o contrato real dessas integrações".
 ## Jira Cloud REST API v3
 
 Adapter: `src/InvoiSys.Infrastructure/Jira/JiraRestClient.cs`. Configuração:
-`src/InvoiSys.Infrastructure/Configuration/JiraOptions.cs` (`JIRA_BASE_URL`,
-`JIRA_EMAIL`, `JIRA_API_TOKEN`).
+`src/InvoiSys.Infrastructure/Configuration/JiraOptions.cs` (`Jira__BaseUrl`,
+`Jira__Email`, `Jira__ApiToken`).
 
 ### Verificado contra a documentação oficial da Atlassian em 2026-08-24
 
@@ -58,7 +58,7 @@ Fonte primária, consultada em 2026-08-24 e revalidada em 2026-09-22:
 
 Adapter: `src/InvoiSys.Infrastructure/Llm/OpenRouterProvider.cs`. Configuração:
 `src/InvoiSys.Infrastructure/Configuration/OpenRouterOptions.cs`
-(`OPENROUTER_API_KEY`, `OPENROUTER_MODEL`, `OPENROUTER_FALLBACK_MODELS` opcional).
+(`OpenRouter__ApiKey`, `OpenRouter__Modelo`, `OpenRouter__ModelosFallback__0..N` opcional).
 
 ### Verificado contra a documentação oficial em 2026-08-24
 
@@ -68,7 +68,7 @@ Adapter: `src/InvoiSys.Infrastructure/Llm/OpenRouterProvider.cs`. Configuração
 | Schema | Compatível com **OpenAI Chat Completions** — por isso não há SDK dedicado, `HttpClient` direto com o mesmo formato de request/response da OpenAI resolve. |
 | Saída estruturada | `response_format: {"type": "json_object"}` para os estágios que esperam JSON (agrupamento semântico). O estágio de categorização não usa — a saída esperada é só a palavra da categoria. |
 | Identificação de modelo | Formato `"provedor/modelo"`, ex. `openai/gpt-4o-mini`, `anthropic/claude-3.5-sonnet`. |
-| Fallback entre modelos | Parâmetro `models` (lista) — se o modelo principal falhar com 5xx/429, a **própria OpenRouter** tenta o próximo da lista, sem round-trip nosso. Configurado via `OPENROUTER_FALLBACK_MODELS` (JSON de lista). Isso é diferente de "múltiplos providers em paralelo", que é decisão explicitamente descartada para o MVP. |
+| Fallback entre modelos | Parâmetro `models` (lista) — se o modelo principal falhar com 5xx/429, a **própria OpenRouter** tenta o próximo da lista, sem round-trip nosso. Configurado via `OpenRouter__ModelosFallback__0`, `__1`… (um modelo por índice). Isso é diferente de "múltiplos providers em paralelo", que é decisão explicitamente descartada para o MVP. |
 | Erro 429 | Vem com header `Retry-After` e corpo `{"error": {"code", "message", "type"}}`. |
 
 Fonte primária, consultada em 2026-08-24 e revalidada em 2026-09-22:

@@ -30,7 +30,7 @@ public sealed record HistoriaJira
     /// <summary>
     /// Regra de negócio: se a subtarefa Release Note existe e tem conteúdo, ela é a
     /// fonte preferencial de texto — a IA deve priorizá-la sobre a descrição técnica
-    /// crua. Ver documentação interna de Regras de Negócio.
+    /// crua. Ver invariantes de negócio no README.md da raiz.
     /// </summary>
     public bool PossuiReleaseNoteDedicada => !string.IsNullOrWhiteSpace(TextoReleaseNote);
 
