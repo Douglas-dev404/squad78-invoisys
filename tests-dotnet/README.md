@@ -13,6 +13,20 @@ dotnet test InvoiSys.slnx                                   # tudo (Docker preci
 dotnet test InvoiSys.slnx --filter "FullyQualifiedName~Unit" # só unitários, sem Docker
 ```
 
+### Vendo o EF Core persistir
+
+`PipelineGeracaoReleaseNotePersistenciaTests` imprime cada comando SQL que o EF Core
+manda ao Postgres (com os valores), separado por etapas. Aparece com verbosidade
+detalhada:
+
+```bash
+dotnet test InvoiSys.slnx --filter "FullyQualifiedName~PipelineGeracaoReleaseNotePersistencia" --logger "console;verbosity=detailed"
+```
+
+O teste `Versao_aprovada_so_volta_a_ser_gerada_depois_de_reaberta` mostra o ciclo
+completo: INSERT no processamento → UPDATE na aprovação → nenhuma escrita no
+reprocessamento recusado → UPDATE ao reabrir → DELETE + INSERT ao reprocessar.
+
 ---
 
 ## Princípios

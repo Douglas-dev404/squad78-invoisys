@@ -1,6 +1,8 @@
 using InvoiSys.Infrastructure.Database;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 using Testcontainers.PostgreSql;
+using Xunit.Abstractions;
 
 namespace InvoiSys.Tests.Integration;
 
@@ -37,12 +39,27 @@ public sealed class PostgresContainerFixture : IAsyncLifetime
     /// <summary>
     /// Novo contexto, sem tracking herdado de chamadas anteriores. Replica a config de
     /// produção de <c>DependencyInjection.AddDatabase</c>: Npgsql + snake_case.
+    ///
+    /// Com <paramref name="saida"/>, cada comando SQL que o EF Core manda ao banco
+    /// (com os valores dos parâmetros) vai para a saída do teste — visível com
+    /// <c>--logger "console;verbosity=detailed"</c>. Serve para enxergar a persistência
+    /// acontecendo; os dados são fictícios, então logar valores não expõe nada.
     /// </summary>
-    public InvoiSysDbContext CriarContexto() =>
-        new(new DbContextOptionsBuilder<InvoiSysDbContext>()
+    public InvoiSysDbContext CriarContexto(ITestOutputHelper? saida = null)
+    {
+        var opcoes = new DbContextOptionsBuilder<InvoiSysDbContext>()
             .UseNpgsql(_container.GetConnectionString())
-            .UseSnakeCaseNamingConvention()
-            .Options);
+            .UseSnakeCaseNamingConvention();
+
+        if (saida is not null)
+        {
+            opcoes
+                .LogTo(saida.WriteLine, [DbLoggerCategory.Database.Command.Name], LogLevel.Information)
+                .EnableSensitiveDataLogging();
+        }
+
+        return new(opcoes.Options);
+    }
 }
 
 /// <summary>
