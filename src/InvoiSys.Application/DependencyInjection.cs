@@ -21,6 +21,7 @@ public static class DependencyInjection
         services.AddScoped(provider => new PipelineGeracaoReleaseNote(
             provider.GetRequiredService<IJiraClient>(),
             provider.GetRequiredService<ILlmProvider>(),
+            provider.GetRequiredService<IReleaseRepository>(),
             // Lido da configuração em vez de IOptions<OpenRouterOptions>: essa classe
             // vive em InvoiSys.Infrastructure, e a camada de aplicação não a referencia.
             // O modelo é só um rótulo para o log de execução — sem isso a coluna

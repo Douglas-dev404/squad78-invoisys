@@ -497,12 +497,11 @@ evento (`execucoes_pipeline`, `comunicados_exportados`) ou de cadastro simples
 2. **Recuperação de senha sem entidade** — o frontend já chama
    `POST /auth/forgot-password` e espera `{ message, expiresInMinutes }`, o que implica um
    token de reset com expiração. Não modelado.
-3. **Repositories prontos, pipeline ainda não os usa** — `IReleaseRepository` (agregado
-   completo), `IUsuarioRepository`, `IComunicadoExportadoRepository` e as portas somente
-   leitura de `HistoriaJira`/`ExecucaoPipeline` existem e são testados contra Postgres
-   real, incluindo o ciclo processar → revisar → aprovar → reprocessar
-   (`PersistenciaAgregadoReleaseTests`). Falta o pipeline/API chamarem o repository
-   (issue #20) — hoje `/processar` ainda devolve o resultado sem persistir.
+3. **Repositories prontos, API de revisão ainda não os usa** — o pipeline já persiste
+   via `IReleaseRepository` (issue #20; `PipelineGeracaoReleaseNotePersistenciaTests`).
+   `IUsuarioRepository`, `IComunicadoExportadoRepository` e as portas somente leitura de
+   `HistoriaJira`/`ExecucaoPipeline` existem e são testados contra Postgres real, mas
+   ainda não há endpoints de revisão/exportação que os usem (#21–#24).
 4. **Pipeline gera só o público Cliente** — `ConcluirProcessamento` já aceita
    `PublicoAlvo`, mas o orquestrador chama uma vez só. Gerar os demais é trabalho de
    aplicação, não de modelagem.

@@ -18,19 +18,22 @@ InvoiSys.Application/
 Único caso de uso hoje. Recebe a chave de uma Release e devolve o agregado `Release` com
 a versão Cliente gerada e pronta para **revisão** (nunca publicada direto).
 
-**Dependências (construtor):** `IJiraClient`, `ILlmProvider`, `string? modeloLlm`
-(rótulo do modelo para o log de execução). Com a persistência (#20), entra também
-`IReleaseRepository`.
+**Dependências (construtor):** `IJiraClient`, `ILlmProvider`, `IReleaseRepository` e
+`string? modeloLlm` (rótulo do modelo para o log de execução).
 
 ### `ExecutarAsync(chaveRelease)`: o que acontece, em ordem
 
 ```
-1. historias = IJiraClient.BuscarHistoriasDaReleaseAsync(chave)
-2. release  = new Release(chave, historias)
-              (#20: busca existente por chave → AtualizarHistorias, para não duplicar)
-3. release.MarcarProcessando()
-4. execucao = release.RegistrarExecucao(modeloLlm)        ← rastro, mesmo se falhar
-5. try
+1. historias = IJiraClient.BuscarH```
+1. release = IReleaseRepository.BuscarPorChaveJiraAsync(chave)   ← já existe?
+2. release?.GarantirQuePodeReprocessar()        ← versão aprovada? recusa aqui (409),
+                                                  sem chamar Jira/LLM (ADR-020)
+3. historias = IJiraClient.BuscarHistoriasDaReleaseAsync(chave)
+4. release nova → new Release(chave, historias)
+   release existente → release.AtualizarHistorias(historias)  (reprocessar não duplica)
+5. release.MarcarProcessando()
+6. execucao = release.RegistrarExecucao(modeloLlm)        ← rastro, mesmo se falhar
+7. try
      a. historiasLimpas = historias.Select(ExtrairELimpar)          [estágio 1, sem LLM]
      b. grupos = AgruparSemelhantesAsync((chave, TextoFonte)[])     [estágio 3]
      c. itens  = ProcessarGruposAsync(...)                           [estágios 2 e 4]
@@ -44,14 +47,12 @@ a versão Cliente gerada e pronta para **revisão** (nunca publicada direto).
      e. release.ConcluirProcessamento(itens, titulo, resumo)  → status aguardando_revisao
      f. execucao.MarcarConcluida()
    catch
-     release.MarcarFalha(); execucao.MarcarFalha(mensagem); relança
-   (#20: IReleaseRepository.SalvarAsync(release) nos dois caminhos)
-6. return release
-```
-
-### Métodos auxiliares
-
-| Método | O que faz | Por que é assim |
+     release.MarcarFalha(); execucao.MarcarFalha(mensagem)
+     IReleaseRepository.SalvarAsync(release)   ← a execução com erro fica no banco
+     relança
+8. IReleaseRepository.SalvarAsync(release)
+9. return release
+``` que faz | Por que é assim |
 |---|---|---|
 | `ExtrairELimpar(historia)` (`internal static`) | Trim do título e colapso de espaços/quebras **no campo que `TextoFonte` vai usar** (Release Note, se houver; senão descrição técnica) | Limpar sempre a descrição técnica seria bug: com Release Note, `TextoFonte` devolveria o texto sujo |
 | `Normalizar(texto)` | `Split` por qualquer whitespace + `Join(' ')` | Determinístico e grátis. Não tem por que gastar token nisso |
@@ -76,7 +77,6 @@ forçada). Sem rede, sem token, determinístico.
 
 | Caso de uso | Issue | Observação |
 |---|---|---|
-| Persistir o resultado do pipeline | #20 | inclui o caminho de falha |
 | Consultar e listar Releases | #21 | pode ser direto do repository no endpoint, ou um serviço de consulta |
 | Revisar (aprovar/reprovar/reabrir por público) | #22 | carrega Release → método do domínio → `SalvarAsync` |
 | Editar/excluir/reincluir item | #23 | idem, sempre via Release |

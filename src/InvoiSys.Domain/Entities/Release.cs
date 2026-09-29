@@ -102,6 +102,38 @@ public sealed class Release
     public void MarcarProcessando() => Status = StatusPipeline.Processando;
 
     /// <summary>
+    /// Barra o reprocessamento de um público cuja versão já foi aprovada. O orquestrador
+    /// chama isto <b>antes</b> de qualquer chamada externa: recusar depois de gastar
+    /// Jira e tokens de LLM seria desperdício, e a tentativa recusada não deixa rastro
+    /// (nenhuma execução chegou a rodar). O caminho para gerar de novo é
+    /// <see cref="Reabrir"/>, uma decisão humana explícita.
+    /// </summary>
+    public void GarantirQuePodeReprocessar(PublicoAlvo publico = PublicoAlvo.Cliente)
+    {
+        if (VersaoPara(publico)?.Status == StatusRevisao.Aprovado)
+        {
+            throw new RevisaoHumanaObrigatoriaException(
+                $"A versão {publico.ParaValor()} da Release {ChaveJira} já foi aprovada. "
+                + "Reabra a revisão antes de reprocessar — a IA não sobrescreve conteúdo "
+                + "aprovado por um humano.");
+        }
+    }
+
+    /// <summary>
+    /// Reprocessamento: substitui as histórias vindas do Jira nesta rodada, mantendo
+    /// Id, Versoes e Execucoes anteriores. Muda a lista no lugar (Clear + AddRange) em
+    /// vez de trocar a referência de <c>_historias</c> — o EF Core rastreia a instância
+    /// da List, então reatribuir a variável perderia o rastreamento das histórias
+    /// antigas e o delete/insert em cascata não seria gerado corretamente no
+    /// SaveChanges.
+    /// </summary>
+    public void AtualizarHistorias(IEnumerable<HistoriaJira> historias)
+    {
+        _historias.Clear();
+        _historias.AddRange(historias);
+    }
+
+    /// <summary>
     /// Registra uma nova execução do pipeline sobre esta Release e a devolve para que
     /// o orquestrador marque conclusão ou falha. Uma Release pode ser reprocessada
     /// várias vezes; cada rodada vira uma linha, preservando o rastro das anteriores.
@@ -120,6 +152,7 @@ public sealed class Release
     ///
     /// Reprocessar um público que já existe substitui o conteúdo daquela versão e a
     /// devolve para AguardandoRevisao; as versões dos outros públicos não são tocadas.
+    /// Versão aprovada não é substituída (ver <see cref="GarantirQuePodeReprocessar"/>).
     /// </summary>
     public VersaoComunicado ConcluirProcessamento(
         IEnumerable<ItemComunicado> itens,
@@ -127,6 +160,8 @@ public sealed class Release
         string resumoExecutivo,
         PublicoAlvo publico = PublicoAlvo.Cliente)
     {
+        GarantirQuePodeReprocessar(publico);
+
         var versao = VersaoPara(publico);
 
         if (versao is null)

@@ -48,6 +48,7 @@ dotnet test InvoiSys.slnx --filter "FullyQualifiedName~Unit" # só unitários, s
 | Arquivo | Cobre |
 |---|---|
 | `ReleaseRepositoryTests` | Round-trip do agregado, busca por id/chave, chave de história única por Release (mas repetível entre Releases), cascade delete, salvar de novo não duplica histórias |
+| `PipelineGeracaoReleaseNotePersistenciaTests` | Pipeline gravando de verdade: sobrevive a restart, reprocessar não duplica, falha persiste a execução, versão aprovada só é reprocessada depois de reaberta |
 | `PersistenciaAgregadoReleaseTests` | Ciclo processar → revisar → aprovar → reprocessar, adicionando filhos a Release já persistida (regressão do [ADR-010](../docs/decisoes-arquiteturais.md#adr-010--ids-gerados-no-domínio-com-valuegeneratednever)) |
 | `HistoriaJiraRepositoryTests`, `ExecucaoPipelineRepositoryTests` | Portas somente leitura: consulta, ordenação, sem tracking |
 | `ComunicadoExportadoRepositoryTests` | Cada reexportação vira linha nova, filtro por público, apagar versão já exportada é barrado pelo banco (`RESTRICT`) |
@@ -74,7 +75,5 @@ dotnet test InvoiSys.slnx --filter "FullyQualifiedName~Unit" # só unitários, s
 ## O que ainda falta cobrir
 
 - Endpoints de revisão e exportação (#21–#24), quando existirem.
-- Pipeline persistindo de ponta a ponta (entra com a issue #20:
-  `PipelineGeracaoReleaseNotePersistenciaTests`).
 - Frontend: não há testes automatizados ainda. O CI roda só lint + build. Candidatos:
   Vitest + Testing Library para hooks/serviços e Playwright para o fluxo de revisão.

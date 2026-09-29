@@ -4,10 +4,11 @@ using InvoiSys.Domain.Ports;
 namespace InvoiSys.Application.Pipeline;
 
 /// <summary>
-/// Orquestra o pipeline de 5 estágios de IA sobre uma Release. Depende só das portas
-/// (<see cref="IJiraClient"/>, <see cref="ILlmProvider"/>) — nunca de adapter
-/// concreto. Isso é o que torna este código testável sem rede: em teste injetamos
-/// fakes das portas; em produção, os adapters reais vêm pela DI do ASP.NET.
+/// Orquestra o pipeline de 5 estágios de IA sobre uma Release e persiste o resultado.
+/// Depende só das portas (<see cref="IJiraClient"/>, <see cref="ILlmProvider"/>,
+/// <see cref="IReleaseRepository"/>) — nunca de adapter concreto. Isso é o que torna
+/// este código testável sem rede/DB reais: em teste injetamos fakes das portas; em
+/// produção, os adapters reais vêm pela DI do ASP.NET.
 ///
 /// Estágio 1 (Extração e Limpeza) é normalização pura de texto — não chama LLM, fica
 /// aqui mesmo como método auxiliar. Estágios 2-5 chamam a porta ILlmProvider.
@@ -16,10 +17,12 @@ namespace InvoiSys.Application.Pipeline;
 public sealed class PipelineGeracaoReleaseNote(
     IJiraClient jiraClient,
     ILlmProvider llmProvider,
+    IReleaseRepository releaseRepository,
     string? modeloLlm = null)
 {
     private readonly IJiraClient _jira = jiraClient;
     private readonly ILlmProvider _llm = llmProvider;
+    private readonly IReleaseRepository _releaseRepository = releaseRepository;
 
     /// <summary>Identificação do modelo usado, só para registro no log de execução.</summary>
     private readonly string? _modeloLlm = modeloLlm;
@@ -28,8 +31,26 @@ public sealed class PipelineGeracaoReleaseNote(
         string chaveRelease,
         CancellationToken cancellationToken = default)
     {
+        // Reprocessamento não pode virar um INSERT novo: SalvarAsync decide Insert vs.
+        // Update pelo estado de rastreamento do EF, então reusar a instância já
+        // carregada (em vez de sempre `new Release(...)`) é o que garante update.
+        var release = await _releaseRepository.BuscarPorChaveJiraAsync(chaveRelease, cancellationToken);
+
+        // Antes do Jira e do LLM: versão já aprovada só volta a ser gerada depois que um
+        // humano reabrir a revisão. Recusar aqui não gasta token nem toca no agregado.
+        release?.GarantirQuePodeReprocessar();
+
         var historias = await _jira.BuscarHistoriasDaReleaseAsync(chaveRelease, cancellationToken);
-        var release = new Release(chaveRelease, historias);
+
+        if (release is null)
+        {
+            release = new Release(chaveRelease, historias);
+        }
+        else
+        {
+            release.AtualizarHistorias(historias);
+        }
+
         release.MarcarProcessando();
 
         // Rastreabilidade: cada rodada vira uma linha no histórico da Release, mesmo
@@ -57,9 +78,11 @@ public sealed class PipelineGeracaoReleaseNote(
         {
             release.MarcarFalha();
             execucao.MarcarFalha(exc.Message);
+            await _releaseRepository.SalvarAsync(release, cancellationToken);
             throw;
         }
 
+        await _releaseRepository.SalvarAsync(release, cancellationToken);
         return release;
     }
 
