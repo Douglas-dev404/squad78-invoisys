@@ -19,7 +19,7 @@ InvoiSys.Application/
 a versão Cliente gerada e pronta para **revisão** (nunca publicada direto).
 
 **Dependências (construtor):** `IJiraClient`, `ILlmProvider`, `string? modeloLlm`
-(rótulo do modelo para o log de execução). Com o PR #36, entra também
+(rótulo do modelo para o log de execução). Com a persistência (#20), entra também
 `IReleaseRepository`.
 
 ### `ExecutarAsync(chaveRelease)`: o que acontece, em ordem
@@ -27,7 +27,7 @@ a versão Cliente gerada e pronta para **revisão** (nunca publicada direto).
 ```
 1. historias = IJiraClient.BuscarHistoriasDaReleaseAsync(chave)
 2. release  = new Release(chave, historias)
-              (PR #36: busca existente por chave → AtualizarHistorias, para não duplicar)
+              (#20: busca existente por chave → AtualizarHistorias, para não duplicar)
 3. release.MarcarProcessando()
 4. execucao = release.RegistrarExecucao(modeloLlm)        ← rastro, mesmo se falhar
 5. try
@@ -45,7 +45,7 @@ a versão Cliente gerada e pronta para **revisão** (nunca publicada direto).
      f. execucao.MarcarConcluida()
    catch
      release.MarcarFalha(); execucao.MarcarFalha(mensagem); relança
-   (PR #36: IReleaseRepository.SalvarAsync(release) nos dois caminhos)
+   (#20: IReleaseRepository.SalvarAsync(release) nos dois caminhos)
 6. return release
 ```
 
@@ -76,7 +76,7 @@ forçada). Sem rede, sem token, determinístico.
 
 | Caso de uso | Issue | Observação |
 |---|---|---|
-| Persistir o resultado do pipeline | #20 (PR #36) | inclui o caminho de falha |
+| Persistir o resultado do pipeline | #20 | inclui o caminho de falha |
 | Consultar e listar Releases | #21 | pode ser direto do repository no endpoint, ou um serviço de consulta |
 | Revisar (aprovar/reprovar/reabrir por público) | #22 | carrega Release → método do domínio → `SalvarAsync` |
 | Editar/excluir/reincluir item | #23 | idem, sempre via Release |

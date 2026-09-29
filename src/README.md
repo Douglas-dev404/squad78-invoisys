@@ -30,7 +30,7 @@ HTTP POST /api/v1/releases/RELEASE-2026-08/processar
   Domain             Release.MarcarProcessando / RegistrarExecucao
   Domain             ILlmProvider (×2G+2) ─────► Infrastructure OpenRouterProvider ──► OpenRouter
   Domain             Release.ConcluirProcessamento → VersaoComunicado(Cliente)
-  Domain             IReleaseRepository (PR #36) ► Infrastructure ReleaseRepository ──► Postgres
+  Domain             IReleaseRepository (#20)  ► Infrastructure ReleaseRepository ──► Postgres
   Api            Release → ReleaseProcessadaOut (DTO)
 HTTP 200 / 501 / 502
 ```

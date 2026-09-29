@@ -374,7 +374,7 @@ externa vai **só para o log**, nunca para a mensagem da exceção.
 - ✅ A API trata erro pelo tipo do domínio, sem saber se o adapter é real, pendente ou
   fake.
 - ✅ Não vaza detalhe da conta Jira ou OpenRouter para quem chama a API.
-- ⚠️ **Implementação incompleta (2026-09-28):** os adapters só traduzem resposta HTTP de
+- ⚠️ **Implementação incompleta:** os adapters só traduzem resposta HTTP de
   erro. Falha de transporte (`HttpRequestException`, `TimeoutRejectedException`,
   `BrokenCircuitException`) ainda vaza e vira 500. Precisa de `catch` em
   `JiraRestClient.GetAsync` e `OpenRouterProvider.PostAsync`.
@@ -491,7 +491,7 @@ Markdown), depois os diferenciais (múltiplos públicos, HTML/PDF, métricas).
 
 ### P-01 — Reprocessar uma versão já aprovada
 
-**Situação.** Com a persistência do PR #36, `/processar` numa Release já aprovada
+**Situação.** Com a persistência do pipeline (#20), `/processar` numa Release já aprovada
 substitui as histórias e chama `ConcluirProcessamento`, que devolve a versão para
 `aguardando_revisao` **em silêncio**. O conteúdo aprovado é sobrescrito. Exportações
 antigas continuam intactas (append-only), mas o texto aprovado some da versão viva.

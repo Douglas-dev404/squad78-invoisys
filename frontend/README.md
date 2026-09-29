@@ -80,8 +80,8 @@ O formato exato esperado está nos mocks de [`src/data/`](src/data/).
 | 4 | **Lista de Releases** (`GET /releases`) + botão "processar" (`POST /releases/{chave}/processar`) | #21 |
 | 5 | **Tela de revisão**: versão por público, itens agrupados por categoria, edição inline (`TextoFinal`), excluir/reincluir com motivo, aprovar/reprovar (motivo obrigatório)/reabrir | #22, #23 |
 | 6 | Exportar Markdown (download/preview) | #24 |
-| 7 | Dashboard e usuários: **PR #9** (precisa ser refeito sobre a `develop` atual) | — |
-| 8 | Histórico de envios: **PR #35** (draft, depende do #9) | #24 |
+| 7 | Dashboard e gestão de usuários (em desenvolvimento) | — |
+| 8 | Histórico de envios (em desenvolvimento) | #24 |
 | 9 | Testes (Vitest + Testing Library; Playwright no fluxo de revisão) | — |
 
 ### Convenções para telas novas

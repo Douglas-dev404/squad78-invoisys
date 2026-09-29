@@ -4,11 +4,9 @@ Residência IV. Sistema que lê as histórias de uma Release no **Jira**, proces
 **IA** e entrega um **comunicado de Release (Release Notes)** em linguagem de negócio,
 organizado por categoria. Nada é publicado sem **revisão e aprovação humana**.
 
-> **Onde estamos (2026-09-28):** fundação completa (domínio, pipeline de IA, adapters
-> reais de Jira e OpenRouter, schema Postgres, repositories). O pipeline ainda **não
-> grava** o resultado no banco (PR #36 em revisão). A API de revisão, a exportação, a
-> autenticação e a tela de revisão ainda não existem. O roadmap completo está em
-> [Estado atual e caminho até a entrega](#estado-atual-e-caminho-até-a-entrega).
+Este README explica **o que cada parte faz, como elas se comunicam e como o dado
+percorre o sistema**. O que já está pronto e o que falta está em
+[O que está pronto e o que falta](#o-que-está-pronto-e-o-que-falta).
 
 ---
 
@@ -17,12 +15,13 @@ organizado por categoria. Nada é publicado sem **revisão e aprovação humana*
 - [O problema](#o-problema)
 - [Visão geral em 30 segundos](#visão-geral-em-30-segundos)
 - [Arquitetura — hexagonal, e por quê](#arquitetura--hexagonal-e-por-quê)
+- [Como as partes se comunicam](#como-as-partes-se-comunicam)
 - [O fluxo completo, passo a passo](#o-fluxo-completo-passo-a-passo)
 - [Como o dado percorre o sistema](#como-o-dado-percorre-o-sistema)
 - [Ciclo de vida: geração × revisão](#ciclo-de-vida-geração--revisão)
 - [Mapa dos módulos](#mapa-dos-módulos)
 - [Invariantes de negócio](#invariantes-de-negócio)
-- [Estado atual e caminho até a entrega](#estado-atual-e-caminho-até-a-entrega)
+- [O que está pronto e o que falta](#o-que-está-pronto-e-o-que-falta)
 - [Rodando o projeto](#rodando-o-projeto)
 - [Configuração](#configuração)
 - [Documentação complementar](#documentação-complementar)
@@ -64,7 +63,7 @@ flowchart LR
 |---|---|---|
 | **Ingestão** | Busca no Jira todas as issues da Release (`fixVersion`), com o texto da subtarefa "Release Note" quando existir | ✅ implementado |
 | **Pipeline de IA** | Limpa → agrupa semelhantes → categoriza → reescreve em linguagem de negócio → gera título e resumo | ✅ implementado (testado com fakes; falta validar com LLM real) |
-| **Persistência** | Grava Release, histórias, comunicado e log da execução | 🔶 PR #36 em revisão |
+| **Persistência** | Grava Release, histórias, comunicado e log da execução | 🔶 em implementação (#20) |
 | **Revisão** | Humano vê, edita, exclui itens, aprova ou reprova, **por público-alvo** | 🔶 domínio pronto, falta API (#21–#23) e tela |
 | **Exportação** | Gera Markdown (HTML/PDF como diferencial) só de versão aprovada | 🔶 domínio + schema prontos, falta render (#24) |
 | **Autenticação** | Login JWT de quem revisa e aprova | ❌ só a entidade `Usuario` e o repository |
@@ -128,6 +127,51 @@ A decisão completa, com alternativas descartadas, está em
 
 ---
 
+## Como as partes se comunicam
+
+O sistema tem **cinco peças** conversando entre si, e cada conversa tem um único canal:
+
+```mermaid
+flowchart LR
+    U((Revisor)) --> FE[Frontend<br/>React]
+    FE -- "HTTP + JSON<br/>/api/v1/..." --> API[API<br/>InvoiSys.Api]
+    API -- "chamada de método<br/>(injeção de dependência)" --> APP[Application<br/>pipeline]
+    APP -- "portas<br/>(interfaces do Domain)" --> INF[Infrastructure<br/>adapters]
+    INF -- "HTTPS + Basic Auth" --> JIRA[(Jira Cloud)]
+    INF -- "HTTPS + Bearer" --> OR[(OpenRouter)]
+    INF -- "SQL via EF Core" --> PG[(PostgreSQL)]
+    INF -. "lê arquivo" .-> PR[/prompts/*.md/]
+```
+
+| De → Para | Canal | Formato | O que trafega | Quem define o contrato |
+|---|---|---|---|---|
+| Frontend → API | HTTP REST | JSON (enums em `snake_case`, ex.: `nova_funcionalidade`) | pedidos de busca, processamento, revisão, exportação | DTOs em `InvoiSys.Api/Contracts` + spec OpenAPI (`/openapi/v1.json`) |
+| API → Application | chamada de método em processo | objetos C# | "processe a Release X" | assinatura de `PipelineGeracaoReleaseNote` |
+| API/Application → Domain | chamada de método em processo | entidades do domínio | aprovar, reprovar, editar item… | métodos das entidades (`Release.Aprovar`, …) |
+| Application → Infrastructure | **portas** (interfaces) resolvidas pela DI | entidades do domínio | "me dê as histórias", "categorize este texto", "salve esta Release" | interfaces em `InvoiSys.Domain/Ports` |
+| Infrastructure → Jira | HTTPS REST v3 | JSON (descrição em ADF) | issues da `fixVersion` e subtarefas Release Note | API da Atlassian ([contrato](docs/contratos-integracao.md)) |
+| Infrastructure → OpenRouter | HTTPS (Chat Completions) | JSON no schema OpenAI | prompt montado → resposta texto/JSON | API da OpenRouter ([contrato](docs/contratos-integracao.md)) |
+| Infrastructure → Postgres | TCP (Npgsql) | SQL gerado pelo EF Core | o agregado `Release` e suas filhas | migrations em `Infrastructure/Database/Migrations` |
+| Infrastructure → prompts | leitura de arquivo | Markdown com `{{placeholders}}` | texto de cada estágio | arquivos em `prompts/` |
+
+**Três regras mantêm essa comunicação organizada:**
+
+1. **Quem está dentro nunca chama quem está fora diretamente.** O pipeline não sabe que
+   existe um `HttpClient` ou um banco; ele chama `IJiraClient`, `ILlmProvider`,
+   `IReleaseRepository`. Quem decide qual implementação responde é
+   `Infrastructure/DependencyInjection.cs`, o único lugar que liga porta a adapter.
+2. **Entidade de domínio não sai pela API.** O endpoint sempre converte para um DTO.
+   Assim o domínio pode mudar sem quebrar o frontend.
+3. **Erro também é contrato.** Falha externa vira exceção definida no domínio
+   (`JiraApiException`, `LlmApiException`, …), e a API a traduz em HTTP (502 ou 501).
+   Nenhuma exceção crua de biblioteca deveria chegar ao frontend.
+
+**Configuração** chega por variável de ambiente ou `appsettings.json`, é lida só pela
+Infrastructure (`JiraOptions`, `OpenRouterOptions`, connection string) e nunca
+diretamente pelo domínio. Ver [Configuração](#configuração).
+
+---
+
 ## O fluxo completo, passo a passo
 
 ### 1. Conferir o que vem do Jira (sem gastar token)
@@ -165,7 +209,7 @@ sequenceDiagram
     API->>PL: ExecutarAsync("RELEASE-2026-08")
     PL->>J: BuscarHistoriasDaReleaseAsync
     J-->>PL: HistoriaJira[]
-    Note over PL,DB: PR #36: busca Release existente por chave (reprocessar não duplica)
+    Note over PL,DB: persistência (#20): busca Release existente por chave, reprocessar não duplica
     PL->>R: new Release(chave, historias) / AtualizarHistorias
     PL->>R: MarcarProcessando() + RegistrarExecucao(modelo)
     PL->>PL: Estágio 1 — ExtrairELimpar (sem LLM)
@@ -178,7 +222,7 @@ sequenceDiagram
     PL->>L: Estágio 5 — GerarTituloEResumoAsync(itens)
     PL->>R: ConcluirProcessamento(itens, título, resumo) → VersaoComunicado(Cliente)
     PL->>R: execucao.MarcarConcluida()
-    Note over PL,DB: PR #36: SalvarAsync(release), inclusive no caminho de falha
+    Note over PL,DB: persistência (#20): SalvarAsync(release), inclusive no caminho de falha
     PL-->>API: Release (status aguardando_revisao)
     API-->>API: mapeia para ReleaseProcessadaOut (DTO)
 ```
@@ -265,11 +309,11 @@ HttpClient falha ──► policy de retry (3 tentativas, backoff exponencial, c
                                      ProviderNaoConfiguradoException → 501
 ```
 
-> ⚠️ **Lacuna conhecida (verificada em 2026-09-28):** a tradução acima vale quando o
+> ⚠️ **Limitação atual:** a tradução acima vale quando o
 > serviço externo **responde** com erro HTTP. Falha de **transporte** (DNS, conexão
 > recusada, timeout ou circuit breaker do Polly) ainda escapa como `HttpRequestException`
-> crua e vira **500**. Reproduzido com `Jira__BaseUrl` apontando para um host
-> inexistente. Correção: capturar essas exceções em `JiraRestClient.GetAsync` e
+> crua e vira **500** (ex.: `Jira__BaseUrl` apontando para um host inexistente).
+> Correção prevista: capturar essas exceções em `JiraRestClient.GetAsync` e
 > `OpenRouterProvider.PostAsync` e relançar como `JiraApiException`/`LlmApiException`.
 
 ---
@@ -343,7 +387,7 @@ Regras que o **código garante** (não dependem de disciplina de quem programa):
 
 ---
 
-## Estado atual e caminho até a entrega
+## O que está pronto e o que falta
 
 Prazo alvo: **2026-12-31**. O MVP é construído em fatias verticais: primeiro um caminho
 ponta a ponta mínimo (Jira → IA → revisão → Markdown), depois os diferenciais.
@@ -361,10 +405,10 @@ ponta a ponta mínimo (Jira → IA → revisão → Markdown), depois os diferen
 
 ### 🔶 Fase 1 — Persistência real do pipeline · issue #20
 
-- **PR #36 em revisão.** Pipeline passa a buscar a Release pela chave (reprocessar não
-  duplica), `Release.AtualizarHistorias` troca as histórias no reprocessamento, e o
-  resultado é salvo também no caminho de falha (a `ExecucaoPipeline` com erro fica no
-  banco).
+- O pipeline passa a buscar a Release pela chave (reprocessar não duplica).
+- `Release.AtualizarHistorias` troca as histórias no reprocessamento.
+- O resultado é salvo também no caminho de falha: a `ExecucaoPipeline` com erro fica no
+  banco.
 
 ### ⬜ Fase 2 — API de revisão e exportação · issues #21–#24
 
@@ -394,8 +438,7 @@ versão Cliente) e mapeamento das exceções de domínio de revisão
 - Lista de Releases → tela da Release com versão por público, itens por categoria,
   edição inline, excluir/reincluir, aprovar/reprovar, exportar.
 - Roteamento real (`react-router-dom`), guarda de rota autenticada.
-- Telas em andamento pelos colegas: dashboard (PR #9, precisa ser refeito sobre a
-  `develop` atual) e histórico de envios (PR #35, depende do #9).
+- Telas de dashboard, gestão de usuários e histórico de envios (em desenvolvimento).
 
 ### ⬜ Fase 5 — Validação com dados reais
 
@@ -414,7 +457,7 @@ versão Cliente) e mapeamento das exceções de domínio de revisão
 
 ### ⬜ Entrega final
 
-- Documentação técnica (este repositório) + documentação funcional/UML (PR #37).
+- Documentação técnica (este repositório) + documentação funcional/UML.
 - Guia de instalação e execução (seção abaixo).
 - Demo ponta a ponta: Release real do Jira → comunicado revisado → Markdown exportado.
 

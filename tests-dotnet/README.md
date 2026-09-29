@@ -74,7 +74,7 @@ dotnet test InvoiSys.slnx --filter "FullyQualifiedName~Unit" # só unitários, s
 ## O que ainda falta cobrir
 
 - Endpoints de revisão e exportação (#21–#24), quando existirem.
-- Pipeline persistindo de ponta a ponta (entra com o PR #36:
+- Pipeline persistindo de ponta a ponta (entra com a issue #20:
   `PipelineGeracaoReleaseNotePersistenciaTests`).
 - Frontend: não há testes automatizados ainda. O CI roda só lint + build. Candidatos:
   Vitest + Testing Library para hooks/serviços e Playwright para o fluxo de revisão.

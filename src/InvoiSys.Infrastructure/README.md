@@ -142,7 +142,7 @@ Modelo completo, tabela por tabela: [docs/modelagem-de-dominio.md](../../docs/mo
 - **Traduzir falha de transporte** (`HttpRequestException`, timeout e circuit breaker do
   Polly) em `JiraApiException`/`LlmApiException` em `JiraRestClient.GetAsync` e
   `OpenRouterProvider.PostAsync`. Hoje só resposta HTTP de erro é traduzida; DNS ou
-  conexão recusada vira 500 cru (reproduzido em 2026-09-28).
+  conexão recusada vira 500 cru.
 - Validar `JiraRestClient` e `OpenRouterProvider` contra as instâncias reais (Fase 5).
 - Adapter de renderização/exportação (Markdown; depois HTML/PDF), conforme
   [P-03](../../docs/decisoes-arquiteturais.md#p-03--onde-mora-o-render-da-exportação).
