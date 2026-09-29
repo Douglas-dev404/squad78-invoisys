@@ -7,7 +7,7 @@ namespace InvoiSys.Domain.Entities;
 /// único parágrafo de comunicado, já categorizado e em linguagem de negócio.
 ///
 /// Um ItemComunicado pode se originar de várias HistoriaJira (agrupamento semântico —
-/// estágio 3 do pipeline, ver documentação interna de Regras de Negócio) — por isso
+/// estágio 3 do pipeline, ver ADR-004 em docs/decisoes-arquiteturais.md) — por isso
 /// <see cref="Origens"/> é lista, nunca uma chave única.
 ///
 /// Pertence a uma <see cref="VersaoComunicado"/> (um público), não diretamente à

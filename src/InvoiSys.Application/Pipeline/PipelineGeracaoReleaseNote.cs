@@ -11,7 +11,7 @@ namespace InvoiSys.Application.Pipeline;
 ///
 /// Estágio 1 (Extração e Limpeza) é normalização pura de texto — não chama LLM, fica
 /// aqui mesmo como método auxiliar. Estágios 2-5 chamam a porta ILlmProvider.
-/// Ver documentação interna de Regras de Negócio para o desenho completo.
+/// Ver ADR-004 em docs/decisoes-arquiteturais.md para o desenho completo.
 /// </summary>
 public sealed class PipelineGeracaoReleaseNote(
     IJiraClient jiraClient,

@@ -3,7 +3,7 @@ namespace InvoiSys.Domain.Enums;
 /// <summary>
 /// Categorias fixas de alteração usadas para classificar cada história da Release.
 ///
-/// Fixas por decisão de negócio — ver documentação interna de Regras de Negócio.
+/// Fixas por decisão de negócio — ver ADR-018 em docs/decisoes-arquiteturais.md.
 /// Não adicionar categoria nova sem necessidade real validada com o responsável
 /// técnico do projeto.
 ///

@@ -45,8 +45,9 @@ em torno de garanti-lo estruturalmente, não por convenção.
 
 ![Diagrama entidade-relacionamento do InvoiSys](erd.png)
 
-> Gerado por [`docs/scripts/gerar_erd.py`](scripts/gerar_erd.py) a partir do schema real
-> aplicado pela migration. Versão vetorial: [`erd.svg`](erd.svg).
+> Gerado a partir do schema real aplicado pela migration (o script Python que o gerava
+> foi removido na migração para .NET, e está no histórico do git). Versão vetorial:
+> [`erd.svg`](erd.svg).
 
 ---
 

@@ -11,8 +11,8 @@ namespace InvoiSys.Domain.Ports;
 /// InvoiSys.Infrastructure.Llm e mudar um binding na composition root; nada no domínio
 /// ou nos services muda.
 ///
-/// Cada método corresponde a um estágio do pipeline de 5 estágios (ver documentação
-/// interna de Regras de Negócio) que precisa de fato de uma chamada ao modelo.
+/// Cada método corresponde a um estágio do pipeline de 5 estágios (ver ADR-004
+/// em docs/decisoes-arquiteturais.md) que precisa de fato de uma chamada ao modelo.
 /// Extração e Limpeza (estágio 1) é normalização de texto puro, não chama LLM — fica
 /// na camada de aplicação.
 /// </summary>
