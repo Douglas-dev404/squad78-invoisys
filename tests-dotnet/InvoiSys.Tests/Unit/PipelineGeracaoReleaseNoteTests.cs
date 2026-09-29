@@ -41,6 +41,28 @@ public class PipelineGeracaoReleaseNoteTests
     }
 
     [Fact]
+    public async Task Release_com_versao_aprovada_nao_e_reprocessada_nem_chama_Jira_ou_LLM()
+    {
+        var repositorio = new FakeReleaseRepository();
+        var release = await new PipelineGeracaoReleaseNote(
+            new FakeJiraClient { Historias = [Historia("INV-1")] },
+            new FakeLlmProvider(),
+            repositorio).ExecutarAsync("REL-1");
+        release.Aprovar("revisora@invoisys.com", DateTimeOffset.UtcNow);
+
+        var jira = new FakeJiraClient { Historias = [Historia("INV-9")] };
+        var llm = new FakeLlmProvider { FalhaAoChamar = new InvalidOperationException("não chamar o LLM") };
+        var acao = async () => await new PipelineGeracaoReleaseNote(jira, llm, repositorio)
+            .ExecutarAsync("REL-1");
+
+        await acao.Should().ThrowAsync<RevisaoHumanaObrigatoriaException>();
+        jira.ChavesConsultadas.Should().BeEmpty("recusar antes de gastar chamada externa");
+        release.Historias.Select(h => h.Chave).Should().Equal("INV-1");
+        release.Execucoes.Should().HaveCount(1, "tentativa recusada não vira execução");
+        release.VersaoCliente!.Status.Should().Be(StatusRevisao.Aprovado);
+    }
+
+    [Fact]
     public async Task Grupo_inteiro_de_chaves_inventadas_nao_vira_item()
     {
         var jira = new FakeJiraClient { Historias = [Historia("INV-1")] };

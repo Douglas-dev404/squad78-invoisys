@@ -82,12 +82,23 @@ public sealed class VersaoComunicado
     /// <summary>
     /// Preenche o conteúdo gerado pelo pipeline de IA para este público. Deixa a
     /// versão pronta para revisão humana — nunca pronta para publicação direta.
+    ///
+    /// Versão aprovada não é sobrescrita: a IA não desfaz em silêncio uma decisão
+    /// humana. Para gerar de novo, o revisor reabre (<see cref="Reabrir"/>) primeiro.
+    /// Reprovada ou aguardando revisão pode ser reprocessada livremente.
     /// </summary>
     public void PreencherConteudo(
         IEnumerable<ItemComunicado> itens,
         string tituloExecutivo,
         string resumoExecutivo)
     {
+        if (Status == StatusRevisao.Aprovado)
+        {
+            throw new TransicaoDeStatusInvalidaException(
+                $"Versão {Publico.ParaValor()} está aprovada — reabra a revisão antes de "
+                + "reprocessar; conteúdo aprovado por um humano não é sobrescrito pela IA.");
+        }
+
         _itens = [.. itens];
         TituloExecutivo = tituloExecutivo;
         ResumoExecutivo = resumoExecutivo;

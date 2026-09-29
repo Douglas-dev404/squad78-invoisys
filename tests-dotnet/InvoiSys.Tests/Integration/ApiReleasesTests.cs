@@ -21,7 +21,8 @@ public class ApiReleasesTests
 {
     private static WebApplicationFactory<Program> CriarApp(
         IJiraClient? jira = null,
-        ILlmProvider? llm = null) =>
+        ILlmProvider? llm = null,
+        IReleaseRepository? repositorio = null) =>
         new WebApplicationFactory<Program>().WithWebHostBuilder(builder =>
             builder.ConfigureServices(services =>
             {
@@ -34,7 +35,7 @@ public class ApiReleasesTests
                 // isso já é coberto pelos testes de integração de ReleaseRepository e do
                 // pipeline. Sem isso, o pipeline tentaria persistir contra a connection
                 // string de produção, que não existe neste host de teste.
-                services.AddScoped<IReleaseRepository>(_ => new FakeReleaseRepository());
+                services.AddScoped<IReleaseRepository>(_ => repositorio ?? new FakeReleaseRepository());
             }));
 
     private static HistoriaJira Historia(string chave, string? releaseNote = null) => new()
@@ -116,6 +117,32 @@ public class ApiReleasesTests
             .Be("Corrigimos o cálculo do imposto retido.");
         itens[0].GetProperty("origens").EnumerateArray().Select(o => o.GetString())
             .Should().Equal("INV-1");
+    }
+
+    [Fact]
+    public async Task Reprocessar_release_com_versao_aprovada_responde_409()
+    {
+        var repositorio = new FakeReleaseRepository();
+        var aprovada = new Release("RELEASE-2026-08", [Historia("INV-1")]);
+        aprovada.ConcluirProcessamento(
+            [new ItemComunicado(Domain.Enums.CategoriaAlteracao.Correcao, "Texto aprovado.", ["INV-1"])],
+            "Título",
+            "Resumo");
+        aprovada.Aprovar("revisora@invoisys.com", DateTimeOffset.UtcNow);
+        await repositorio.SalvarAsync(aprovada);
+
+        var llm = new FakeLlmProvider { FalhaAoChamar = new InvalidOperationException("não chamar") };
+        using var app = CriarApp(new FakeJiraClient { Historias = [Historia("INV-1")] }, llm, repositorio);
+        using var client = app.CreateClient();
+
+        var resposta = await client.PostAsync("/api/v1/releases/RELEASE-2026-08/processar", null);
+
+        resposta.StatusCode.Should().Be(
+            HttpStatusCode.Conflict,
+            "o estado do recurso impede a operação: é preciso reabrir a revisão antes");
+        var corpo = await resposta.Content.ReadAsStringAsync();
+        corpo.Should().Contain("Reabra a revisão", "a resposta diz ao usuário o que fazer");
+        aprovada.Itens.Single().Texto.Should().Be("Texto aprovado.");
     }
 
     [Fact]

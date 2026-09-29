@@ -31,12 +31,17 @@ public sealed class PipelineGeracaoReleaseNote(
         string chaveRelease,
         CancellationToken cancellationToken = default)
     {
-        var historias = await _jira.BuscarHistoriasDaReleaseAsync(chaveRelease, cancellationToken);
-
         // Reprocessamento não pode virar um INSERT novo: SalvarAsync decide Insert vs.
         // Update pelo estado de rastreamento do EF, então reusar a instância já
         // carregada (em vez de sempre `new Release(...)`) é o que garante update.
         var release = await _releaseRepository.BuscarPorChaveJiraAsync(chaveRelease, cancellationToken);
+
+        // Antes do Jira e do LLM: versão já aprovada só volta a ser gerada depois que um
+        // humano reabrir a revisão. Recusar aqui não gasta token nem toca no agregado.
+        release?.GarantirQuePodeReprocessar();
+
+        var historias = await _jira.BuscarHistoriasDaReleaseAsync(chaveRelease, cancellationToken);
+
         if (release is null)
         {
             release = new Release(chaveRelease, historias);

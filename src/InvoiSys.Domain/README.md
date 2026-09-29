@@ -79,7 +79,7 @@ classDiagram
 
 | Exceção | Lançada quando |
 |---|---|
-| `RevisaoHumanaObrigatoriaException` | aprovar Release com pipeline em `falhou`, ou transição de revisão inválida |
+| `RevisaoHumanaObrigatoriaException` | aprovar Release com pipeline em `falhou`, transição de revisão inválida, ou reprocessar versão já aprovada sem reabrir (`GarantirQuePodeReprocessar`, [ADR-020](../../docs/decisoes-arquiteturais.md#adr-020--versão-aprovada-não-é-reprocessada-sem-reabrir)) |
 | `ReleaseSemItensProcessadosException` | aprovar/reprovar público sem versão gerada, ou versão sem itens |
 | `VersaoSemItensException` | (interna à versão) aprovar sem itens ou com todos excluídos |
 | `TransicaoDeStatusInvalidaException` | (interna à versão) ex.: reaprovar o que já foi aprovado |
@@ -157,7 +157,6 @@ ProviderNaoConfiguradoException ─► 501
 
 - Mapear o fluxo de recuperação de senha (token de reset com expiração), se entrar no
   escopo ([P-02](../../docs/decisoes-arquiteturais.md#p-02--desenho-da-autenticação)).
-- Decidir a regra de reprocessar versão aprovada ([P-01](../../docs/decisoes-arquiteturais.md#p-01--reprocessar-uma-versão-já-aprovada)).
 - Porta de renderização da exportação, se a opção escolhida em
   [P-03](../../docs/decisoes-arquiteturais.md#p-03--onde-mora-o-render-da-exportação)
   for essa.

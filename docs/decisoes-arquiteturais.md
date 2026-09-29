@@ -36,7 +36,7 @@ histórico também é documentação.
 | [017](#adr-017--desconfiança-estruturada-da-saída-do-llm) | Desconfiança estruturada da saída do LLM | Aceita | 2026-08-24 |
 | [018](#adr-018--categorias-e-públicos-fixos) | Categorias e públicos fixos | Aceita | 2026-08-24 |
 | [019](#adr-019--entrega-em-fatias-verticais) | Entrega em fatias verticais | Aceita | 2026-08-24 |
-| [P-01](#p-01--reprocessar-uma-versão-já-aprovada) | Reprocessar uma versão já aprovada | **Proposta** | — |
+| [020](#adr-020--versão-aprovada-não-é-reprocessada-sem-reabrir) | Versão aprovada não é reprocessada sem reabrir | Aceita | 2026-09-29 |
 | [P-02](#p-02--desenho-da-autenticação) | Desenho da autenticação | **Proposta** | — |
 | [P-03](#p-03--onde-mora-o-render-da-exportação) | Onde mora o render da exportação | **Proposta** | — |
 
@@ -487,24 +487,44 @@ Markdown), depois os diferenciais (múltiplos públicos, HTML/PDF, métricas).
 
 ---
 
+## ADR-020 — Versão aprovada não é reprocessada sem reabrir
+
+**Contexto.** Com a persistência do pipeline (#20), `/processar` sobre uma Release já
+existente reaproveita o agregado. Sem regra, reprocessar uma Release cuja versão já foi
+**aprovada** trocava histórias, itens, título e resumo e devolvia a versão para
+`aguardando_revisao` **em silêncio**: o texto que um humano aprovou sumia da versão viva
+(as exportações antigas sobreviviam, por serem append-only).
+
+**Opções consideradas.**
+1. Bloquear o reprocessamento de versão aprovada e exigir `Reabrir()` antes.
+2. Permitir, registrando na `ExecucaoPipeline` que houve sobrescrita.
+3. Versionar o conteúdo (histórico de versões por público), com schema novo.
+
+**Decisão.** Opção 1.
+
+- `Release.GarantirQuePodeReprocessar(publico)` lança `RevisaoHumanaObrigatoriaException`
+  se a versão daquele público estiver aprovada.
+- O pipeline chama essa verificação **antes** do Jira e do LLM: a recusa não gasta
+  token, não altera o agregado e não registra execução (nada chegou a rodar).
+- `ConcluirProcessamento` repete a verificação, e `VersaoComunicado.PreencherConteudo`
+  recusa conteúdo novo em versão aprovada: última linha de defesa para qualquer caminho
+  de código futuro.
+- A API responde **409 Conflict**, com a instrução de reabrir a revisão.
+- Versão **reprovada**, **reaberta** ou aguardando revisão continua podendo ser
+  reprocessada. Reprocessar um público não é bloqueado pela aprovação de outro.
+
+**Consequências.**
+- ✅ Coerente com o invariante central ([ADR-007](#adr-007--revisão-humana-como-invariante-do-domínio-entidades-ricas)):
+  aprovação é decisão humana e só um humano a desfaz.
+- ✅ Sem mudança de schema.
+- ⚠️ Um passo a mais para o revisor quando quiser gerar de novo algo já aprovado
+  (reabrir → reprocessar → revisar).
+- Coberto por testes de domínio, do pipeline, da API (409) e de integração com Postgres
+  real (`PipelineGeracaoReleaseNotePersistenciaTests`).
+
+---
+
 ## Decisões em aberto
-
-### P-01 — Reprocessar uma versão já aprovada
-
-**Situação.** Com a persistência do pipeline (#20), `/processar` numa Release já aprovada
-substitui as histórias e chama `ConcluirProcessamento`, que devolve a versão para
-`aguardando_revisao` **em silêncio**. O conteúdo aprovado é sobrescrito. Exportações
-antigas continuam intactas (append-only), mas o texto aprovado some da versão viva.
-
-**Opções.**
-1. Bloquear reprocessamento de versão aprovada (exigir `Reabrir()` antes): mais seguro,
-   um passo a mais para o revisor.
-2. Permitir, e registrar na `ExecucaoPipeline` que houve sobrescrita de versão aprovada.
-3. Versionar o conteúdo (histórico de versões por público): mais completo, exige schema
-   novo.
-
-**Recomendação:** opção 1. É coerente com o invariante "a aprovação é decisão humana
-explícita", não exige schema novo e custa só um passo ao revisor.
 
 ### P-02 — Desenho da autenticação
 

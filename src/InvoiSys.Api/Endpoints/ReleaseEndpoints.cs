@@ -1,5 +1,6 @@
 using InvoiSys.Api.Contracts;
 using InvoiSys.Application.Pipeline;
+using InvoiSys.Domain.Entities;
 using InvoiSys.Domain.Enums;
 using InvoiSys.Domain.Ports;
 using Microsoft.AspNetCore.Mvc;
@@ -30,6 +31,7 @@ public static class ReleaseEndpoints
             .WithName("ProcessarRelease")
             .WithSummary("Roda o pipeline de IA completo sobre a Release.")
             .Produces<ReleaseProcessadaOut>()
+            .ProducesProblem(StatusCodes.Status409Conflict)
             .ProducesProblem(StatusCodes.Status501NotImplemented)
             .ProducesProblem(StatusCodes.Status502BadGateway);
 
@@ -72,6 +74,9 @@ public static class ReleaseEndpoints
     /// <summary>
     /// Roda o pipeline de IA completo sobre a Release. Resultado fica em
     /// aguardando_revisao — nunca publicado direto (ver Release.Aprovar).
+    ///
+    /// Versão já aprovada devolve 409: o estado atual do recurso impede a operação, e o
+    /// caminho é reabrir a revisão antes de reprocessar.
     /// </summary>
     private static async Task<IResult> ProcessarReleaseAsync(
         string chaveRelease,
@@ -91,6 +96,10 @@ public static class ReleaseEndpoints
                     i.Categoria.ParaValor(),
                     i.Texto,
                     i.Origens))]));
+        }
+        catch (RevisaoHumanaObrigatoriaException exc)
+        {
+            return Results.Problem(detail: exc.Message, statusCode: StatusCodes.Status409Conflict);
         }
         catch (Exception exc) when (MapearFalhaDeIntegracao(exc) is { } problema)
         {

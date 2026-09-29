@@ -196,6 +196,50 @@ public class VersaoComunicadoTests
     }
 
     [Fact]
+    public void Reprocessar_versao_aprovada_sem_reabrir_falha_e_preserva_o_conteudo_aprovado()
+    {
+        var release = UmaReleaseProcessada();
+        release.Aprovar("revisora@invoisys.com", DateTimeOffset.UtcNow);
+        var textosAprovados = release.VersaoCliente!.Itens.Select(i => i.Texto).ToList();
+
+        var acao = () => release.ConcluirProcessamento(
+            [UmItem("Texto refeito pela IA")],
+            "Outro título",
+            "Outro resumo");
+
+        acao.Should().Throw<RevisaoHumanaObrigatoriaException>();
+        release.VersaoCliente!.Status.Should().Be(StatusRevisao.Aprovado);
+        release.VersaoCliente.TituloExecutivo.Should().Be("Título cliente");
+        release.VersaoCliente.Itens.Select(i => i.Texto).Should().Equal(textosAprovados);
+    }
+
+    [Fact]
+    public void Reprocessar_depois_de_reabrir_substitui_o_conteudo()
+    {
+        var release = UmaReleaseProcessada();
+        release.Aprovar("revisora@invoisys.com", DateTimeOffset.UtcNow);
+        release.Reabrir();
+
+        release.ConcluirProcessamento([UmItem("Texto refeito")], "Novo título", "Novo resumo");
+
+        release.VersaoCliente!.Status.Should().Be(StatusRevisao.AguardandoRevisao);
+        release.VersaoCliente.TituloExecutivo.Should().Be("Novo título");
+    }
+
+    [Fact]
+    public void Versao_aprovada_recusa_conteudo_novo_mesmo_chamada_direto()
+    {
+        // Última linha de defesa: mesmo sem passar pela Release, a versão não aceita
+        // ter o conteúdo aprovado sobrescrito.
+        var release = UmaReleaseProcessada();
+        release.Aprovar("revisora@invoisys.com", DateTimeOffset.UtcNow);
+
+        var acao = () => release.VersaoCliente!.PreencherConteudo([UmItem()], "T", "R");
+
+        acao.Should().Throw<TransicaoDeStatusInvalidaException>();
+    }
+
+    [Fact]
     public void Item_excluido_sai_do_comunicado_mas_continua_auditavel()
     {
         var release = UmaReleaseProcessada();

@@ -111,4 +111,68 @@ public class PipelineGeracaoReleaseNotePersistenciaTests(PostgresContainerFixtur
         recarregada.Execucoes.Should().ContainSingle(
             e => e.Status == StatusExecucaoPipeline.Falhou && e.Erro == "boom");
     }
+
+    [Fact]
+    public async Task Versao_aprovada_so_volta_a_ser_gerada_depois_de_reaberta()
+    {
+        var chaveRelease = ChaveJiraUnica();
+        var jira = new FakeJiraClient { Historias = [Historia("INV-1")] };
+        var llm = new FakeLlmProvider { TextoReescrito = "Texto que o revisor aprovou." };
+
+        await using (var contexto = fixture.CriarContexto())
+        {
+            await new PipelineGeracaoReleaseNote(jira, llm, new ReleaseRepository(contexto))
+                .ExecutarAsync(chaveRelease);
+        }
+
+        await Revisar(chaveRelease, r => r.Aprovar("revisora@invoisys.com", DateTimeOffset.UtcNow));
+
+        // Reprocessar sem reabrir: recusado antes de tocar no Jira, banco intacto.
+        jira.Historias = [Historia("INV-2")];
+        llm.TextoReescrito = "Texto novo da IA.";
+        jira.ChavesConsultadas.Clear();
+        await using (var contexto = fixture.CriarContexto())
+        {
+            var acao = async () => await new PipelineGeracaoReleaseNote(
+                jira, llm, new ReleaseRepository(contexto)).ExecutarAsync(chaveRelease);
+            await acao.Should().ThrowAsync<RevisaoHumanaObrigatoriaException>();
+        }
+
+        jira.ChavesConsultadas.Should().BeEmpty("a recusa acontece antes de qualquer chamada externa");
+        var bloqueada = await Recarregar(chaveRelease);
+        bloqueada.VersaoCliente!.Status.Should().Be(StatusRevisao.Aprovado);
+        bloqueada.Itens.Select(i => i.Texto).Should().Equal("Texto que o revisor aprovou.");
+        bloqueada.Historias.Select(h => h.Chave).Should().Equal("INV-1");
+        bloqueada.Execucoes.Should().HaveCount(1, "tentativa recusada não vira execução");
+
+        // Depois que um humano reabre, o reprocessamento segue normalmente.
+        await Revisar(chaveRelease, r => r.Reabrir());
+        await using (var contexto = fixture.CriarContexto())
+        {
+            await new PipelineGeracaoReleaseNote(jira, llm, new ReleaseRepository(contexto))
+                .ExecutarAsync(chaveRelease);
+        }
+
+        var reprocessada = await Recarregar(chaveRelease);
+        reprocessada.VersaoCliente!.Status.Should().Be(StatusRevisao.AguardandoRevisao);
+        reprocessada.Itens.Select(i => i.Texto).Should().Equal("Texto novo da IA.");
+        reprocessada.Historias.Select(h => h.Chave).Should().Equal("INV-2");
+        reprocessada.Execucoes.Should().HaveCount(2);
+    }
+
+    /// <summary>Carrega, aplica uma ação de revisão e salva — como fará a API de revisão.</summary>
+    private async Task Revisar(string chaveRelease, Action<Release> acao)
+    {
+        await using var contexto = fixture.CriarContexto();
+        var repositorio = new ReleaseRepository(contexto);
+        var release = await repositorio.BuscarPorChaveJiraAsync(chaveRelease);
+        acao(release!);
+        await repositorio.SalvarAsync(release!);
+    }
+
+    private async Task<Release> Recarregar(string chaveRelease)
+    {
+        await using var contexto = fixture.CriarContexto();
+        return (await new ReleaseRepository(contexto).BuscarPorChaveJiraAsync(chaveRelease))!;
+    }
 }

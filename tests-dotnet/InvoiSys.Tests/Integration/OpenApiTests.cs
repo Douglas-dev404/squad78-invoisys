@@ -130,5 +130,8 @@ public class OpenApiTests
         // respostas previsíveis desta API, não imprevistos: quem consome precisa vê-las.
         respostas.TryGetProperty("501", out _).Should().BeTrue();
         respostas.TryGetProperty("502", out _).Should().BeTrue();
+
+        // 409: versão já aprovada só é reprocessada depois de reaberta.
+        respostas.TryGetProperty("409", out _).Should().BeTrue();
     }
 }

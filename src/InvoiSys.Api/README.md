@@ -21,7 +21,7 @@ InvoiSys.Api/
 |---|---|---|---|---|
 | `GET` | `/health` | inline em `Program.cs` | `{ "status": "ok" }` | — |
 | `GET` | `/api/v1/releases/{chaveRelease}/historias` | `BuscarHistoriasAsync` → `IJiraClient` | `ReleaseOut` | 501, 502 |
-| `POST` | `/api/v1/releases/{chaveRelease}/processar` | `ProcessarReleaseAsync` → `PipelineGeracaoReleaseNote` | `ReleaseProcessadaOut` | 501, 502 |
+| `POST` | `/api/v1/releases/{chaveRelease}/processar` | `ProcessarReleaseAsync` → `PipelineGeracaoReleaseNote` | `ReleaseProcessadaOut` | 409, 501, 502 |
 | `GET` | `/openapi/v1.json` | gerado (só em Development) | spec OpenAPI 3.1 | — |
 | `GET` | `/swagger` | Swagger UI (só em Development) | tela para explorar e testar as rotas | — |
 
@@ -50,6 +50,7 @@ InvoiSys.Api/
 
 | Exceção | Status | Significado |
 |---|---|---|
+| `RevisaoHumanaObrigatoriaException` (só em `/processar`) | **409** | a versão já foi aprovada; é preciso reabrir a revisão antes de reprocessar |
 | `ProviderNaoConfiguradoException` | **501** | falta credencial (Jira ou OpenRouter). O `detail` diz o que configurar |
 | `IntegracaoExternaException` (e filhas) | **502** | Jira/LLM falhou ou respondeu fora do formato |
 | qualquer outra | 500 | erro interno de verdade |

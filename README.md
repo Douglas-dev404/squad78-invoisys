@@ -63,7 +63,7 @@ flowchart LR
 |---|---|---|
 | **Ingestão** | Busca no Jira todas as issues da Release (`fixVersion`), com o texto da subtarefa "Release Note" quando existir | ✅ implementado |
 | **Pipeline de IA** | Limpa → agrupa semelhantes → categoriza → reescreve em linguagem de negócio → gera título e resumo | ✅ implementado (testado com fakes; falta validar com LLM real) |
-| **Persistência** | Grava Release, histórias, comunicado e log da execução | 🔶 em implementação (#20) |
+| **Persistência** | Grava Release, histórias, comunicado e log da execução | ✅ implementado (reprocessar reaproveita a Release; versão aprovada exige reabrir) |
 | **Revisão** | Humano vê, edita, exclui itens, aprova ou reprova, **por público-alvo** | 🔶 domínio pronto, falta API (#21–#23) e tela |
 | **Exportação** | Gera Markdown (HTML/PDF como diferencial) só de versão aprovada | 🔶 domínio + schema prontos, falta render (#24) |
 | **Autenticação** | Login JWT de quem revisa e aprova | ❌ só a entidade `Usuario` e o repository |
@@ -207,10 +207,11 @@ sequenceDiagram
     participant DB as IReleaseRepository
 
     API->>PL: ExecutarAsync("RELEASE-2026-08")
+    PL->>DB: BuscarPorChaveJiraAsync (Release já existe?)
+    Note over PL,DB: versão Cliente aprovada → recusa com 409 antes de chamar Jira/LLM (ADR-020)
     PL->>J: BuscarHistoriasDaReleaseAsync
     J-->>PL: HistoriaJira[]
-    Note over PL,DB: persistência (#20): busca Release existente por chave, reprocessar não duplica
-    PL->>R: new Release(chave, historias) / AtualizarHistorias
+    PL->>R: new Release(chave, historias) ou AtualizarHistorias (reprocessar não duplica)
     PL->>R: MarcarProcessando() + RegistrarExecucao(modelo)
     PL->>PL: Estágio 1 — ExtrairELimpar (sem LLM)
     PL->>L: Estágio 3 — AgruparSemelhantesAsync(chave, texto)[]
@@ -222,7 +223,7 @@ sequenceDiagram
     PL->>L: Estágio 5 — GerarTituloEResumoAsync(itens)
     PL->>R: ConcluirProcessamento(itens, título, resumo) → VersaoComunicado(Cliente)
     PL->>R: execucao.MarcarConcluida()
-    Note over PL,DB: persistência (#20): SalvarAsync(release), inclusive no caminho de falha
+    PL->>DB: SalvarAsync(release), inclusive no caminho de falha
     PL-->>API: Release (status aguardando_revisao)
     API-->>API: mapeia para ReleaseProcessadaOut (DTO)
 ```
@@ -382,7 +383,9 @@ Regras que o **código garante** (não dependem de disciplina de quem programa):
 5. **Edição humana vence a IA** (`ItemComunicado.TextoFinal`).
 6. **Nenhuma história real se perde** no agrupamento; nenhuma inventada entra.
 7. **Fonte de dados é só a API real do Jira**, sem fallback de JSON/CSV colado.
-8. **Auditoria não se reescreve:** `execucoes_pipeline` e `comunicados_exportados` só
+8. **A IA não sobrescreve o que um humano aprovou:** reprocessar uma versão aprovada
+   exige reabrir a revisão antes (a API responde 409).
+9. **Auditoria não se reescreve:** `execucoes_pipeline` e `comunicados_exportados` só
    crescem; FK `RESTRICT` protege exportações de DELETE em cascata.
 
 ---
@@ -403,12 +406,13 @@ ponta a ponta mínimo (Jira → IA → revisão → Markdown), depois os diferen
 - Docker multi-stage, compose com migração automática, CI (build + format + testes +
   lint/build do front), `main`/`develop` protegidas.
 
-### 🔶 Fase 1 — Persistência real do pipeline · issue #20
+### ✅ Fase 1 — Persistência real do pipeline · issue #20 *(concluída)*
 
 - O pipeline passa a buscar a Release pela chave (reprocessar não duplica).
 - `Release.AtualizarHistorias` troca as histórias no reprocessamento.
 - O resultado é salvo também no caminho de falha: a `ExecucaoPipeline` com erro fica no
   banco.
+- Versão já aprovada só é reprocessada depois de reaberta (409 na API, [ADR-020](docs/decisoes-arquiteturais.md#adr-020--versão-aprovada-não-é-reprocessada-sem-reabrir)).
 
 ### ⬜ Fase 2 — API de revisão e exportação · issues #21–#24
 
