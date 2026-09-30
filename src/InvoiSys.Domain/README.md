@@ -61,10 +61,10 @@ classDiagram
 
 | Entidade | Papel | Métodos que importam |
 |---|---|---|
-| [`Release`](Entities/Release.cs) | Raiz do agregado. Dona do ciclo de vida da **geração** (`StatusPipeline`) e porta de entrada para toda mutação de versão/item | `ConcluirProcessamento`, `Aprovar`, `Reprovar`, `Reabrir`, `RegistrarExecucao`, `VersaoPara(publico)`. Atalhos da versão Cliente: `Itens`, `TituloExecutivo`, `ResumoExecutivo`, `ProntaParaExportar` |
+| [`Release`](Entities/Release.cs) | Raiz do agregado. Dona do ciclo de vida da **geração** (`StatusPipeline`) e porta de entrada para toda mutação de versão/item | `ConcluirProcessamento`, `Aprovar`, `Reprovar`, `Reabrir`, `EditarItem`, `ExcluirItem`, `ReincluirItem` (acham o item em qualquer versão pelo id), `RegistrarExecucao`, `VersaoPara(publico)`. Atalhos da versão Cliente: `Itens`, `TituloExecutivo`, `ResumoExecutivo`, `ProntaParaExportar` |
 | [`HistoriaJira`](Entities/HistoriaJira.cs) | Dado bruto do Jira. `record` **imutável**: o pipeline gera cópias limpas com `with`, nunca muta | `TextoFonte` (Release Note dedicada **ou** descrição técnica), `PossuiReleaseNoteDedicada` |
-| [`VersaoComunicado`](Entities/VersaoComunicado.cs) | O comunicado **para um público**, com revisão própria (`StatusRevisao`). Responde "pode exportar?" | `Aprovar`, `Reprovar(motivo)`, `Reabrir`, `PreencherConteudo`, `ItensPublicaveis`, `ProntaParaExportar` |
-| [`ItemComunicado`](Entities/ItemComunicado.cs) | Um parágrafo do comunicado, originado de 1+ histórias | `TextoFinal` (edição humana vence), `EditarManualmente`, `Excluir(motivo)`, `Reincluir`, `Origens` |
+| [`VersaoComunicado`](Entities/VersaoComunicado.cs) | O comunicado **para um público**, com revisão própria (`StatusRevisao`). Responde "pode exportar?" | `Aprovar`, `Reprovar(motivo)`, `Reabrir`, `PreencherConteudo`, `EditarItem`/`ExcluirItem`/`ReincluirItem` (recusam versão aprovada, [ADR-021](../../docs/decisoes-arquiteturais.md#adr-021--item-de-versão-aprovada-não-é-editado-sem-reabrir)), `ItensPublicaveis`, `ProntaParaExportar` |
+| [`ItemComunicado`](Entities/ItemComunicado.cs) | Um parágrafo do comunicado, originado de 1+ histórias | `TextoFinal` (edição humana vence), `Origens`. `EditarManualmente`, `Excluir(motivo)` e `Reincluir` são `internal`: de fora do domínio, só pela `Release` |
 | [`ExecucaoPipeline`](Entities/ExecucaoPipeline.cs) | Log de uma rodada do pipeline (rastreabilidade) | `MarcarConcluida`, `MarcarFalha(erro)` |
 
 ### Agregados independentes
@@ -82,10 +82,12 @@ classDiagram
 | `RevisaoHumanaObrigatoriaException` | aprovar Release com pipeline em `falhou`, transição de revisão inválida, ou reprocessar versão já aprovada sem reabrir (`GarantirQuePodeReprocessar`, [ADR-020](../../docs/decisoes-arquiteturais.md#adr-020--versão-aprovada-não-é-reprocessada-sem-reabrir)) |
 | `ReleaseSemItensProcessadosException` | aprovar/reprovar público sem versão gerada, ou versão sem itens |
 | `VersaoSemItensException` | (interna à versão) aprovar sem itens ou com todos excluídos |
-| `TransicaoDeStatusInvalidaException` | (interna à versão) ex.: reaprovar o que já foi aprovado |
+| `TransicaoDeStatusInvalidaException` | (interna à versão) ex.: reaprovar o que já foi aprovado, ou alterar item de versão aprovada |
+| `ItemNaoEncontradoException` | editar/excluir/reincluir um item que não existe na Release |
 | `ReleaseNaoAprovadaException` | construir `ComunicadoExportado` de versão não aprovada |
 
-> A API ainda não mapeia essas exceções para HTTP (virá com #22/#23; sugestão: 409/422).
+> As rotas de item (#23) já mapeiam `TransicaoDeStatusInvalidaException` → 409 e
+> `ItemNaoEncontradoException` → 404. As demais virão com #22/#24 (sugestão: 409/422).
 
 ---
 

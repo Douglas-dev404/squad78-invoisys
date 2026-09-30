@@ -264,8 +264,8 @@ Tudo já está implementado **como métodos do domínio**; falta expor por HTTP:
 | Aprovar a versão de um público | `Release.Aprovar(aprovadoPor, agora, publico)` → `VersaoComunicado.Aprovar` | Exige itens, ao menos 1 item não excluído, e status `aguardando_revisao`. Release só vira `aprovado` quando **todas** as versões estão aprovadas |
 | Reprovar | `Release.Reprovar(revisadoPor, motivo, agora, publico)` | Motivo obrigatório (também garantido por CHECK no banco) |
 | Reabrir algo já aprovado | `Release.Reabrir(publico)` | Só reabre o que está aprovado; exportações anteriores **não** são apagadas |
-| Editar texto de um item | `ItemComunicado.EditarManualmente(texto)` | `TextoFinal` sempre prioriza a edição humana |
-| Tirar item do comunicado | `ItemComunicado.Excluir(motivo)` / `Reincluir()` | Não apaga o registro: o que a IA gerou continua auditável |
+| Editar texto de um item | `Release.EditarItem(itemId, texto)` → `PATCH .../itens/{itemId}` | `TextoFinal` sempre prioriza a edição humana; versão aprovada não muda sem reabrir ([ADR-021](docs/decisoes-arquiteturais.md#adr-021--item-de-versão-aprovada-não-é-editado-sem-reabrir)) |
+| Tirar item do comunicado | `Release.ExcluirItem(itemId, motivo)` / `ReincluirItem(itemId)` → `POST .../excluir` · `.../reincluir` | Não apaga o registro: o que a IA gerou continua auditável |
 
 Toda mutação passa pela `Release` carregada via `IReleaseRepository`, porque
 `VersaoComunicado` e `ItemComunicado` **não têm repository próprio** (ver
@@ -420,7 +420,7 @@ ponta a ponta mínimo (Jira → IA → revisão → Markdown), depois os diferen
 |---|---|---|
 | #21 | `GET /api/v1/releases`, `GET /api/v1/releases/{chave}` (com versões e itens) | `IReleaseRepository` |
 | #22 | aprovar / reprovar / reabrir **por público** | `Release.Aprovar/Reprovar/Reabrir` |
-| #23 | editar / excluir / reincluir item | `ItemComunicado.*`, salvando via `Release` |
+| #23 ✅ | editar / excluir / reincluir item | `Release.EditarItem/ExcluirItem/ReincluirItem` |
 | #24 | exportar Markdown | `ComunicadoExportado` + `IComunicadoExportadoRepository` |
 
 Junto com isso: DTOs que exponham múltiplos públicos (hoje a API só mostra o atalho da

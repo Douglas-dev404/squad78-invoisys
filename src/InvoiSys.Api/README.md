@@ -22,6 +22,9 @@ InvoiSys.Api/
 | `GET` | `/health` | inline em `Program.cs` | `{ "status": "ok" }` | — |
 | `GET` | `/api/v1/releases/{chaveRelease}/historias` | `BuscarHistoriasAsync` → `IJiraClient` | `ReleaseOut` | 501, 502 |
 | `POST` | `/api/v1/releases/{chaveRelease}/processar` | `ProcessarReleaseAsync` → `PipelineGeracaoReleaseNote` | `ReleaseProcessadaOut` | 409, 501, 502 |
+| `PATCH` | `/api/v1/releases/{chaveRelease}/itens/{itemId}` | `EditarItemAsync` → `Release.EditarItem` | `ItemRevisaoOut` · corpo `{ "texto": "..." }` | 400, 404, 409 |
+| `POST` | `/api/v1/releases/{chaveRelease}/itens/{itemId}/excluir` | `ExcluirItemAsync` → `Release.ExcluirItem` | `ItemRevisaoOut` · corpo opcional `{ "motivo": "..." }` | 404, 409 |
+| `POST` | `/api/v1/releases/{chaveRelease}/itens/{itemId}/reincluir` | `ReincluirItemAsync` → `Release.ReincluirItem` | `ItemRevisaoOut` | 404, 409 |
 | `GET` | `/openapi/v1.json` | gerado (só em Development) | spec OpenAPI 3.1 | — |
 | `GET` | `/swagger` | Swagger UI (só em Development) | tela para explorar e testar as rotas | — |
 
@@ -51,6 +54,9 @@ InvoiSys.Api/
 | Exceção | Status | Significado |
 |---|---|---|
 | `RevisaoHumanaObrigatoriaException` (só em `/processar`) | **409** | a versão já foi aprovada; é preciso reabrir a revisão antes de reprocessar |
+| `TransicaoDeStatusInvalidaException` (rotas de item) | **409** | item de versão aprovada; é preciso reabrir a revisão antes ([ADR-021](../../docs/decisoes-arquiteturais.md#adr-021--item-de-versão-aprovada-não-é-editado-sem-reabrir)) |
+| `ItemNaoEncontradoException` (rotas de item) | **404** | o item não existe nesta Release (inclusive item de outra Release) |
+| `ArgumentException` (rotas de item) | **400** | edição com texto vazio |
 | `ProviderNaoConfiguradoException` | **501** | falta credencial (Jira ou OpenRouter). O `detail` diz o que configurar |
 | `IntegracaoExternaException` (e filhas) | **502** | Jira/LLM falhou ou respondeu fora do formato |
 | qualquer outra | 500 | erro interno de verdade |
@@ -85,7 +91,6 @@ Respostas de erro seguem `ProblemDetails` (`Results.Problem`).
 |---|---|
 | `GET /api/v1/releases` e `GET /api/v1/releases/{chave}` (com versões por público, itens, execuções) | #21 |
 | `POST .../{chave}/versoes/{publico}/aprovar` · `/reprovar` · `/reabrir` (forma final a definir no PR) | #22 |
-| Editar / excluir / reincluir item | #23 |
 | Exportar Markdown | #24 |
 | Mapear exceções de revisão (`RevisaoHumanaObrigatoriaException`, `ReleaseSemItensProcessadosException`, `ReleaseNaoAprovadaException`) para 409/422 | #22–#24 |
 | `/auth/login`, `/auth/me`, `/auth/logout`, `/auth/forgot-password` + JWT + `[Authorize]` nas rotas de revisão | Fase 3 |

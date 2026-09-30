@@ -70,7 +70,10 @@ public class OpenApiTests
         caminhos.Should().BeEquivalentTo(
             "/health",
             "/api/v1/releases/{chaveRelease}/historias",
-            "/api/v1/releases/{chaveRelease}/processar");
+            "/api/v1/releases/{chaveRelease}/processar",
+            "/api/v1/releases/{chaveRelease}/itens/{itemId}",
+            "/api/v1/releases/{chaveRelease}/itens/{itemId}/excluir",
+            "/api/v1/releases/{chaveRelease}/itens/{itemId}/reincluir");
     }
 
     [Fact]
