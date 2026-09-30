@@ -67,19 +67,24 @@ public sealed class ItemComunicado
     public string TextoFinal =>
         string.IsNullOrWhiteSpace(TextoEditadoManualmente) ? Texto : TextoEditadoManualmente;
 
-    public void EditarManualmente(string texto) => TextoEditadoManualmente = texto;
+    // EditarManualmente, Excluir e Reincluir são internal: de fora do domínio, a revisão
+    // de item passa por Release.EditarItem/ExcluirItem/ReincluirItem, que conferem se a
+    // versão dona do item ainda pode ser alterada (versão aprovada não pode, ADR-021).
+    // Chamar o item direto pularia essa verificação.
+
+    internal void EditarManualmente(string texto) => TextoEditadoManualmente = texto;
 
     /// <summary>
     /// Tira o item do comunicado sem apagar o registro — o que a IA gerou continua
     /// auditável, junto do motivo pelo qual um humano decidiu não publicá-lo.
     /// </summary>
-    public void Excluir(string? motivo = null)
+    internal void Excluir(string? motivo = null)
     {
         Incluido = false;
         MotivoExclusao = motivo;
     }
 
-    public void Reincluir()
+    internal void Reincluir()
     {
         Incluido = true;
         MotivoExclusao = null;

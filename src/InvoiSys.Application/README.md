@@ -79,7 +79,6 @@ forçada). Sem rede, sem token, determinístico.
 |---|---|---|
 | Consultar e listar Releases | #21 | pode ser direto do repository no endpoint, ou um serviço de consulta |
 | Revisar (aprovar/reprovar/reabrir por público) | #22 | carrega Release → método do domínio → `SalvarAsync` |
-| Editar/excluir/reincluir item | #23 | idem, sempre via Release |
 | Exportar Markdown | #24 | ver [P-03](../../docs/decisoes-arquiteturais.md#p-03--onde-mora-o-render-da-exportação) |
 | Gerar versões Comercial/Suporte/Interno | Fase 6 | chamar `ConcluirProcessamento(..., publico)` por público, com prompt por público |
 | Paralelizar o loop por grupo | opcional | só se a latência de Releases grandes incomodar |

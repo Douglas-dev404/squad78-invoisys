@@ -103,9 +103,10 @@ public class PersistenciaAgregadoReleaseTests(PostgresContainerFixture fixture)
 
         await Etapa(release.Id, r =>
         {
+            // Pelo agregado, como a API faz (ItemComunicado.EditarManualmente é internal).
             var itens = r.VersaoCliente!.Itens;
-            itens.Single(i => i.Texto == "Texto da IA").EditarManualmente("Texto revisado");
-            itens.Single(i => i.Texto == "Item interno").Excluir("Não interessa ao cliente");
+            r.EditarItem(itens.Single(i => i.Texto == "Texto da IA").Id, "Texto revisado");
+            r.ExcluirItem(itens.Single(i => i.Texto == "Item interno").Id, "Não interessa ao cliente");
             r.Aprovar("revisora@invoisys.com", Agora);
         });
 
@@ -128,6 +129,21 @@ public class PersistenciaAgregadoReleaseTests(PostgresContainerFixture fixture)
         // Aprovar o Cliente não libera o Suporte, e a Release só fica Aprovada com todas.
         recarregada.VersaoPara(PublicoAlvo.Suporte)!.Status.Should().Be(StatusRevisao.AguardandoRevisao);
         recarregada.Status.Should().Be(StatusPipeline.AguardandoRevisao);
+    }
+
+    [Fact]
+    public async Task Reincluir_item_persiste_e_limpa_o_motivo_da_exclusao()
+    {
+        var release = await CriarReleasePersistida();
+        await Etapa(release.Id, r => r.ConcluirProcessamento(ItensGerados("Texto", "Outro"), "Título", "Resumo"));
+        var itemId = (await Recarregar(release.Id)).VersaoCliente!.Itens.Single(i => i.Texto == "Outro").Id;
+
+        await Etapa(release.Id, r => r.ExcluirItem(itemId, "Engano"));
+        await Etapa(release.Id, r => r.ReincluirItem(itemId));
+
+        var item = (await Recarregar(release.Id)).VersaoCliente!.Itens.Single(i => i.Id == itemId);
+        item.Incluido.Should().BeTrue();
+        item.MotivoExclusao.Should().BeNull();
     }
 
     [Fact]
