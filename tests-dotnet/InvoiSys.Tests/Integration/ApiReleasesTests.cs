@@ -47,6 +47,25 @@ public class ApiReleasesTests
         TextoReleaseNote = releaseNote,
     };
 
+    private static Release ReleaseComComunicado()
+{
+    var release = new Release(
+        "RELEASE-2026-08",
+        [Historia("INV-1")]);
+
+    release.ConcluirProcessamento(
+        [
+            new ItemComunicado(
+                Domain.Enums.CategoriaAlteracao.Correcao,
+                "Texto do comunicado.",
+                ["INV-1"])
+        ],
+        "Título da Release",
+        "Resumo da Release");
+
+    return release;
+}
+
     [Fact]
     public async Task Health_responde_ok()
     {
@@ -144,6 +163,232 @@ public class ApiReleasesTests
         corpo.Should().Contain("Reabra a revisão", "a resposta diz ao usuário o que fazer");
         aprovada.Itens.Single().Texto.Should().Be("Texto aprovado.");
     }
+
+    [Fact]
+public async Task Aprovar_release_para_cliente_responde_204()
+{
+    var repositorio = new FakeReleaseRepository();
+
+    var release = ReleaseComComunicado();
+
+    await repositorio.SalvarAsync(release);
+
+    using var app = CriarApp(repositorio: repositorio);
+    using var client = app.CreateClient();
+
+    var resposta = await client.PostAsJsonAsync(
+        "/api/v1/releases/RELEASE-2026-08/aprovar",
+        new
+        {
+            publico = "cliente",
+            aprovadoPor = "victor",
+        });
+
+    resposta.StatusCode.Should()
+        .Be(HttpStatusCode.NoContent);
+
+    release.VersaoCliente!.Status
+        .Should()
+        .Be(Domain.Enums.StatusRevisao.Aprovado);
+
+    release.VersaoCliente.RevisadoPor
+        .Should()
+        .Be("victor");
+}
+    
+    [Fact]
+public async Task Aprovar_release_sem_comunicado_responde_409()
+{
+    var repositorio = new FakeReleaseRepository();
+
+    var release = new Release(
+        "RELEASE-2026-08",
+        [Historia("INV-1")]);
+
+    await repositorio.SalvarAsync(release);
+
+    using var app = CriarApp(repositorio: repositorio);
+    using var client = app.CreateClient();
+
+    var resposta = await client.PostAsJsonAsync(
+        "/api/v1/releases/RELEASE-2026-08/aprovar",
+        new
+        {
+            aprovadoPor = "victor",
+        });
+
+    resposta.StatusCode.Should()
+        .Be(HttpStatusCode.Conflict);
+
+    var corpo = await resposta.Content.ReadAsStringAsync();
+
+    corpo.Should().Contain("não tem comunicado gerado");
+}
+
+[Fact]
+public async Task Reprovar_release_registra_motivo_e_responde_204()
+{
+    var repositorio = new FakeReleaseRepository();
+
+    var release = ReleaseComComunicado();
+
+    await repositorio.SalvarAsync(release);
+
+    using var app = CriarApp(repositorio: repositorio);
+    using var client = app.CreateClient();
+
+    var resposta = await client.PostAsJsonAsync(
+        "/api/v1/releases/RELEASE-2026-08/reprovar",
+        new
+        {
+            publico = "cliente",
+            motivo = "Texto precisa ser revisado.",
+            revisadoPor = "victor",
+        });
+
+    resposta.StatusCode.Should()
+        .Be(HttpStatusCode.NoContent);
+
+    release.VersaoCliente!.Status
+        .Should()
+        .Be(Domain.Enums.StatusRevisao.Reprovado);
+
+    release.VersaoCliente.MotivoReprovacao
+        .Should()
+        .Be("Texto precisa ser revisado.");
+
+    release.VersaoCliente.RevisadoPor
+        .Should()
+        .Be("victor");
+}
+
+[Fact]
+public async Task Reprovar_release_sem_motivo_responde_422()
+{
+    var repositorio = new FakeReleaseRepository();
+
+    var release = ReleaseComComunicado();
+
+    await repositorio.SalvarAsync(release);
+
+    using var app = CriarApp(repositorio: repositorio);
+    using var client = app.CreateClient();
+
+    var resposta = await client.PostAsJsonAsync(
+        "/api/v1/releases/RELEASE-2026-08/reprovar",
+        new
+        {
+            publico = "cliente",
+            motivo = "",
+            revisadoPor = "victor",
+        });
+
+    resposta.StatusCode.Should()
+        .Be(HttpStatusCode.UnprocessableEntity);
+}
+
+[Fact]
+public async Task Reabrir_release_aprovada_responde_204()
+{
+    var repositorio = new FakeReleaseRepository();
+
+    var release = ReleaseComComunicado();
+
+    release.Aprovar(
+        "victor",
+        DateTimeOffset.UtcNow);
+
+    await repositorio.SalvarAsync(release);
+
+    using var app = CriarApp(repositorio: repositorio);
+    using var client = app.CreateClient();
+
+    var resposta = await client.PostAsJsonAsync(
+        "/api/v1/releases/RELEASE-2026-08/reabrir",
+        new
+        {
+            publico = "cliente",
+        });
+
+    resposta.StatusCode.Should()
+        .Be(HttpStatusCode.NoContent);
+
+    release.VersaoCliente!.Status
+        .Should()
+        .Be(Domain.Enums.StatusRevisao.AguardandoRevisao);
+
+    release.VersaoCliente.RevisadoPor
+        .Should()
+        .BeNull();
+
+    release.VersaoCliente.RevisadoEm
+        .Should()
+        .BeNull();
+}
+
+[Fact]
+public async Task Reabrir_release_nao_aprovada_responde_422()
+{
+    var repositorio = new FakeReleaseRepository();
+
+    var release = ReleaseComComunicado();
+
+    await repositorio.SalvarAsync(release);
+
+    using var app = CriarApp(repositorio: repositorio);
+    using var client = app.CreateClient();
+
+    var resposta = await client.PostAsJsonAsync(
+        "/api/v1/releases/RELEASE-2026-08/reabrir",
+        new
+        {
+            publico = "cliente",
+        });
+
+    resposta.StatusCode.Should()
+        .Be(HttpStatusCode.UnprocessableEntity);
+}
+
+[Fact]
+public async Task Aprovar_release_inexistente_responde_404()
+{
+    using var app = CriarApp();
+    using var client = app.CreateClient();
+
+    var resposta = await client.PostAsJsonAsync(
+        "/api/v1/releases/RELEASE-INEXISTENTE/aprovar",
+        new
+        {
+            aprovadoPor = "victor",
+        });
+
+    resposta.StatusCode.Should()
+        .Be(HttpStatusCode.NotFound);
+}
+
+[Fact]
+public async Task Aprovar_com_publico_invalido_responde_422()
+{
+    var repositorio = new FakeReleaseRepository();
+
+    var release = ReleaseComComunicado();
+
+    await repositorio.SalvarAsync(release);
+
+    using var app = CriarApp(repositorio: repositorio);
+    using var client = app.CreateClient();
+
+    var resposta = await client.PostAsJsonAsync(
+        "/api/v1/releases/RELEASE-2026-08/aprovar",
+        new
+        {
+            publico = "financeiro",
+            aprovadoPor = "victor",
+        });
+
+    resposta.StatusCode.Should()
+        .Be(HttpStatusCode.UnprocessableEntity);
+}
 
     [Fact]
     public async Task Sem_provider_de_LLM_configurado_a_API_responde_501()
