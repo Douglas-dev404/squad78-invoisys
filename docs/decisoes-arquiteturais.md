@@ -38,6 +38,7 @@ histórico também é documentação.
 | [019](#adr-019--entrega-em-fatias-verticais) | Entrega em fatias verticais | Aceita | 2026-08-24 |
 | [020](#adr-020--versão-aprovada-não-é-reprocessada-sem-reabrir) | Versão aprovada não é reprocessada sem reabrir | Aceita | 2026-09-29 |
 | [021](#adr-021--item-de-versão-aprovada-não-é-editado-sem-reabrir) | Item de versão aprovada não é editado sem reabrir | Aceita | 2026-09-30 |
+| [022](#adr-022--endpoint-só-chama-caso-de-uso-erros-de-revisão-padronizados) | Endpoint só chama caso de uso; erros de revisão padronizados | Aceita | 2026-10-03 |
 | [P-02](#p-02--desenho-da-autenticação) | Desenho da autenticação | **Proposta** | — |
 | [P-03](#p-03--onde-mora-o-render-da-exportação) | Onde mora o render da exportação | **Proposta** | — |
 
@@ -550,7 +551,8 @@ fechou para o reprocessamento, agora pela porta da edição manual.
 - Item que não existe na Release: `ItemNaoEncontradoException`. Texto de edição vazio:
   `ArgumentException` (para tirar o item do comunicado, o caminho é excluir).
 - A API responde **409** (versão aprovada, com a instrução de reabrir), **404** (Release
-  ou item não encontrado, inclusive item de outra Release) e **400** (texto vazio).
+  ou item não encontrado, inclusive item de outra Release) e **422** (texto vazio, ver
+  [ADR-022](#adr-022--endpoint-só-chama-caso-de-uso-erros-de-revisão-padronizados)).
 - A aprovação de um público não trava os itens de outro. Versão reprovada ou aguardando
   revisão continua editável.
 
@@ -560,6 +562,42 @@ fechou para o reprocessamento, agora pela porta da edição manual.
 - ⚠️ Corrigir um detalhe depois de aprovar exige reabrir e aprovar de novo.
 - Coberto por `RevisaoDeItensTests` (domínio), `ApiItensTests` (API) e
   `PersistenciaAgregadoReleaseTests` (Postgres real).
+
+---
+
+## ADR-022 — Endpoint só chama caso de uso; erros de revisão padronizados
+
+**Contexto.** A #22 (aprovar/reprovar/reabrir) chegou com o endpoint buscando a Release
+no repository, decidindo o público default e revalidando o motivo, com `try/catch`
+repetido por rota e status divergentes para o mesmo tipo de erro (aprovar 2× = 409,
+reabrir inválido = 422). A #23 (itens) seguia o mesmo caminho e respondia 400 para
+entrada inválida. Sem regra explícita, cada PR inventava a sua.
+
+**Opções consideradas.**
+1. Endpoint orquestra (repository → domínio → salvar) direto, por serem operações curtas.
+2. Orquestração em caso de uso na Application; API só converte DTO e traduz erro.
+
+**Decisão.** Opção 2, aplicando a [ADR-001](#adr-001--arquitetura-hexagonal-ports--adapters).
+
+- Endpoint **não** recebe repository nem toma decisão: converte o DTO, chama o caso de
+  uso (`RevisaoComunicado` para revisão) e traduz o resultado em HTTP.
+- Um arquivo de endpoints por recurso (`ReleaseEndpoints`, `RevisaoEndpoints`, ...).
+- Release inexistente é `ReleaseNaoEncontradaException`, lançada pelo caso de uso → **404**.
+- Estado que impede a operação (sem comunicado, já aprovada, transição inválida) → **409**.
+- Entrada que o domínio recusa (`ArgumentException`: revisor, motivo, texto vazio) e
+  público ausente ou desconhecido → **422**. Não usamos 400 para isso: o JSON é válido,
+  é o conteúdo que não passa na regra.
+- Erro sempre em `ProblemDetails`, mapeado num ponto só por arquivo de endpoints.
+- Público é obrigatório na revisão: sem default para Cliente.
+- Revisor obrigatório no domínio (`VersaoComunicado.Aprovar/Reprovar`): aprovação sem
+  quem aprovou não serve como trilha da revisão humana
+  ([ADR-007](#adr-007--revisão-humana-como-invariante-do-domínio-entidades-ricas)).
+
+**Consequências.**
+- ✅ A API não tem regra de negócio para divergir do domínio.
+- ✅ Contrato de erro previsível para o frontend: 404 / 409 / 422.
+- ⚠️ Mais uma classe na Application por grupo de casos de uso.
+- Coberto por `ApiRevisaoTests` (HTTP) e `VersaoComunicadoTests` (domínio).
 
 ---
 

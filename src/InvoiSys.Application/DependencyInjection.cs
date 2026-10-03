@@ -1,4 +1,5 @@
 using InvoiSys.Application.Pipeline;
+using InvoiSys.Application.Revisao;
 using InvoiSys.Domain.Ports;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -28,6 +29,8 @@ public static class DependencyInjection
             // modelo_llm gravaria vazio e a rastreabilidade perderia o dado mais útil
             // para investigar um comunicado ruim.
             configuration["OpenRouter:Modelo"]));
+
+        services.AddScoped<RevisaoComunicado>();
 
         return services;
     }

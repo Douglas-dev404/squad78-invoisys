@@ -85,9 +85,11 @@ classDiagram
 | `TransicaoDeStatusInvalidaException` | (interna à versão) ex.: reaprovar o que já foi aprovado, ou alterar item de versão aprovada |
 | `ItemNaoEncontradoException` | editar/excluir/reincluir um item que não existe na Release |
 | `ReleaseNaoAprovadaException` | construir `ComunicadoExportado` de versão não aprovada |
+| `ReleaseNaoEncontradaException` | caso de uso aponta para uma chave de Release que não foi persistida |
+| `ArgumentException` | reprovar sem motivo, ou aprovar/reprovar sem identificar o revisor (trilha de auditoria da revisão humana) |
 
-> As rotas de item (#23) já mapeiam `TransicaoDeStatusInvalidaException` → 409 e
-> `ItemNaoEncontradoException` → 404. As demais virão com #22/#24 (sugestão: 409/422).
+> Mapeamento para HTTP das exceções de revisão: ver `MapearFalhaDeRevisao` no
+> [README da API](../InvoiSys.Api/README.md#tradução-de-erro--http).
 
 ---
 
@@ -107,7 +109,9 @@ Python.
 | [`FormatoExportacao`](Enums/FormatoExportacao.cs) | `markdown` · `html` · `pdf` | exportação |
 
 `CategoriaAlteracaoExtensions.TentarConverter` é case-insensitive de propósito, porque a
-entrada é resposta de LLM.
+entrada é resposta de LLM. `PublicoAlvoExtensions.TentarConverter` também, e **não tem
+default**: valor ausente não converte (na revisão, assumir Cliente aprovaria o público
+errado em silêncio).
 
 ---
 

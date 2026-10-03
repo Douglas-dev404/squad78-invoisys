@@ -11,6 +11,10 @@ public sealed class ReleaseSemItensProcessadosException(string mensagem) : Excep
 /// <summary>Levantado quando o item pedido não existe em nenhuma versão desta Release.</summary>
 public sealed class ItemNaoEncontradoException(string mensagem) : Exception(mensagem);
 
+/// <summary>Levantado quando a operação aponta para uma Release que não foi persistida.</summary>
+public sealed class ReleaseNaoEncontradaException(string chaveJira)
+    : Exception($"Release {chaveJira} não encontrada.");
+
 /// <summary>
 /// Release — agregado raiz do domínio.
 ///
