@@ -127,6 +127,11 @@ em [docs/decisoes-arquiteturais.md](docs/decisoes-arquiteturais.md) (ADRs). Deci
   editar ou excluir item passa obrigatoriamente pela `Release` carregada (é ela que
   recalcula o status quando todas as versões estão aprovadas). Ciclo de vida completo
   coberto em `PersistenciaAgregadoReleaseTests`.
+- **Endpoint só chama caso de uso** (ADR-022): nada de `IReleaseRepository` em
+  `Endpoints/` nem decisão de negócio na API — busca → método do agregado → salvar mora
+  em `InvoiSys.Application` (ex.: `RevisaoComunicado`). Um arquivo de endpoints por
+  recurso. Erro em `ProblemDetails`: 404 não encontrado, 409 estado que impede a
+  operação, **422** entrada recusada pelo domínio (nunca 400 para isso).
 - **Repositories de agregado próprio**: `IUsuarioRepository` (busca por id/e-mail +
   `SalvarAsync`, sem delete — desligar é `Usuario.Desativar()`),
   `IComunicadoExportadoRepository` (append-only: só inclui e consulta, nunca altera nem
