@@ -145,6 +145,60 @@ public sealed class VersaoComunicado
     }
 
     /// <summary>
+    /// Revisão item a item: troca o texto que vai para o comunicado. O texto gerado pela
+    /// IA continua preservado em <see cref="ItemComunicado.Texto"/>. Texto vazio é
+    /// recusado: para voltar ao texto da IA, o caminho é reprocessar, não apagar a edição.
+    /// </summary>
+    public void EditarItem(ItemComunicado item, string texto)
+    {
+        if (string.IsNullOrWhiteSpace(texto))
+        {
+            throw new ArgumentException(
+                "A edição de um item precisa de texto — para tirar o item do comunicado, exclua-o.",
+                nameof(texto));
+        }
+
+        GarantirQuePodeAlterarItem(item);
+        item.EditarManualmente(texto.Trim());
+    }
+
+    /// <summary>Tira o item do comunicado publicado, sem apagar o registro.</summary>
+    public void ExcluirItem(ItemComunicado item, string? motivo)
+    {
+        GarantirQuePodeAlterarItem(item);
+        item.Excluir(string.IsNullOrWhiteSpace(motivo) ? null : motivo.Trim());
+    }
+
+    /// <summary>Devolve ao comunicado um item excluído por engano.</summary>
+    public void ReincluirItem(ItemComunicado item)
+    {
+        GarantirQuePodeAlterarItem(item);
+        item.Reincluir();
+    }
+
+    /// <summary>
+    /// Versão aprovada não muda de conteúdo: editar ou excluir um item depois da
+    /// aprovação publicaria um texto que nenhum humano aprovou. Para ajustar, o revisor
+    /// reabre (<see cref="Reabrir"/>) primeiro — mesmo caminho do reprocessamento
+    /// (ADR-020, ADR-021).
+    /// </summary>
+    private void GarantirQuePodeAlterarItem(ItemComunicado item)
+    {
+        if (!_itens.Contains(item))
+        {
+            throw new InvalidOperationException(
+                $"O item {item.Id} não pertence à versão {Publico.ParaValor()}.");
+        }
+
+        if (Status == StatusRevisao.Aprovado)
+        {
+            throw new TransicaoDeStatusInvalidaException(
+                $"Versão {Publico.ParaValor()} está aprovada — reabra a revisão antes de "
+                + "alterar itens; o texto aprovado por um humano não muda sem nova revisão.");
+        }
+    }
+
+    /// <summary>
     /// O revisor olhou e considerou o resultado inaceitável. Diferente de excluir
     /// itens: aqui o comunicado inteiro volta para a fila, e o motivo fica registrado
     /// para orientar o reprocessamento.

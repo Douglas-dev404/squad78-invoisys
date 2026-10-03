@@ -73,7 +73,10 @@ public class OpenApiTests
             "/api/v1/releases/{chaveRelease}/reprovar",
             "/api/v1/releases/{chaveRelease}/reabrir",
             "/api/v1/releases/{chaveRelease}/historias",
-            "/api/v1/releases/{chaveRelease}/processar"
+            "/api/v1/releases/{chaveRelease}/processar",
+            "/api/v1/releases/{chaveRelease}/itens/{itemId}",
+            "/api/v1/releases/{chaveRelease}/itens/{itemId}/excluir",
+            "/api/v1/releases/{chaveRelease}/itens/{itemId}/reincluir"
         ]);
     }
 

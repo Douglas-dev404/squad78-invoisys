@@ -4,11 +4,15 @@ using InvoiSys.Domain.Ports;
 
 namespace InvoiSys.Application.Revisao;
 
+/// <summary>Item depois de uma ação de revisão, com o público da versão dona dele.</summary>
+public sealed record ItemRevisado(ItemComunicado Item, PublicoAlvo Publico);
+
 /// <summary>
-/// Casos de uso da revisão humana de um comunicado, por público: aprovar, reprovar e
-/// reabrir. Todos seguem o mesmo caminho — carrega a Release, chama o método do
-/// agregado, salva. A regra (transições de status, quando a Release fica Aprovada)
-/// mora no domínio; aqui só a orquestração.
+/// Casos de uso da revisão humana de um comunicado: aprovar, reprovar e reabrir por
+/// público, e editar, excluir e reincluir item. Todos seguem o mesmo caminho — carrega a
+/// Release, chama o método do agregado, salva. A regra (transições de status, versão
+/// aprovada não muda, quando a Release fica Aprovada) mora no domínio; aqui só a
+/// orquestração.
 /// </summary>
 public sealed class RevisaoComunicado(IReleaseRepository releases)
 {
@@ -42,16 +46,73 @@ public sealed class RevisaoComunicado(IReleaseRepository releases)
             release => release.Reabrir(publico),
             cancellationToken);
 
-    private async Task RevisarAsync(
+    public Task<ItemRevisado> EditarItemAsync(
+        string chaveRelease,
+        Guid itemId,
+        string texto,
+        CancellationToken cancellationToken = default) =>
+        RevisarItemAsync(
+            chaveRelease,
+            itemId,
+            release => release.EditarItem(itemId, texto),
+            cancellationToken);
+
+    public Task<ItemRevisado> ExcluirItemAsync(
+        string chaveRelease,
+        Guid itemId,
+        string? motivo,
+        CancellationToken cancellationToken = default) =>
+        RevisarItemAsync(
+            chaveRelease,
+            itemId,
+            release => release.ExcluirItem(itemId, motivo),
+            cancellationToken);
+
+    public Task<ItemRevisado> ReincluirItemAsync(
+        string chaveRelease,
+        Guid itemId,
+        CancellationToken cancellationToken = default) =>
+        RevisarItemAsync(
+            chaveRelease,
+            itemId,
+            release => release.ReincluirItem(itemId),
+            cancellationToken);
+
+    private Task<ItemRevisado> RevisarItemAsync(
+        string chaveRelease,
+        Guid itemId,
+        Func<Release, ItemComunicado> revisao,
+        CancellationToken cancellationToken) =>
+        RevisarAsync(
+            chaveRelease,
+            release => new ItemRevisado(revisao(release), release.PublicoDoItem(itemId)),
+            cancellationToken);
+
+    private Task RevisarAsync(
         string chaveRelease,
         Action<Release> revisao,
+        CancellationToken cancellationToken) =>
+        RevisarAsync(
+            chaveRelease,
+            release =>
+            {
+                revisao(release);
+                return true;
+            },
+            cancellationToken);
+
+    private async Task<T> RevisarAsync<T>(
+        string chaveRelease,
+        Func<Release, T> revisao,
         CancellationToken cancellationToken)
     {
         var release = await releases.BuscarPorChaveJiraAsync(chaveRelease, cancellationToken)
             ?? throw new ReleaseNaoEncontradaException(chaveRelease);
 
-        revisao(release);
+        var resultado = revisao(release);
 
         await releases.SalvarAsync(release, cancellationToken);
+
+        return resultado;
     }
 }

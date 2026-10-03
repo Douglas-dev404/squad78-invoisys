@@ -27,6 +27,9 @@ InvoiSys.Api/
 | `POST` | `/api/v1/releases/{chaveRelease}/aprovar` | `AprovarAsync` → `RevisaoComunicado` | 204 | 404, 409, 422 |
 | `POST` | `/api/v1/releases/{chaveRelease}/reprovar` | `ReprovarAsync` → `RevisaoComunicado` | 204 | 404, 409, 422 |
 | `POST` | `/api/v1/releases/{chaveRelease}/reabrir` | `ReabrirAsync` → `RevisaoComunicado` | 204 | 404, 409, 422 |
+| `PATCH` | `/api/v1/releases/{chaveRelease}/itens/{itemId}` | `EditarItemAsync` → `RevisaoComunicado` | `ItemRevisaoOut` · corpo `{ "texto": "..." }` | 404, 409, 422 |
+| `POST` | `/api/v1/releases/{chaveRelease}/itens/{itemId}/excluir` | `ExcluirItemAsync` → `RevisaoComunicado` | `ItemRevisaoOut` · corpo opcional `{ "motivo": "..." }` | 404, 409 |
+| `POST` | `/api/v1/releases/{chaveRelease}/itens/{itemId}/reincluir` | `ReincluirItemAsync` → `RevisaoComunicado` | `ItemRevisaoOut` | 404, 409 |
 | `GET` | `/openapi/v1.json` | gerado (só em Development) | spec OpenAPI 3.1 | — |
 | `GET` | `/swagger` | Swagger UI (só em Development) | tela para explorar e testar as rotas | — |
 
@@ -69,6 +72,15 @@ Nas rotas de revisão, `MapearFalhaDeRevisao` (em `RevisaoEndpoints`):
 | `ArgumentException` | **422** | revisor ou motivo vazio |
 | público ausente ou desconhecido | **422** | validado na conversão do DTO, sem default para Cliente |
 
+Nas rotas de item, `MapearFalhaDeRevisaoDeItem` (em `ItemComunicadoEndpoints`), mesmo
+contrato ([ADR-022](../../docs/decisoes-arquiteturais.md#adr-022--endpoint-só-chama-caso-de-uso-erros-de-revisão-padronizados)):
+
+| Exceção | Status | Significado |
+|---|---|---|
+| `ReleaseNaoEncontradaException`, `ItemNaoEncontradoException` | **404** | Release inexistente, ou item que não existe nela (inclusive item de outra Release) |
+| `TransicaoDeStatusInvalidaException` | **409** | item de versão aprovada; é preciso reabrir a revisão antes ([ADR-021](../../docs/decisoes-arquiteturais.md#adr-021--item-de-versão-aprovada-não-é-editado-sem-reabrir)) |
+| `ArgumentException` | **422** | edição com texto vazio |
+
 Respostas de erro seguem `ProblemDetails` (`Results.Problem`).
 
 ## Detalhes do `Program.cs`
@@ -101,7 +113,6 @@ Respostas de erro seguem `ProblemDetails` (`Results.Problem`).
 | Item | Issue / fase |
 |---|---|
 | `GET /api/v1/releases` e `GET /api/v1/releases/{chave}` (com versões por público, itens, execuções) | #21 |
-| Editar / excluir / reincluir item | #23 |
 | Exportar Markdown (mapear `ReleaseNaoAprovadaException` para 409) | #24 |
 | `/auth/login`, `/auth/me`, `/auth/logout`, `/auth/forgot-password` + JWT + `[Authorize]` nas rotas de revisão | Fase 3 |
 | `GET /api/v1/branding/highlights` (repository já existe) | Fase 3 |
