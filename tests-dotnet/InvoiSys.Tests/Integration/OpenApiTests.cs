@@ -67,12 +67,19 @@ public class OpenApiTests
             .Select(p => p.Name)
             .ToList();
 
-        caminhos.Should().BeEquivalentTo(
+        caminhos.Should().BeEquivalentTo([
             "/health",
             "/api/v1/releases",
             "/api/v1/releases/{chaveRelease}",
+            "/api/v1/releases/{chaveRelease}/aprovar",
+            "/api/v1/releases/{chaveRelease}/reprovar",
+            "/api/v1/releases/{chaveRelease}/reabrir",
             "/api/v1/releases/{chaveRelease}/historias",
-            "/api/v1/releases/{chaveRelease}/processar");
+            "/api/v1/releases/{chaveRelease}/processar",
+            "/api/v1/releases/{chaveRelease}/itens/{itemId}",
+            "/api/v1/releases/{chaveRelease}/itens/{itemId}/excluir",
+            "/api/v1/releases/{chaveRelease}/itens/{itemId}/reincluir"
+        ]);
     }
 
     [Fact]

@@ -8,6 +8,13 @@ public sealed class RevisaoHumanaObrigatoriaException(string mensagem) : Excepti
 /// <summary>Levantado quando se tenta aprovar uma Release cujo pipeline de IA não rodou.</summary>
 public sealed class ReleaseSemItensProcessadosException(string mensagem) : Exception(mensagem);
 
+/// <summary>Levantado quando o item pedido não existe em nenhuma versão desta Release.</summary>
+public sealed class ItemNaoEncontradoException(string mensagem) : Exception(mensagem);
+
+/// <summary>Levantado quando a operação aponta para uma Release que não foi persistida.</summary>
+public sealed class ReleaseNaoEncontradaException(string chaveJira)
+    : Exception($"Release {chaveJira} não encontrada.");
+
 /// <summary>
 /// Release — agregado raiz do domínio.
 ///
@@ -241,6 +248,55 @@ public sealed class Release
 
         versao.Reprovar(revisadoPor, motivo, agora);
         Status = StatusPipeline.AguardandoRevisao;
+    }
+
+    /// <summary>
+    /// Revisão item a item. O item é procurado em todas as versões (o id é global), e a
+    /// regra de quando ele pode mudar fica em <see cref="VersaoComunicado.EditarItem"/>.
+    /// Devolve o item alterado para quem chamou montar a resposta.
+    /// </summary>
+    public ItemComunicado EditarItem(Guid itemId, string texto)
+    {
+        var (versao, item) = LocalizarItem(itemId);
+        versao.EditarItem(item, texto);
+        return item;
+    }
+
+    /// <inheritdoc cref="EditarItem"/>
+    public ItemComunicado ExcluirItem(Guid itemId, string? motivo = null)
+    {
+        var (versao, item) = LocalizarItem(itemId);
+        versao.ExcluirItem(item, motivo);
+        return item;
+    }
+
+    /// <inheritdoc cref="EditarItem"/>
+    public ItemComunicado ReincluirItem(Guid itemId)
+    {
+        var (versao, item) = LocalizarItem(itemId);
+        versao.ReincluirItem(item);
+        return item;
+    }
+
+    /// <summary>
+    /// Público da versão dona do item — o item não conhece a própria versão (a FK é
+    /// shadow), e quem responde sobre um item precisa dizer de qual público ele é.
+    /// </summary>
+    public PublicoAlvo PublicoDoItem(Guid itemId) => LocalizarItem(itemId).Versao.Publico;
+
+    private (VersaoComunicado Versao, ItemComunicado Item) LocalizarItem(Guid itemId)
+    {
+        foreach (var versao in _versoes)
+        {
+            var item = versao.Itens.FirstOrDefault(i => i.Id == itemId);
+            if (item is not null)
+            {
+                return (versao, item);
+            }
+        }
+
+        throw new ItemNaoEncontradoException(
+            $"Item {itemId} não encontrado na Release {ChaveJira}.");
     }
 
     /// <summary>

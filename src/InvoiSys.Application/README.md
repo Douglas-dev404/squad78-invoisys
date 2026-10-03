@@ -8,6 +8,8 @@ concretos chegam por injeção de dependência.
 InvoiSys.Application/
 ├── Pipeline/
 │   └── PipelineGeracaoReleaseNote.cs   # o caso de uso central
+├── Revisao/
+│   └── RevisaoComunicado.cs            # aprovar/reprovar/reabrir + editar/excluir/reincluir item
 └── DependencyInjection.cs              # AddApplication(): registra os casos de uso
 ```
 
@@ -15,7 +17,7 @@ InvoiSys.Application/
 
 ## `PipelineGeracaoReleaseNote`
 
-Único caso de uso hoje. Recebe a chave de uma Release e devolve o agregado `Release` com
+O caso de uso central. Recebe a chave de uma Release e devolve o agregado `Release` com
 a versão Cliente gerada e pronta para **revisão** (nunca publicada direto).
 
 **Dependências (construtor):** `IJiraClient`, `ILlmProvider`, `IReleaseRepository` e
@@ -67,6 +69,29 @@ infraestrutura, que a Application não referencia.
 
 ---
 
+## `RevisaoComunicado`
+
+Revisão humana: `AprovarAsync`, `ReprovarAsync`, `ReabrirAsync` (por público) e
+`EditarItemAsync`, `ExcluirItemAsync`, `ReincluirItemAsync` (por item). Todas seguem o
+mesmo caminho:
+
+```
+1. release = IReleaseRepository.BuscarPorChaveJiraAsync(chave)
+             ?? throw ReleaseNaoEncontradaException          → 404 na API
+2. release.Aprovar / Reprovar / Reabrir(..., publico)        ← regra mora no domínio
+   release.EditarItem / ExcluirItem / ReincluirItem(itemId, ...)
+3. IReleaseRepository.SalvarAsync(release)
+```
+
+As operações de item devolvem `ItemRevisado` (o item + o público da versão dona dele,
+via `Release.PublicoDoItem`), o bastante para a API montar a resposta sem refazer a busca.
+
+Nenhuma decisão de negócio aqui: o público chega já convertido e obrigatório (sem
+default para Cliente); revisor, motivo e texto de edição são validados pelo domínio.
+Registrado como **Scoped** (depende do repository, que é scoped).
+
+---
+
 ## Como testar
 
 `tests-dotnet/InvoiSys.Tests/Unit/PipelineGeracaoReleaseNoteTests.cs` é a referência:
@@ -78,8 +103,6 @@ forçada). Sem rede, sem token, determinístico.
 | Caso de uso | Issue | Observação |
 |---|---|---|
 | Consultar e listar Releases | #21 | pode ser direto do repository no endpoint, ou um serviço de consulta |
-| Revisar (aprovar/reprovar/reabrir por público) | #22 | carrega Release → método do domínio → `SalvarAsync` |
-| Editar/excluir/reincluir item | #23 | idem, sempre via Release |
 | Exportar Markdown | #24 | ver [P-03](../../docs/decisoes-arquiteturais.md#p-03--onde-mora-o-render-da-exportação) |
 | Gerar versões Comercial/Suporte/Interno | Fase 6 | chamar `ConcluirProcessamento(..., publico)` por público, com prompt por público |
 | Paralelizar o loop por grupo | opcional | só se a latência de Releases grandes incomodar |

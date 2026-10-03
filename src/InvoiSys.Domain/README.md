@@ -61,10 +61,10 @@ classDiagram
 
 | Entidade | Papel | Métodos que importam |
 |---|---|---|
-| [`Release`](Entities/Release.cs) | Raiz do agregado. Dona do ciclo de vida da **geração** (`StatusPipeline`) e porta de entrada para toda mutação de versão/item | `ConcluirProcessamento`, `Aprovar`, `Reprovar`, `Reabrir`, `RegistrarExecucao`, `VersaoPara(publico)`. Atalhos da versão Cliente: `Itens`, `TituloExecutivo`, `ResumoExecutivo`, `ProntaParaExportar` |
+| [`Release`](Entities/Release.cs) | Raiz do agregado. Dona do ciclo de vida da **geração** (`StatusPipeline`) e porta de entrada para toda mutação de versão/item | `ConcluirProcessamento`, `Aprovar`, `Reprovar`, `Reabrir`, `EditarItem`, `ExcluirItem`, `ReincluirItem` (acham o item em qualquer versão pelo id), `PublicoDoItem`, `RegistrarExecucao`, `VersaoPara(publico)`. Atalhos da versão Cliente: `Itens`, `TituloExecutivo`, `ResumoExecutivo`, `ProntaParaExportar` |
 | [`HistoriaJira`](Entities/HistoriaJira.cs) | Dado bruto do Jira. `record` **imutável**: o pipeline gera cópias limpas com `with`, nunca muta | `TextoFonte` (Release Note dedicada **ou** descrição técnica), `PossuiReleaseNoteDedicada` |
-| [`VersaoComunicado`](Entities/VersaoComunicado.cs) | O comunicado **para um público**, com revisão própria (`StatusRevisao`). Responde "pode exportar?" | `Aprovar`, `Reprovar(motivo)`, `Reabrir`, `PreencherConteudo`, `ItensPublicaveis`, `ProntaParaExportar` |
-| [`ItemComunicado`](Entities/ItemComunicado.cs) | Um parágrafo do comunicado, originado de 1+ histórias | `TextoFinal` (edição humana vence), `EditarManualmente`, `Excluir(motivo)`, `Reincluir`, `Origens` |
+| [`VersaoComunicado`](Entities/VersaoComunicado.cs) | O comunicado **para um público**, com revisão própria (`StatusRevisao`). Responde "pode exportar?" | `Aprovar`, `Reprovar(motivo)`, `Reabrir`, `PreencherConteudo`, `EditarItem`/`ExcluirItem`/`ReincluirItem` (recusam versão aprovada, [ADR-021](../../docs/decisoes-arquiteturais.md#adr-021--item-de-versão-aprovada-não-é-editado-sem-reabrir)), `ItensPublicaveis`, `ProntaParaExportar` |
+| [`ItemComunicado`](Entities/ItemComunicado.cs) | Um parágrafo do comunicado, originado de 1+ histórias | `TextoFinal` (edição humana vence), `Origens`. `EditarManualmente`, `Excluir(motivo)` e `Reincluir` são `internal`: de fora do domínio, só pela `Release` |
 | [`ExecucaoPipeline`](Entities/ExecucaoPipeline.cs) | Log de uma rodada do pipeline (rastreabilidade) | `MarcarConcluida`, `MarcarFalha(erro)` |
 
 ### Agregados independentes
@@ -82,10 +82,14 @@ classDiagram
 | `RevisaoHumanaObrigatoriaException` | aprovar Release com pipeline em `falhou`, transição de revisão inválida, ou reprocessar versão já aprovada sem reabrir (`GarantirQuePodeReprocessar`, [ADR-020](../../docs/decisoes-arquiteturais.md#adr-020--versão-aprovada-não-é-reprocessada-sem-reabrir)) |
 | `ReleaseSemItensProcessadosException` | aprovar/reprovar público sem versão gerada, ou versão sem itens |
 | `VersaoSemItensException` | (interna à versão) aprovar sem itens ou com todos excluídos |
-| `TransicaoDeStatusInvalidaException` | (interna à versão) ex.: reaprovar o que já foi aprovado |
+| `TransicaoDeStatusInvalidaException` | (interna à versão) ex.: reaprovar o que já foi aprovado, ou alterar item de versão aprovada |
+| `ItemNaoEncontradoException` | editar/excluir/reincluir um item que não existe na Release |
 | `ReleaseNaoAprovadaException` | construir `ComunicadoExportado` de versão não aprovada |
+| `ReleaseNaoEncontradaException` | caso de uso aponta para uma chave de Release que não foi persistida |
+| `ArgumentException` | reprovar sem motivo, aprovar/reprovar sem identificar o revisor (trilha de auditoria da revisão humana), ou editar item com texto vazio |
 
-> A API ainda não mapeia essas exceções para HTTP (virá com #22/#23; sugestão: 409/422).
+> Mapeamento para HTTP das exceções de revisão: ver `MapearFalhaDeRevisao` e `MapearFalhaDeRevisaoDeItem` no
+> [README da API](../InvoiSys.Api/README.md#tradução-de-erro--http).
 
 ---
 
@@ -105,7 +109,9 @@ Python.
 | [`FormatoExportacao`](Enums/FormatoExportacao.cs) | `markdown` · `html` · `pdf` | exportação |
 
 `CategoriaAlteracaoExtensions.TentarConverter` é case-insensitive de propósito, porque a
-entrada é resposta de LLM.
+entrada é resposta de LLM. `PublicoAlvoExtensions.TentarConverter` também, e **não tem
+default**: valor ausente não converte (na revisão, assumir Cliente aprovaria o público
+errado em silêncio).
 
 ---
 
