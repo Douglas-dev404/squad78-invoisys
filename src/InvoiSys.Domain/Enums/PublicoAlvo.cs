@@ -25,5 +25,23 @@ public static class PublicoAlvoExtensions
         [PublicoAlvo.Interno] = "interno",
     };
 
+    private static readonly Dictionary<string, PublicoAlvo> PorValor =
+        PorEnum.ToDictionary(par => par.Value, par => par.Key);
+
     public static string ParaValor(this PublicoAlvo publico) => PorEnum[publico];
+
+    /// <summary>
+    /// Converte o valor textual de volta para o enum. Sem default para valor ausente: na
+    /// revisão, cair em silêncio no Cliente aprovaria o público errado sem ninguém notar.
+    /// </summary>
+    public static bool TentarConverter(string? valor, out PublicoAlvo publico)
+    {
+        if (string.IsNullOrWhiteSpace(valor))
+        {
+            publico = default;
+            return false;
+        }
+
+        return PorValor.TryGetValue(valor.Trim().ToLowerInvariant(), out publico);
+    }
 }

@@ -7,9 +7,11 @@ e o resultado em DTO. **Nenhuma regra de negócio mora aqui.**
 InvoiSys.Api/
 ├── Program.cs              # bootstrap: DI, migração opt-in, /health, modo --healthcheck
 ├── Endpoints/
-│   └── ReleaseEndpoints.cs # rotas /api/v1/releases
+│   ├── ReleaseEndpoints.cs # rotas /api/v1/releases (historias, processar)
+│   └── RevisaoEndpoints.cs # rotas de revisão humana (aprovar, reprovar, reabrir)
 ├── Contracts/
-│   └── ReleaseContracts.cs # DTOs (records) — nunca expor entidade de domínio
+│   ├── ReleaseContracts.cs # DTOs (records) — nunca expor entidade de domínio
+│   └── RevisaoContracts.cs # DTOs de entrada da revisão
 └── appsettings*.json
 ```
 
@@ -22,6 +24,9 @@ InvoiSys.Api/
 | `GET` | `/health` | inline em `Program.cs` | `{ "status": "ok" }` | — |
 | `GET` | `/api/v1/releases/{chaveRelease}/historias` | `BuscarHistoriasAsync` → `IJiraClient` | `ReleaseOut` | 501, 502 |
 | `POST` | `/api/v1/releases/{chaveRelease}/processar` | `ProcessarReleaseAsync` → `PipelineGeracaoReleaseNote` | `ReleaseProcessadaOut` | 409, 501, 502 |
+| `POST` | `/api/v1/releases/{chaveRelease}/aprovar` | `AprovarAsync` → `RevisaoComunicado` | 204 | 404, 409, 422 |
+| `POST` | `/api/v1/releases/{chaveRelease}/reprovar` | `ReprovarAsync` → `RevisaoComunicado` | 204 | 404, 409, 422 |
+| `POST` | `/api/v1/releases/{chaveRelease}/reabrir` | `ReabrirAsync` → `RevisaoComunicado` | 204 | 404, 409, 422 |
 | `GET` | `/openapi/v1.json` | gerado (só em Development) | spec OpenAPI 3.1 | — |
 | `GET` | `/swagger` | Swagger UI (só em Development) | tela para explorar e testar as rotas | — |
 
@@ -55,6 +60,15 @@ InvoiSys.Api/
 | `IntegracaoExternaException` (e filhas) | **502** | Jira/LLM falhou ou respondeu fora do formato |
 | qualquer outra | 500 | erro interno de verdade |
 
+Nas rotas de revisão, `MapearFalhaDeRevisao` (em `RevisaoEndpoints`):
+
+| Exceção | Status | Significado |
+|---|---|---|
+| `ReleaseNaoEncontradaException` | **404** | não há Release persistida com essa chave |
+| `ReleaseSemItensProcessadosException`, `RevisaoHumanaObrigatoriaException`, `TransicaoDeStatusInvalidaException` | **409** | o estado atual impede a operação (sem comunicado, já aprovada, reabrir o que não foi aprovado) |
+| `ArgumentException` | **422** | revisor ou motivo vazio |
+| público ausente ou desconhecido | **422** | validado na conversão do DTO, sem default para Cliente |
+
 Respostas de erro seguem `ProblemDetails` (`Results.Problem`).
 
 ## Detalhes do `Program.cs`
@@ -76,18 +90,19 @@ Respostas de erro seguem `ProblemDetails` (`Results.Problem`).
   vazio, e `OpenApiTests` quebra de propósito.
 - DTO sempre: enums saem via `ParaValor()` (`"nova_funcionalidade"`), nunca como nome
   PascalCase nem como número.
-- Mutação de revisão: carregar a `Release` via `IReleaseRepository` → método de domínio
-  → `SalvarAsync`. Nunca setar status direto.
+- Endpoint não fala com repository nem decide nada: converte o DTO, chama o caso de uso
+  em `InvoiSys.Application` e traduz o resultado/erro em HTTP (ADR-001). Mutação de
+  revisão passa por `RevisaoComunicado`; nunca setar status direto.
+- Um arquivo de endpoints por recurso (`ReleaseEndpoints`, `RevisaoEndpoints`...), não
+  todas as rotas num arquivo só.
 
 ## O que ainda falta neste módulo
 
 | Item | Issue / fase |
 |---|---|
 | `GET /api/v1/releases` e `GET /api/v1/releases/{chave}` (com versões por público, itens, execuções) | #21 |
-| `POST .../{chave}/versoes/{publico}/aprovar` · `/reprovar` · `/reabrir` (forma final a definir no PR) | #22 |
 | Editar / excluir / reincluir item | #23 |
-| Exportar Markdown | #24 |
-| Mapear exceções de revisão (`RevisaoHumanaObrigatoriaException`, `ReleaseSemItensProcessadosException`, `ReleaseNaoAprovadaException`) para 409/422 | #22–#24 |
+| Exportar Markdown (mapear `ReleaseNaoAprovadaException` para 409) | #24 |
 | `/auth/login`, `/auth/me`, `/auth/logout`, `/auth/forgot-password` + JWT + `[Authorize]` nas rotas de revisão | Fase 3 |
 | `GET /api/v1/branding/highlights` (repository já existe) | Fase 3 |
 | **CORS** para o frontend (hoje não configurado) | Fase 3 |

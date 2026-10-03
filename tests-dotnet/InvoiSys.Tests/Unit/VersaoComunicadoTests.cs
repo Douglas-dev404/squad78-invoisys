@@ -141,6 +141,41 @@ public class VersaoComunicadoTests
         release.VersaoCliente!.Status.Should().Be(StatusRevisao.AguardandoRevisao);
     }
 
+    [Theory]
+    [InlineData("")]
+    [InlineData("   ")]
+    [InlineData(null)]
+    public void Aprovar_ou_reprovar_sem_revisor_falha(string? revisor)
+    {
+        var release = UmaReleaseProcessada();
+
+        var aprovar = () => release.Aprovar(revisor!, DateTimeOffset.UtcNow);
+        var reprovar = () => release.Reprovar(revisor!, "Precisa refazer", DateTimeOffset.UtcNow);
+
+        aprovar.Should().Throw<ArgumentException>();
+        reprovar.Should().Throw<ArgumentException>();
+        release.VersaoCliente!.Status.Should().Be(StatusRevisao.AguardandoRevisao);
+        release.VersaoCliente.RevisadoPor.Should().BeNull();
+    }
+
+    [Theory]
+    [InlineData("cliente", PublicoAlvo.Cliente)]
+    [InlineData(" Suporte ", PublicoAlvo.Suporte)]
+    public void Publico_converte_do_valor_textual(string valor, PublicoAlvo esperado)
+    {
+        PublicoAlvoExtensions.TentarConverter(valor, out var publico).Should().BeTrue();
+        publico.Should().Be(esperado);
+    }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData("financeiro")]
+    public void Publico_ausente_ou_desconhecido_nao_converte(string? valor)
+    {
+        PublicoAlvoExtensions.TentarConverter(valor, out _).Should().BeFalse();
+    }
+
     [Fact]
     public void Versao_reprovada_nao_pode_ser_aprovada_sem_reprocessar()
     {

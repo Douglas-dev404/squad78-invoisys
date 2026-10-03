@@ -111,10 +111,13 @@ public sealed class VersaoComunicado
     /// Invariantes: precisa ter itens processados pela IA, precisa sobrar ao menos um
     /// item não excluído (aprovar comunicado vazio não faz sentido), e o status
     /// precisa ser AguardandoRevisao — não dá para "pular a fila" nem reaprovar o que
-    /// já foi aprovado.
+    /// já foi aprovado. E precisa dizer quem aprovou: aprovação sem revisor não serve
+    /// como trilha de auditoria da revisão humana.
     /// </summary>
     public void Aprovar(string revisadoPor, DateTimeOffset agora)
     {
+        ExigirRevisor(revisadoPor);
+
         if (_itens.Count == 0)
         {
             throw new VersaoSemItensException(
@@ -148,6 +151,8 @@ public sealed class VersaoComunicado
     /// </summary>
     public void Reprovar(string revisadoPor, string motivo, DateTimeOffset agora)
     {
+        ExigirRevisor(revisadoPor);
+
         if (string.IsNullOrWhiteSpace(motivo))
         {
             throw new ArgumentException(
@@ -188,5 +193,15 @@ public sealed class VersaoComunicado
         Status = StatusRevisao.AguardandoRevisao;
         RevisadoPor = null;
         RevisadoEm = null;
+    }
+
+    private static void ExigirRevisor(string revisadoPor)
+    {
+        if (string.IsNullOrWhiteSpace(revisadoPor))
+        {
+            throw new ArgumentException(
+                "Revisão exige identificar o revisor — é a trilha de auditoria da decisão humana.",
+                nameof(revisadoPor));
+        }
     }
 }
