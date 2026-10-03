@@ -56,6 +56,7 @@ app.MapGet("/health", () => Results.Ok(new StatusSaude("ok")))
     .WithSummary("Verificação de que a API está no ar.")
     .Produces<StatusSaude>();
 app.MapReleaseEndpoints();
+app.MapRevisaoEndpoints();
 
 app.Run();
 return 0;

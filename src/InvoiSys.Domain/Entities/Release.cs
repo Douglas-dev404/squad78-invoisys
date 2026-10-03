@@ -8,6 +8,10 @@ public sealed class RevisaoHumanaObrigatoriaException(string mensagem) : Excepti
 /// <summary>Levantado quando se tenta aprovar uma Release cujo pipeline de IA não rodou.</summary>
 public sealed class ReleaseSemItensProcessadosException(string mensagem) : Exception(mensagem);
 
+/// <summary>Levantado quando a operação aponta para uma Release que não foi persistida.</summary>
+public sealed class ReleaseNaoEncontradaException(string chaveJira)
+    : Exception($"Release {chaveJira} não encontrada.");
+
 /// <summary>
 /// Release — agregado raiz do domínio.
 ///
