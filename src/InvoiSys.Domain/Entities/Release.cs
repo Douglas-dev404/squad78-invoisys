@@ -278,6 +278,12 @@ public sealed class Release
         return item;
     }
 
+    /// <summary>
+    /// Público da versão dona do item — o item não conhece a própria versão (a FK é
+    /// shadow), e quem responde sobre um item precisa dizer de qual público ele é.
+    /// </summary>
+    public PublicoAlvo PublicoDoItem(Guid itemId) => LocalizarItem(itemId).Versao.Publico;
+
     private (VersaoComunicado Versao, ItemComunicado Item) LocalizarItem(Guid itemId)
     {
         foreach (var versao in _versoes)

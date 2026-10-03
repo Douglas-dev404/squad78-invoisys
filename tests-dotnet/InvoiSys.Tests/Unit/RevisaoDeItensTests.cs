@@ -79,6 +79,20 @@ public class RevisaoDeItensTests
     }
 
     [Fact]
+    public void Publico_do_item_e_o_da_versao_dona_dele()
+    {
+        var release = UmaReleaseProcessada();
+
+        release.PublicoDoItem(release.VersaoPara(PublicoAlvo.Suporte)!.Itens[0].Id)
+            .Should().Be(PublicoAlvo.Suporte);
+        release.PublicoDoItem(release.VersaoCliente!.Itens[0].Id)
+            .Should().Be(PublicoAlvo.Cliente);
+
+        var inexistente = () => release.PublicoDoItem(Guid.NewGuid());
+        inexistente.Should().Throw<ItemNaoEncontradoException>();
+    }
+
+    [Fact]
     public void Excluir_sem_motivo_registra_motivo_nulo()
     {
         var release = UmaReleaseProcessada();

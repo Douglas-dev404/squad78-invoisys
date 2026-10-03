@@ -1,15 +1,15 @@
 using InvoiSys.Api.Contracts;
+using InvoiSys.Application.Revisao;
 using InvoiSys.Domain.Entities;
 using InvoiSys.Domain.Enums;
-using InvoiSys.Domain.Ports;
 using Microsoft.AspNetCore.Mvc;
 
 namespace InvoiSys.Api.Endpoints;
 
 /// <summary>
 /// Revisão item a item do comunicado: editar o texto, excluir e reincluir. Camada fina:
-/// carrega a Release, chama o método do agregado e salva. A regra de quando um item
-/// pode mudar (versão aprovada não pode) mora no domínio, não aqui.
+/// converte o DTO, chama <see cref="RevisaoComunicado"/> e traduz o resultado em HTTP. A
+/// regra de quando um item pode mudar (versão aprovada não pode) mora no domínio.
 ///
 /// O <c>itemId</c> é global (uuid), então a rota não precisa do público-alvo: a Release
 /// acha a versão dona do item. Item que existe mas é de outra Release é 404.
@@ -25,9 +25,9 @@ public static class ItemComunicadoEndpoints
             .WithName("EditarItem")
             .WithSummary("Troca o texto de um item pela versão revisada por um humano.")
             .Produces<ItemRevisaoOut>()
-            .ProducesProblem(StatusCodes.Status400BadRequest)
             .ProducesProblem(StatusCodes.Status404NotFound)
-            .ProducesProblem(StatusCodes.Status409Conflict);
+            .ProducesProblem(StatusCodes.Status409Conflict)
+            .ProducesProblem(StatusCodes.Status422UnprocessableEntity);
 
         grupo.MapPost("/excluir", ExcluirItemAsync)
             .WithName("ExcluirItem")
@@ -50,90 +50,73 @@ public static class ItemComunicadoEndpoints
         string chaveRelease,
         Guid itemId,
         [FromBody] EditarItemIn corpo,
-        [FromServices] IReleaseRepository repositorio,
+        [FromServices] RevisaoComunicado revisao,
         CancellationToken cancellationToken) =>
-        AlterarItemAsync(
+        RevisarItemAsync(() => revisao.EditarItemAsync(
             chaveRelease,
-            repositorio,
-            release => release.EditarItem(itemId, corpo.Texto ?? string.Empty),
-            cancellationToken);
+            itemId,
+            corpo.Texto ?? string.Empty,
+            cancellationToken));
 
     private static Task<IResult> ExcluirItemAsync(
         string chaveRelease,
         Guid itemId,
         [FromBody] ExcluirItemIn? corpo,
-        [FromServices] IReleaseRepository repositorio,
+        [FromServices] RevisaoComunicado revisao,
         CancellationToken cancellationToken) =>
-        AlterarItemAsync(
+        RevisarItemAsync(() => revisao.ExcluirItemAsync(
             chaveRelease,
-            repositorio,
-            release => release.ExcluirItem(itemId, corpo?.Motivo),
-            cancellationToken);
+            itemId,
+            corpo?.Motivo,
+            cancellationToken));
 
     private static Task<IResult> ReincluirItemAsync(
         string chaveRelease,
         Guid itemId,
-        [FromServices] IReleaseRepository repositorio,
+        [FromServices] RevisaoComunicado revisao,
         CancellationToken cancellationToken) =>
-        AlterarItemAsync(
-            chaveRelease,
-            repositorio,
-            release => release.ReincluirItem(itemId),
-            cancellationToken);
+        RevisarItemAsync(() => revisao.ReincluirItemAsync(chaveRelease, itemId, cancellationToken));
 
     /// <summary>
-    /// O caminho de toda mutação de revisão: Release via repository → método do
-    /// agregado → SalvarAsync. As exceções do domínio viram HTTP aqui, nunca 500.
+    /// Caminho comum das três rotas: executa o caso de uso e devolve o item revisado, ou
+    /// o erro do domínio em ProblemDetails — nunca 500.
     /// </summary>
-    private static async Task<IResult> AlterarItemAsync(
-        string chaveRelease,
-        IReleaseRepository repositorio,
-        Func<Release, ItemComunicado> alteracao,
-        CancellationToken cancellationToken)
+    private static async Task<IResult> RevisarItemAsync(Func<Task<ItemRevisado>> revisao)
     {
-        var release = await repositorio.BuscarPorChaveJiraAsync(chaveRelease, cancellationToken);
-
-        if (release is null)
-        {
-            return Results.Problem(
-                detail: $"Release {chaveRelease} não encontrada.",
-                statusCode: StatusCodes.Status404NotFound);
-        }
-
-        ItemComunicado item;
-
         try
         {
-            item = alteracao(release);
-        }
-        catch (ItemNaoEncontradoException exc)
-        {
-            return Results.Problem(detail: exc.Message, statusCode: StatusCodes.Status404NotFound);
-        }
-        catch (TransicaoDeStatusInvalidaException exc)
-        {
-            // Versão aprovada: o estado atual do recurso impede a operação, e o caminho
-            // é reabrir a revisão — mesmo 409 do reprocessamento de versão aprovada.
-            return Results.Problem(detail: exc.Message, statusCode: StatusCodes.Status409Conflict);
-        }
-        catch (ArgumentException exc)
-        {
-            return Results.Problem(detail: exc.Message, statusCode: StatusCodes.Status400BadRequest);
-        }
+            var (item, publico) = await revisao();
 
-        await repositorio.SalvarAsync(release, cancellationToken);
-
-        var publico = release.Versoes.First(v => v.Itens.Contains(item)).Publico;
-
-        return Results.Ok(new ItemRevisaoOut(
-            item.Id,
-            publico.ParaValor(),
-            item.Categoria.ParaValor(),
-            item.Texto,
-            item.TextoEditadoManualmente,
-            item.TextoFinal,
-            item.Incluido,
-            item.MotivoExclusao,
-            item.Origens));
+            return Results.Ok(new ItemRevisaoOut(
+                item.Id,
+                publico.ParaValor(),
+                item.Categoria.ParaValor(),
+                item.Texto,
+                item.TextoEditadoManualmente,
+                item.TextoFinal,
+                item.Incluido,
+                item.MotivoExclusao,
+                item.Origens));
+        }
+        catch (Exception exc) when (MapearFalhaDeRevisaoDeItem(exc) is { } problema)
+        {
+            return problema;
+        }
     }
+
+    /// <summary>
+    /// Exceções do domínio → HTTP, mesmo contrato das rotas de revisão (ADR-022): não
+    /// encontrado é 404, versão aprovada é 409 (o caminho é reabrir), entrada recusada pelo
+    /// domínio (texto vazio) é 422. Qualquer outra segue como erro interno.
+    /// </summary>
+    private static IResult? MapearFalhaDeRevisaoDeItem(Exception exc) => exc switch
+    {
+        ReleaseNaoEncontradaException or ItemNaoEncontradoException =>
+            Results.Problem(detail: exc.Message, statusCode: StatusCodes.Status404NotFound),
+        TransicaoDeStatusInvalidaException =>
+            Results.Problem(detail: exc.Message, statusCode: StatusCodes.Status409Conflict),
+        ArgumentException =>
+            Results.Problem(detail: exc.Message, statusCode: StatusCodes.Status422UnprocessableEntity),
+        _ => null,
+    };
 }

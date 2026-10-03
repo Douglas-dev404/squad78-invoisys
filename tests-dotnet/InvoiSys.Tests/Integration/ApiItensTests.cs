@@ -73,17 +73,20 @@ public class ApiItensTests
     }
 
     [Fact]
-    public async Task Editar_item_sem_texto_responde_400()
+    public async Task Editar_item_sem_texto_responde_422_e_nao_muda()
     {
         var (repositorio, release) = await ReleaseProcessadaAsync();
         using var app = CriarApp(repositorio);
         using var client = app.CreateClient();
+        var item = release.VersaoCliente!.Itens[0];
 
         var resposta = await client.PatchAsJsonAsync(
-            $"/api/v1/releases/{Chave}/itens/{release.VersaoCliente!.Itens[0].Id}",
+            $"/api/v1/releases/{Chave}/itens/{item.Id}",
             new { texto = "  " });
 
-        resposta.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        resposta.StatusCode.Should().Be(HttpStatusCode.UnprocessableEntity);
+        resposta.Content.Headers.ContentType!.MediaType.Should().Be("application/problem+json");
+        item.TextoEditadoManualmente.Should().BeNull();
     }
 
     [Fact]

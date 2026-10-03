@@ -59,9 +59,6 @@ InvoiSys.Api/
 | Exceção | Status | Significado |
 |---|---|---|
 | `RevisaoHumanaObrigatoriaException` (só em `/processar`) | **409** | a versão já foi aprovada; é preciso reabrir a revisão antes de reprocessar |
-| `TransicaoDeStatusInvalidaException` (rotas de item) | **409** | item de versão aprovada; é preciso reabrir a revisão antes ([ADR-021](../../docs/decisoes-arquiteturais.md#adr-021--item-de-versão-aprovada-não-é-editado-sem-reabrir)) |
-| `ItemNaoEncontradoException` (rotas de item) | **404** | o item não existe nesta Release (inclusive item de outra Release) |
-| `ArgumentException` (rotas de item) | **400** | edição com texto vazio |
 | `ProviderNaoConfiguradoException` | **501** | falta credencial (Jira ou OpenRouter). O `detail` diz o que configurar |
 | `IntegracaoExternaException` (e filhas) | **502** | Jira/LLM falhou ou respondeu fora do formato |
 | qualquer outra | 500 | erro interno de verdade |
@@ -74,6 +71,15 @@ Nas rotas de revisão, `MapearFalhaDeRevisao` (em `RevisaoEndpoints`):
 | `ReleaseSemItensProcessadosException`, `RevisaoHumanaObrigatoriaException`, `TransicaoDeStatusInvalidaException` | **409** | o estado atual impede a operação (sem comunicado, já aprovada, reabrir o que não foi aprovado) |
 | `ArgumentException` | **422** | revisor ou motivo vazio |
 | público ausente ou desconhecido | **422** | validado na conversão do DTO, sem default para Cliente |
+
+Nas rotas de item, `MapearFalhaDeRevisaoDeItem` (em `ItemComunicadoEndpoints`), mesmo
+contrato ([ADR-022](../../docs/decisoes-arquiteturais.md#adr-022--endpoint-só-chama-caso-de-uso-erros-de-revisão-padronizados)):
+
+| Exceção | Status | Significado |
+|---|---|---|
+| `ReleaseNaoEncontradaException`, `ItemNaoEncontradoException` | **404** | Release inexistente, ou item que não existe nela (inclusive item de outra Release) |
+| `TransicaoDeStatusInvalidaException` | **409** | item de versão aprovada; é preciso reabrir a revisão antes ([ADR-021](../../docs/decisoes-arquiteturais.md#adr-021--item-de-versão-aprovada-não-é-editado-sem-reabrir)) |
+| `ArgumentException` | **422** | edição com texto vazio |
 
 Respostas de erro seguem `ProblemDetails` (`Results.Problem`).
 
