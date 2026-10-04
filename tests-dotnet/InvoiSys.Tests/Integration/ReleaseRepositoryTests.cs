@@ -197,7 +197,7 @@ public class ReleaseRepositoryTests(PostgresContainerFixture fixture)
     }
 
     [Fact]
-    public async Task ListarAsync_sem_filtro_devolve_todas_as_releases_criadas_pelo_teste()
+    public async Task ListarResumos_sem_filtro_devolve_todas_as_releases_criadas_pelo_teste()
     {
         var pendente = new Release(ChaveJiraUnica(), [UmaHistoria("INV-1")]);
         var processando = new Release(ChaveJiraUnica(), [UmaHistoria("INV-1")]);
@@ -208,13 +208,15 @@ public class ReleaseRepositoryTests(PostgresContainerFixture fixture)
         await repositorio.SalvarAsync(pendente);
         await repositorio.SalvarAsync(processando);
 
-        var listadas = await repositorio.ListarAsync(status: null);
+        var listadas = await repositorio.ListarResumosAsync(status: null);
 
-        listadas.Select(r => r.Id).Should().Contain([pendente.Id, processando.Id]);
+        listadas.Select(r => r.ChaveJira).Should().Contain([pendente.ChaveJira, processando.ChaveJira]);
+        listadas.Single(r => r.ChaveJira == processando.ChaveJira).Status
+            .Should().Be(StatusPipeline.Processando);
     }
 
     [Fact]
-    public async Task ListarAsync_com_filtro_de_status_so_devolve_releases_daquele_status()
+    public async Task ListarResumos_com_filtro_de_status_so_devolve_releases_daquele_status()
     {
         var aguardandoRevisao = new Release(ChaveJiraUnica(), [UmaHistoria("INV-1")]);
         aguardandoRevisao.ConcluirProcessamento(
@@ -228,38 +230,42 @@ public class ReleaseRepositoryTests(PostgresContainerFixture fixture)
         await repositorio.SalvarAsync(aguardandoRevisao);
         await repositorio.SalvarAsync(pendente);
 
-        var listadas = await repositorio.ListarAsync(StatusPipeline.AguardandoRevisao);
+        var listadas = await repositorio.ListarResumosAsync(StatusPipeline.AguardandoRevisao);
 
-        listadas.Select(r => r.Id).Should().Contain(aguardandoRevisao.Id);
-        listadas.Select(r => r.Id).Should().NotContain(pendente.Id);
+        listadas.Select(r => r.ChaveJira).Should().Contain(aguardandoRevisao.ChaveJira);
+        listadas.Select(r => r.ChaveJira).Should().NotContain(pendente.ChaveJira);
         listadas.Should().OnlyContain(r => r.Status == StatusPipeline.AguardandoRevisao);
     }
 
     [Fact]
-    public async Task ListarAsync_com_status_sem_nenhuma_release_devolve_lista_vazia()
+    public async Task ListarResumos_com_status_sem_nenhuma_release_devolve_lista_vazia()
     {
         await using var contexto = fixture.CriarContexto();
         var repositorio = new ReleaseRepository(contexto);
         await repositorio.SalvarAsync(new Release(ChaveJiraUnica(), [UmaHistoria("INV-1")]));
 
-        var listadas = await repositorio.ListarAsync(StatusPipeline.Falhou);
+        var listadas = await repositorio.ListarResumosAsync(StatusPipeline.Falhou);
 
         listadas.Where(r => r.ChaveJira.StartsWith("RELEASE-TESTE-")).Should().BeEmpty();
     }
 
     [Fact]
-    public async Task ListarAsync_nao_carrega_o_agregado_completo()
+    public async Task ListarResumos_ordena_da_mais_recente_e_traz_a_data_de_criacao_do_banco()
     {
-        var release = new Release(ChaveJiraUnica(), [UmaHistoria("INV-1"), UmaHistoria("INV-2")]);
+        var antiga = new Release(ChaveJiraUnica(), [UmaHistoria("INV-1")]);
+        var recente = new Release(ChaveJiraUnica(), [UmaHistoria("INV-1")]);
+
         await using var contexto = fixture.CriarContexto();
         var repositorio = new ReleaseRepository(contexto);
-        await repositorio.SalvarAsync(release);
+        await repositorio.SalvarAsync(antiga);
+        await repositorio.SalvarAsync(recente);
 
-        var listadas = await repositorio.ListarAsync(status: null);
+        var listadas = (await repositorio.ListarResumosAsync(status: null))
+            .Where(r => r.ChaveJira == antiga.ChaveJira || r.ChaveJira == recente.ChaveJira)
+            .ToList();
 
-        // Listagem é deliberadamente leve (sem Include): a Release volta, mas sem as
-        // histórias carregadas — quem precisar do agregado completo usa
-        // BuscarPorChaveJiraAsync/BuscarPorIdAsync.
-        listadas.Single(r => r.Id == release.Id).Historias.Should().BeEmpty();
+        // CriadoEm vem do default now() do Postgres (cada SaveChanges é uma transação).
+        listadas.Select(r => r.ChaveJira).Should().Equal(recente.ChaveJira, antiga.ChaveJira);
+        listadas[0].CriadoEm.Should().BeAfter(listadas[1].CriadoEm);
     }
 }

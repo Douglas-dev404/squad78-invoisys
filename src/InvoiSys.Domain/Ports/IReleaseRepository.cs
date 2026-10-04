@@ -43,12 +43,17 @@ public interface IReleaseRepository
 
     /// <summary>
     /// Lista Releases, da mais recente para a mais antiga, opcionalmente filtrando por
-    /// status (ex.: fila de revisão pendente = AguardandoRevisao). Sem o Include do
-    /// agregado completo: cada Release volta com Historias/Versoes/Execucoes vazias — a
-    /// listagem não precisa disso, só de <see cref="BuscarPorChaveJiraAsync"/> depois,
-    /// se for abrir uma.
+    /// status (ex.: fila de revisão pendente = AguardandoRevisao).
+    ///
+    /// Devolve <see cref="ReleaseResumo"/>, nunca a entidade: uma Release sem as coleções
+    /// carregadas pareceria um agregado válido sem versões (ProntaParaExportar = false,
+    /// VersaoCliente = null), e se chegasse a SalvarAsync viraria INSERT de uma Release
+    /// que já existe. Para abrir uma, <see cref="BuscarPorChaveJiraAsync"/>.
     /// </summary>
-    Task<IReadOnlyList<Release>> ListarAsync(
+    Task<IReadOnlyList<ReleaseResumo>> ListarResumosAsync(
         StatusPipeline? status,
         CancellationToken cancellationToken = default);
 }
+
+/// <summary>Linha da listagem de Releases — modelo de leitura, não o agregado.</summary>
+public sealed record ReleaseResumo(string ChaveJira, StatusPipeline Status, DateTimeOffset CriadoEm);

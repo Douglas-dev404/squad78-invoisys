@@ -255,14 +255,15 @@ public class ApiReleasesTests
     }
 
     [Fact]
-    public async Task Listar_releases_com_status_invalido_responde_400()
+    public async Task Listar_releases_com_status_invalido_responde_422()
     {
         using var app = CriarApp();
         using var client = app.CreateClient();
 
         var resposta = await client.GetAsync("/api/v1/releases?status=nao-existe");
 
-        resposta.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        resposta.StatusCode.Should().Be(HttpStatusCode.UnprocessableEntity);
+        resposta.Content.Headers.ContentType!.MediaType.Should().Be("application/problem+json");
         var corpo = await resposta.Content.ReadAsStringAsync();
         corpo.Should().Contain("nao-existe", "a resposta diz qual valor foi rejeitado");
     }
@@ -300,8 +301,41 @@ public class ApiReleasesTests
 
         var cliente = versoes.Single(v => v.GetProperty("publico").GetString() == "cliente");
         var itemCliente = cliente.GetProperty("itens").EnumerateArray().Single();
+        itemCliente.GetProperty("id").GetGuid().Should().Be(release.VersaoCliente!.Itens[0].Id);
+        itemCliente.GetProperty("publico").GetString().Should().Be("cliente");
         itemCliente.GetProperty("texto").GetString().Should().Be("Pro cliente.");
+        itemCliente.GetProperty("textoFinal").GetString().Should().Be("Pro cliente.");
         itemCliente.GetProperty("incluido").GetBoolean().Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task Id_do_item_no_detalhe_e_o_alvo_das_rotas_de_item()
+    {
+        var repositorio = new FakeReleaseRepository();
+        var release = new Release("RELEASE-2026-08", [Historia("INV-1")]);
+        release.ConcluirProcessamento(
+            [new ItemComunicado(Domain.Enums.CategoriaAlteracao.Melhoria, "Texto da IA.", ["INV-1"])],
+            "Título",
+            "Resumo");
+        await repositorio.SalvarAsync(release);
+
+        using var app = CriarApp(repositorio: repositorio);
+        using var client = app.CreateClient();
+
+        // O fluxo da tela: abre o detalhe, pega o id do item, edita por ele.
+        var detalhe = await client.GetFromJsonAsync<JsonElement>("/api/v1/releases/RELEASE-2026-08");
+        var itemId = detalhe.GetProperty("versoes")[0].GetProperty("itens")[0].GetProperty("id").GetGuid();
+
+        var edicao = await client.PatchAsJsonAsync(
+            $"/api/v1/releases/RELEASE-2026-08/itens/{itemId}",
+            new { texto = "Texto revisado." });
+        edicao.StatusCode.Should().Be(HttpStatusCode.OK);
+
+        var depois = await client.GetFromJsonAsync<JsonElement>("/api/v1/releases/RELEASE-2026-08");
+        var item = depois.GetProperty("versoes")[0].GetProperty("itens")[0];
+        item.GetProperty("texto").GetString().Should().Be("Texto da IA.", "o texto da IA é preservado");
+        item.GetProperty("textoEditadoManualmente").GetString().Should().Be("Texto revisado.");
+        item.GetProperty("textoFinal").GetString().Should().Be("Texto revisado.");
     }
 
     [Fact]

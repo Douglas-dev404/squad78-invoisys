@@ -48,7 +48,7 @@ public sealed class ReleaseRepository(InvoiSysDbContext contexto) : IReleaseRepo
         await _contexto.SaveChangesAsync(cancellationToken);
     }
 
-    public async Task<IReadOnlyList<Release>> ListarAsync(
+    public async Task<IReadOnlyList<ReleaseResumo>> ListarResumosAsync(
         StatusPipeline? status,
         CancellationToken cancellationToken = default)
     {
@@ -59,8 +59,14 @@ public sealed class ReleaseRepository(InvoiSysDbContext contexto) : IReleaseRepo
             consulta = consulta.Where(r => r.Status == status);
         }
 
+        // Projeção direto no SELECT: só as colunas da linha, nenhuma entidade
+        // materializada nem rastreada.
         return await consulta
             .OrderByDescending(r => EF.Property<DateTimeOffset>(r, "CriadoEm"))
+            .Select(r => new ReleaseResumo(
+                r.ChaveJira,
+                r.Status,
+                EF.Property<DateTimeOffset>(r, "CriadoEm")))
             .ToListAsync(cancellationToken);
     }
 
