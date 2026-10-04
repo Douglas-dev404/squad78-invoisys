@@ -6,17 +6,6 @@ using Microsoft.EntityFrameworkCore;
 
 namespace InvoiSys.Tests.Integration;
 
-/// <summary>
-/// Ciclo de vida completo do agregado <see cref="Release"/> contra Postgres real, do
-/// jeito que a aplicação vai usá-lo: cada etapa num <see cref="InvoiSysDbContext"/> novo
-/// (um por request), carregando a Release já persistida, mutando pelos métodos de
-/// domínio e salvando de volta.
-///
-/// O ponto sensível é o segundo save em diante: versões, itens e execuções nascem com
-/// <c>Guid.NewGuid()</c> no construtor e entram numa Release que já está rastreada. Se o
-/// EF tratar a chave preenchida como "entidade existente", o save vira UPDATE de linha
-/// que não existe — por isso cada etapa relê tudo num contexto limpo.
-/// </summary>
 [Collection("Postgres")]
 public class PersistenciaAgregadoReleaseTests(PostgresContainerFixture fixture)
 {
@@ -103,7 +92,6 @@ public class PersistenciaAgregadoReleaseTests(PostgresContainerFixture fixture)
 
         await Etapa(release.Id, r =>
         {
-            // Pelo agregado, como a API faz (ItemComunicado.EditarManualmente é internal).
             var itens = r.VersaoCliente!.Itens;
             r.EditarItem(itens.Single(i => i.Texto == "Texto da IA").Id, "Texto revisado");
             r.ExcluirItem(itens.Single(i => i.Texto == "Item interno").Id, "Não interessa ao cliente");
@@ -119,14 +107,12 @@ public class PersistenciaAgregadoReleaseTests(PostgresContainerFixture fixture)
         cliente.ItensPublicaveis.Should().ContainSingle()
             .Which.TextoFinal.Should().Be("Texto revisado");
 
-        // Edição humana não sobrescreve o que a IA gerou; exclusão não apaga o registro.
         cliente.Itens.Single(i => i.Texto == "Texto da IA").TextoEditadoManualmente
             .Should().Be("Texto revisado");
         var excluido = cliente.Itens.Single(i => i.Texto == "Item interno");
         excluido.Incluido.Should().BeFalse();
         excluido.MotivoExclusao.Should().Be("Não interessa ao cliente");
 
-        // Aprovar o Cliente não libera o Suporte, e a Release só fica Aprovada com todas.
         recarregada.VersaoPara(PublicoAlvo.Suporte)!.Status.Should().Be(StatusRevisao.AguardandoRevisao);
         recarregada.Status.Should().Be(StatusPipeline.AguardandoRevisao);
     }

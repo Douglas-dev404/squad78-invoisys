@@ -145,6 +145,100 @@ IntegracaoExternaException (abstract) ─► 502
 ProviderNaoConfiguradoException ─► 501
 ```
 
+### Detalhes das portas
+
+- **`null` não é 404 na porta.** Busca que não acha devolve `null` (ou lista vazia), e
+  quem chama decide o que isso significa.
+- `IJiraClient.BuscarHistoriasDaReleaseAsync` resolve a paginação (`nextPageToken`) por
+  dentro e já traz o texto da subtarefa Release Note. Contrato verificado contra a doc
+  oficial: [docs/contratos-integracao.md](../../docs/contratos-integracao.md).
+- `ILlmProvider` tem **um método por estágio que de fato chama o modelo** (2 a 5). O
+  estágio 1 (limpeza) é texto puro e fica na Application. Trocar de provider é escrever
+  outro adapter e mudar um binding no composition root, sem tocar no domínio.
+- `IHistoriaJiraRepository.BuscarPorChaveAsync` exige o `releaseId`, porque a chave do
+  Jira só é única **dentro** de uma Release. As listagens de histórias saem ordenadas
+  pela chave, para o resultado ser estável.
+- `IExecucaoPipelineRepository` e `IComunicadoExportadoRepository` listam do mais
+  recente para o mais antigo, a ordem natural de um log.
+- Portas de leitura (`IHistoriaJiraRepository`, `IExecucaoPipelineRepository`) não têm
+  escrita: uma porta de escrita deixaria gravar filha do agregado sem passar pela
+  `Release`.
+- `IUsuarioRepository.BuscarPorEmailAsync` devolve também usuário desativado. Decidir se
+  desativado pode entrar é regra da autenticação, não da porta.
+- `IDestaqueHeroRepository` é só leitura porque ainda não existe tela nem regra de
+  cadastro de destaques.
+- Exceções de integração (`ExcecoesDeIntegracao.cs`) têm mensagem **segura para chegar ao
+  cliente HTTP**: o corpo da resposta externa vai só para o log do adapter.
+  `ProviderNaoConfiguradoException` não é falha externa, é o ambiente sem credencial.
+
+---
+
+## Por que o modelo é assim
+
+**Release**
+- Coleções são `IReadOnlyList` e só mudam pelos métodos de ciclo de vida: um `List`
+  público deixaria qualquer camada injetar itens sem passar pelo gate de revisão.
+- `Status` descreve a **geração** (a IA rodou?). A **revisão** é de cada
+  `VersaoComunicado`, porque o Cliente pode estar aprovado enquanto o Suporte ainda está
+  em ajuste ([ADR-007](../../docs/decisoes-arquiteturais.md#adr-007--revisão-humana-como-invariante-do-domínio-entidades-ricas),
+  [ADR-008](../../docs/decisoes-arquiteturais.md#adr-008--múltiplos-públicos-como-versaocomunicado-geração--revisão)).
+- A Release só vira `Aprovado` quando **todas** as versões geradas estão aprovadas.
+  Reprovar não é falha técnica: a Release volta a `AguardandoRevisao` e o caminho é
+  reprocessar.
+- `Execucoes` vivem no agregado para a rastreabilidade ser garantia do domínio, e não da
+  aplicação lembrar de gravar o log. Cada rodada vira uma linha, inclusive as que falham.
+- `AtualizarHistorias` (reprocessamento) troca as histórias mantendo `Id`, versões e
+  execuções. Faz `Clear` + `AddRange` na mesma `List`, porque o EF rastreia aquela
+  instância; reatribuir o campo perderia o delete/insert em cascata.
+- `GarantirQuePodeReprocessar` roda **antes** de qualquer chamada externa: recusar
+  depois de gastar Jira e tokens seria desperdício, e a tentativa recusada não deixa
+  rastro (nenhuma execução chegou a rodar).
+- Os atalhos `VersaoCliente`, `Itens`, `TituloExecutivo`, `ResumoExecutivo` e
+  `ProntaParaExportar` existem porque Cliente é o público obrigatório do MVP. Para os
+  outros públicos, use `VersaoPara(publico)`.
+- `PublicoDoItem(itemId)` existe porque o item não conhece a própria versão (a FK é
+  shadow).
+
+**VersaoComunicado**
+- É entidade própria, e não campo do item, porque título, resumo e principalmente a
+  **revisão** variam por público.
+- `ProntaParaExportar` é o gate único que a exportação checa. `ItensPublicaveis` é o que
+  a exportação renderiza, nunca `Itens` cru.
+- `PreencherConteudo` não sobrescreve versão aprovada: a IA não desfaz em silêncio uma
+  decisão humana.
+- `Aprovar` exige itens, ao menos um incluído, status `AguardandoRevisao` e o revisor
+  identificado. Sem revisor, a aprovação não serve como trilha de auditoria.
+- `EditarItem` recusa texto vazio. Para voltar ao texto da IA, o caminho é reprocessar;
+  para tirar o item, é excluir.
+- `Reabrir` não apaga `ComunicadoExportado` anteriores: o que já foi publicado
+  aconteceu, e auditoria não é reescrita.
+
+**ItemComunicado**
+- `Origens` é lista porque um item pode nascer de várias histórias agrupadas (estágio 3).
+- `Incluido` nasce `true`: o revisor **exclui** o que não interessa ao público, não
+  seleciona o que interessa. É o problema original que o produto resolve.
+- Excluir não apaga o registro: o texto da IA e o motivo da exclusão continuam
+  auditáveis. `TextoFinal` é a edição humana quando existe; a revisão humana tem a
+  última palavra.
+
+**Outras entidades**
+- `HistoriaJira` é `record` imutável (o pipeline gera cópias limpas com `with`) e tem um
+  `Id` técnico separado da chave do Jira.
+- `ComunicadoExportado` tem uma linha por exportação (formato e reexportação), para ter
+  histórico completo. `Publico` é redundante de propósito, para facilitar consulta.
+  `Conteudo` guarda Markdown/HTML; `CaminhoArquivo`, o binário (PDF). `GeradoPor` é texto
+  livre até existir autenticação.
+- `Usuario.SenhaHash` guarda só hash (bcrypt/argon2), nunca a senha.
+- `DestaqueHero` é persistido porque o frontend consome os destaques de um endpoint,
+  esperando conteúdo dinâmico.
+
+**Enums**
+- `StatusPipeline` não tem um status por estágio: isso é detalhe de execução do
+  orquestrador, não estado relevante para o domínio.
+- `StatusRevisao` é separado de `StatusPipeline` porque misturar geração e revisão num
+  campo só não representa "Cliente aprovado, Suporte em ajuste".
+- `FormatoExportacao`: Markdown é o único obrigatório do MVP.
+
 ---
 
 ## Regras para quem for mexer aqui

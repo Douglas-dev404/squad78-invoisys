@@ -4,15 +4,6 @@ using Microsoft.EntityFrameworkCore;
 
 namespace InvoiSys.Infrastructure.Database;
 
-/// <summary>
-/// Implementação real de <see cref="IExecucaoPipelineRepository"/> via EF Core: leitura
-/// do histórico de execuções sem materializar o agregado <see cref="Release"/>.
-///
-/// <c>AsNoTracking</c> em tudo, como em <see cref="HistoriaJiraRepository"/>: a porta é
-/// somente leitura, e rastrear abriria a chance de salvar uma execução por fora do
-/// agregado. A ordenação por <c>iniciado_em</c> usa o índice de <c>release_id</c> para o
-/// filtro.
-/// </summary>
 public sealed class ExecucaoPipelineRepository(InvoiSysDbContext contexto) : IExecucaoPipelineRepository
 {
     private readonly InvoiSysDbContext _contexto = contexto;

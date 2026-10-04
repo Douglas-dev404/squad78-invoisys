@@ -4,10 +4,6 @@ using InvoiSys.Domain.Enums;
 
 namespace InvoiSys.Tests.Unit;
 
-/// <summary>
-/// Os invariantes de negócio do agregado Release. Estes testes são o contrato: a
-/// revisão humana é obrigatória, e não existe caminho de código que pule esse gate.
-/// </summary>
 public class ReleaseInvariantesTests
 {
     private static HistoriaJira UmaHistoria(string chave = "INV-1") => new()
@@ -59,9 +55,6 @@ public class ReleaseInvariantesTests
     [Fact]
     public void Aprovar_pulando_a_fila_de_pendente_falha()
     {
-        // Cenário: alguém injeta itens e tenta aprovar sem passar por
-        // AguardandoRevisao. Como só ConcluirProcessamento popula os itens, o caminho
-        // realista é tentar aprovar duas vezes — a segunda já não está aguardando.
         var release = new Release("RELEASE-2026-08", [UmaHistoria()]);
         release.ConcluirProcessamento([UmItem()], "Título", "Resumo");
         release.Aprovar("darth.code", DateTimeOffset.UtcNow);

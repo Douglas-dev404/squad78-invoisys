@@ -4,11 +4,6 @@ using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
 namespace InvoiSys.Infrastructure.Database.Configurations;
 
-/// <summary>
-/// Mapeamento de <see cref="HistoriaJira"/> — sempre filha de uma <see cref="Release"/>
-/// (FK "ReleaseId" configurada como shadow property em <see cref="ReleaseConfiguration"/>,
-/// já que o domínio não expõe essa referência de volta ao pai).
-/// </summary>
 public sealed class HistoriaJiraConfiguration : IEntityTypeConfiguration<HistoriaJira>
 {
     public void Configure(EntityTypeBuilder<HistoriaJira> builder)
@@ -35,10 +30,8 @@ public sealed class HistoriaJiraConfiguration : IEntityTypeConfiguration<Histori
 
         builder.Property<DateTimeOffset>("CriadoEm").HasDefaultValueSql("now()");
 
-        // Unicidade de negócio: a mesma issue do Jira não se repete dentro da mesma Release.
         builder.HasIndex("ReleaseId", nameof(HistoriaJira.Chave)).IsUnique();
 
-        // Calculadas a partir de outras colunas — não persistem.
         builder.Ignore(h => h.PossuiReleaseNoteDedicada);
         builder.Ignore(h => h.TextoFonte);
     }

@@ -5,18 +5,6 @@ using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
 namespace InvoiSys.Infrastructure.Database.Configurations;
 
-/// <summary>
-/// Mapeamento de <see cref="Release"/> — agregado raiz do domínio.
-///
-/// As coleções são expostas como somente-leitura porque o domínio garante que só
-/// entram por seus métodos de ciclo de vida (ver comentário na entidade); por isso o
-/// EF Core precisa acessar os campos privados (<c>_historias</c>/<c>_versoes</c>/
-/// <c>_execucoes</c>) diretamente, não a propriedade pública.
-///
-/// Título, resumo, itens e aprovação <b>não</b> têm coluna aqui: migraram para
-/// <see cref="VersaoComunicado"/>, porque variam por público-alvo. O que sobrou em
-/// Release são os atalhos de leitura da versão Cliente, derivados, nunca persistidos.
-/// </summary>
 public sealed class ReleaseConfiguration : IEntityTypeConfiguration<Release>
 {
     public void Configure(EntityTypeBuilder<Release> builder)
@@ -27,12 +15,7 @@ public sealed class ReleaseConfiguration : IEntityTypeConfiguration<Release>
 
         builder.HasKey(r => r.Id);
 
-        // O Id nasce no construtor do domínio (Guid.NewGuid()), nunca no banco. Sem
-        // ValueGeneratedNever o EF assume que chave preenchida = linha existente: uma
-        // versão/item/execução nova adicionada a uma Release já carregada virava UPDATE
-        // de linha inexistente (DbUpdateConcurrencyException). Vale para todas as
-        // entidades; o default gen_random_uuid() fica só para INSERT via SQL direto.
-        // Ver PersistenciaAgregadoReleaseTests.
+        // Id nasce no domínio: sem ValueGeneratedNever, filho novo numa Release carregada vira UPDATE de linha inexistente (ADR-010).
         builder.Property(r => r.Id)
             .HasDefaultValueSql("gen_random_uuid()")
             .ValueGeneratedNever();
@@ -80,7 +63,6 @@ public sealed class ReleaseConfiguration : IEntityTypeConfiguration<Release>
             .HasField("_execucoes")
             .UsePropertyAccessMode(PropertyAccessMode.Field);
 
-        // Atalhos de leitura da versão Cliente — derivados das versões, sem coluna.
         builder.Ignore(r => r.ProntaParaExportar);
         builder.Ignore(r => r.VersaoCliente);
         builder.Ignore(r => r.TituloExecutivo);

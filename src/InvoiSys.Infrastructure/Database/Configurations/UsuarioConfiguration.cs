@@ -20,7 +20,6 @@ public sealed class UsuarioConfiguration : IEntityTypeConfiguration<Usuario>
         builder.Property(u => u.Email).HasMaxLength(320).IsRequired();
         builder.HasIndex(u => u.Email).IsUnique();
 
-        // bcrypt/argon2 — nunca a senha em texto plano.
         builder.Property(u => u.SenhaHash).HasMaxLength(255).IsRequired();
 
         builder.Property(u => u.Papel).HasMaxLength(50).IsRequired().HasDefaultValue("release_manager");

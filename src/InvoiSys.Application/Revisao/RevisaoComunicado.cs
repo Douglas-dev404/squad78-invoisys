@@ -4,16 +4,8 @@ using InvoiSys.Domain.Ports;
 
 namespace InvoiSys.Application.Revisao;
 
-/// <summary>Item depois de uma ação de revisão, com o público da versão dona dele.</summary>
 public sealed record ItemRevisado(ItemComunicado Item, PublicoAlvo Publico);
 
-/// <summary>
-/// Casos de uso da revisão humana de um comunicado: aprovar, reprovar e reabrir por
-/// público, e editar, excluir e reincluir item. Todos seguem o mesmo caminho — carrega a
-/// Release, chama o método do agregado, salva. A regra (transições de status, versão
-/// aprovada não muda, quando a Release fica Aprovada) mora no domínio; aqui só a
-/// orquestração.
-/// </summary>
 public sealed class RevisaoComunicado(IReleaseRepository releases)
 {
     public Task AprovarAsync(

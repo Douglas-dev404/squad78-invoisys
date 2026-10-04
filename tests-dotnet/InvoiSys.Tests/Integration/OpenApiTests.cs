@@ -6,18 +6,10 @@ using Microsoft.AspNetCore.Mvc.Testing;
 
 namespace InvoiSys.Tests.Integration;
 
-/// <summary>
-/// A documentação da API é entregável do projeto, então é testada como código.
-///
-/// O modo de falhar aqui é silencioso: um handler que devolve IResult sem declarar
-/// .Produces&lt;T&gt;() continua funcionando perfeitamente, mas o spec sai com "200 OK"
-/// e nenhum schema — e ninguém percebe até alguém tentar consumir a API.
-/// </summary>
 public class OpenApiTests
 {
     private static WebApplicationFactory<Program> CriarApp() =>
         new WebApplicationFactory<Program>().WithWebHostBuilder(builder =>
-            // O spec só é publicado em Development (ver Program.cs).
             builder.UseEnvironment("Development"));
 
     private static async Task<JsonDocument> BuscarSpecAsync()
@@ -40,8 +32,6 @@ public class OpenApiTests
         var pagina = await client.GetAsync("/swagger/index.html");
         pagina.StatusCode.Should().Be(HttpStatusCode.OK);
 
-        // A UI não gera spec próprio: tem que apontar para o /openapi/v1.json, o mesmo
-        // que os testes abaixo validam — senão a tela mostraria um contrato diferente.
         var configuracao = await client.GetStringAsync("/swagger/index.js");
         configuracao.Should().Contain("/openapi/v1.json");
     }
@@ -92,7 +82,6 @@ public class OpenApiTests
 
         var ok = processar.GetProperty("responses").GetProperty("200");
 
-        // Um "200 OK" sem content é exatamente o sintoma da regressão.
         ok.TryGetProperty("content", out var content).Should().BeTrue(
             "a resposta de sucesso precisa declarar o corpo que devolve");
 
@@ -133,12 +122,9 @@ public class OpenApiTests
             .GetProperty("post")
             .GetProperty("responses");
 
-        // 501 (falta configurar Jira/LLM) e 502 (dependência externa falhou) são
-        // respostas previsíveis desta API, não imprevistos: quem consome precisa vê-las.
         respostas.TryGetProperty("501", out _).Should().BeTrue();
         respostas.TryGetProperty("502", out _).Should().BeTrue();
 
-        // 409: versão já aprovada só é reprocessada depois de reaberta.
         respostas.TryGetProperty("409", out _).Should().BeTrue();
     }
 }

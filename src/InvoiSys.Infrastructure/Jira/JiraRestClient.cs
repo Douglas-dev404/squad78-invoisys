@@ -7,28 +7,8 @@ using Microsoft.Extensions.Logging;
 
 namespace InvoiSys.Infrastructure.Jira;
 
-/// <summary>
-/// Adapter concreto de <see cref="IJiraClient"/> contra a Jira Cloud REST API v3.
-///
-/// Contrato verificado em 2026-08-24 contra a documentação oficial da Atlassian:
-/// - Endpoint legado /rest/api/3/search foi REMOVIDO. Usamos /rest/api/3/search/jql.
-/// - Paginação por nextPageToken (não mais startAt) — token expira em 7 dias, não
-///   cacheamos entre execuções.
-/// - Autenticação: Basic Auth com email + API token (não senha) — configurada no
-///   HttpClient nomeado, na composition root.
-/// - fields.subtasks retorna só id/key/summary/issuetype por padrão; para pegar o
-///   corpo de texto da subtarefa Release Note é preciso uma segunda chamada em
-///   /rest/api/3/issue/{key} pedindo o campo description.
-///
-/// Retry (429/5xx e falha de transporte) fica na policy de resiliência registrada no
-/// HttpClient, não aqui — o adapter só traduz HTTP em domínio.
-/// </summary>
 public sealed class JiraRestClient(HttpClient http, ILogger<JiraRestClient> logger) : IJiraClient
 {
-    /// <summary>
-    /// Nome do subtask type no Jira da InvoiSys — confirmar exato quando tivermos
-    /// acesso à instância real (pendência listada em docs/contratos-integracao.md).
-    /// </summary>
     private const string TipoIssueReleaseNote = "Release Note";
 
     public async Task<IReadOnlyList<HistoriaJira>> BuscarHistoriasDaReleaseAsync(
@@ -91,11 +71,6 @@ public sealed class JiraRestClient(HttpClient http, ILogger<JiraRestClient> logg
         return issues;
     }
 
-    /// <summary>
-    /// Procura, entre as subtarefas da issue, uma do tipo Release Note e retorna seu
-    /// texto. Custa uma chamada extra por subtarefa candidata — aceitável no volume de
-    /// uma Release (dezenas de issues, não milhares).
-    /// </summary>
     private async Task<string?> BuscarTextoReleaseNoteAsync(
         JsonElement issue,
         CancellationToken cancellationToken)
@@ -158,12 +133,6 @@ public sealed class JiraRestClient(HttpClient http, ILogger<JiraRestClient> logg
         };
     }
 
-    /// <summary>
-    /// O campo description da API v3 vem em Atlassian Document Format (ADF), não texto
-    /// puro. Extração completa de ADF (tabelas, listas, formatação) fica para quando
-    /// tivermos exemplos reais do Jira da InvoiSys — por ora extrai só os nós de texto
-    /// simples, suficiente para alimentar o pipeline de IA.
-    /// </summary>
     internal static string ExtrairTextoDescription(JsonElement fields)
     {
         if (fields.ValueKind != JsonValueKind.Object
@@ -174,7 +143,6 @@ public sealed class JiraRestClient(HttpClient http, ILogger<JiraRestClient> logg
 
         return description.ValueKind switch
         {
-            // Instância antiga/config diferente pode devolver string direto.
             JsonValueKind.String => description.GetString() ?? string.Empty,
             JsonValueKind.Object => ExtrairTextoAdf(description),
             _ => string.Empty,
@@ -235,8 +203,7 @@ public sealed class JiraRestClient(HttpClient http, ILogger<JiraRestClient> logg
                 caminho,
                 corpo);
 
-            // O corpo fica só no log acima: pode trazer detalhe da conta/instância, e esta
-            // mensagem chega até quem chamou a API.
+            // Corpo da resposta só no log: esta mensagem chega a quem chamou a API.
             throw new JiraApiException(
                 $"Jira retornou {(int)resposta.StatusCode} em {caminho}.");
         }

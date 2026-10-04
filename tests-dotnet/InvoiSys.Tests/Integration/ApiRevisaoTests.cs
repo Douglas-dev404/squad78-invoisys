@@ -11,12 +11,6 @@ using Microsoft.Extensions.DependencyInjection.Extensions;
 
 namespace InvoiSys.Tests.Integration;
 
-/// <summary>
-/// Rotas de revisão humana (aprovar, reprovar, reabrir) pelo pipeline HTTP real, com o
-/// repository em memória. As transições em si já são cobertas no domínio
-/// (<c>VersaoComunicadoTests</c>); aqui o foco é o contrato HTTP: status, ProblemDetails
-/// e o efeito na Release salva.
-/// </summary>
 public class ApiRevisaoTests
 {
     private const string Chave = "RELEASE-2026-08";

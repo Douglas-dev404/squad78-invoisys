@@ -26,7 +26,6 @@ a versão Cliente gerada e pronta para **revisão** (nunca publicada direto).
 ### `ExecutarAsync(chaveRelease)`: o que acontece, em ordem
 
 ```
-1. historias = IJiraClient.BuscarH```
 1. release = IReleaseRepository.BuscarPorChaveJiraAsync(chave)   ← já existe?
 2. release?.GarantirQuePodeReprocessar()        ← versão aprovada? recusa aqui (409),
                                                   sem chamar Jira/LLM (ADR-020)
@@ -54,7 +53,24 @@ a versão Cliente gerada e pronta para **revisão** (nunca publicada direto).
      relança
 8. IReleaseRepository.SalvarAsync(release)
 9. return release
-``` que faz | Por que é assim |
+```
+
+Por que cada passo é assim:
+
+- **1 e 4:** a Release já existente é **reusada**, nunca recriada com `new`. O
+  `SalvarAsync` decide INSERT ou UPDATE pelo rastreamento do EF, então reusar a instância
+  carregada é o que faz reprocessar virar UPDATE em vez de linha duplicada.
+- **2:** a recusa vem antes do Jira e do LLM: não gasta token nem toca no agregado.
+- **6:** a execução é registrada antes do `try`, para a rodada deixar rastro mesmo se
+  falhar. Esse rastro é o log que o requisito pede.
+- **7c:** a categoria vem da 1ª história do grupo, porque as histórias foram agrupadas
+  por tratarem do mesmo assunto. Grupo só com chaves inexistentes é omitido: gerar item
+  do nada seria pior que não gerar. O caso inverso (chave real que o modelo esqueceu) é
+  tratado no adapter, que a devolve como grupo próprio, então nenhuma história se perde.
+
+### Métodos auxiliares
+
+| Método | O que faz | Por que é assim |
 |---|---|---|
 | `ExtrairELimpar(historia)` (`internal static`) | Trim do título e colapso de espaços/quebras **no campo que `TextoFonte` vai usar** (Release Note, se houver; senão descrição técnica) | Limpar sempre a descrição técnica seria bug: com Release Note, `TextoFonte` devolveria o texto sujo |
 | `Normalizar(texto)` | `Split` por qualquer whitespace + `Join(' ')` | Determinístico e grátis. Não tem por que gastar token nisso |
@@ -65,7 +81,12 @@ a versão Cliente gerada e pronta para **revisão** (nunca publicada direto).
 `AddApplication(configuration)` registra o pipeline como **Scoped** (as portas que ele
 usa são scoped; singleton capturaria um escopo encerrado) e lê `OpenRouter:Modelo` da
 configuração em vez de `IOptions<OpenRouterOptions>`, porque essa classe vive na
-infraestrutura, que a Application não referencia.
+infraestrutura, que a Application não referencia. O modelo é só um rótulo para o log de
+execução, mas sem ele a coluna `modelo_llm` ficaria vazia, e é o dado mais útil para
+investigar um comunicado ruim.
+
+`AddApplication` fica na Application, e não no composition root da Infrastructure,
+porque a Infrastructure não referencia a Application: quem conhece as duas é a API.
 
 ---
 

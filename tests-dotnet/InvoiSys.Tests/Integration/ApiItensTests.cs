@@ -12,11 +12,6 @@ using Microsoft.Extensions.DependencyInjection.Extensions;
 
 namespace InvoiSys.Tests.Integration;
 
-/// <summary>
-/// Rotas de revisão item a item (editar, excluir, reincluir) pelo pipeline HTTP real,
-/// com o repositório trocado por um fake em memória. A persistência de verdade dessas
-/// mutações é coberta por PersistenciaAgregadoReleaseTests contra Postgres.
-/// </summary>
 public class ApiItensTests
 {
     private const string Chave = "RELEASE-2026-08";

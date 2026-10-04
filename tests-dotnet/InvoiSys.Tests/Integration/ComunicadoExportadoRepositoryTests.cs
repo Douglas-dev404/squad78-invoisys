@@ -6,11 +6,6 @@ using Microsoft.EntityFrameworkCore;
 
 namespace InvoiSys.Tests.Integration;
 
-/// <summary>
-/// Testes de integração de <see cref="ComunicadoExportadoRepository"/> contra Postgres
-/// real — incluindo a FK <c>RESTRICT</c> que protege o histórico de auditoria, que só o
-/// banco de verdade valida.
-/// </summary>
 [Collection("Postgres")]
 public class ComunicadoExportadoRepositoryTests(PostgresContainerFixture fixture)
 {
@@ -19,7 +14,6 @@ public class ComunicadoExportadoRepositoryTests(PostgresContainerFixture fixture
     private static IEnumerable<ItemComunicado> UmItem() =>
         [new ItemComunicado(CategoriaAlteracao.Melhoria, "Texto", ["INV-1"])];
 
-    /// <summary>Release com Cliente e Suporte aprovados, persistida pelo caminho de produção.</summary>
     private async Task<Release> SalvarReleaseAprovada()
     {
         var release = new Release($"RELEASE-TESTE-{Guid.NewGuid():N}", []);

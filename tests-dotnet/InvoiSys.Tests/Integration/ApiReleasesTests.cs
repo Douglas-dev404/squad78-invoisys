@@ -12,11 +12,6 @@ using Microsoft.Extensions.DependencyInjection.Extensions;
 
 namespace InvoiSys.Tests.Integration;
 
-/// <summary>
-/// Testes da API ponta a ponta pelo pipeline HTTP real do ASP.NET — roteamento, DI,
-/// serialização — com as portas externas (Jira, LLM) substituídas por fakes. Nenhuma
-/// chamada de rede, nenhuma credencial.
-/// </summary>
 public class ApiReleasesTests
 {
     private static WebApplicationFactory<Program> CriarApp(
@@ -31,10 +26,7 @@ public class ApiReleasesTests
                 services.RemoveAll<IReleaseRepository>();
                 services.AddScoped(_ => jira ?? new FakeJiraClient());
                 services.AddScoped(_ => llm ?? new FakeLlmProvider());
-                // Testes de HTTP/roteamento/serialização não precisam de Postgres real —
-                // isso já é coberto pelos testes de integração de ReleaseRepository e do
-                // pipeline. Sem isso, o pipeline tentaria persistir contra a connection
-                // string de produção, que não existe neste host de teste.
+                // Sem Postgres aqui: o pipeline persistiria contra uma connection string que não existe neste host.
                 services.AddScoped<IReleaseRepository>(_ => repositorio ?? new FakeReleaseRepository());
             }));
 
@@ -185,9 +177,6 @@ public class ApiReleasesTests
     [Fact]
     public async Task Sem_credencial_de_Jira_configurada_a_API_responde_501_e_nao_500()
     {
-        // Regressão: sem BaseUrl, o HttpClient estourava InvalidOperationException lá
-        // no fundo do adapter e o usuário recebia 500 com stack trace, sem pista de que
-        // faltava configuração.
         using var app = CriarApp(new Infrastructure.Jira.JiraClientPendente());
         using var client = app.CreateClient();
 

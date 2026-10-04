@@ -6,10 +6,6 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace InvoiSys.Api.Endpoints;
 
-/// <summary>
-/// Endpoints da revisão humana por público (aprovar, reprovar, reabrir). Camada fina:
-/// converte o DTO, chama <see cref="RevisaoComunicado"/> e traduz o erro em HTTP.
-/// </summary>
 public static class RevisaoEndpoints
 {
     public static IEndpointRouteBuilder MapRevisaoEndpoints(this IEndpointRouteBuilder rotas)
@@ -79,10 +75,6 @@ public static class RevisaoEndpoints
             corpo.Publico,
             publico => revisao.ReabrirAsync(chaveRelease, publico, cancellationToken));
 
-    /// <summary>
-    /// Caminho comum das três rotas: converte o público do DTO, executa o caso de uso
-    /// e traduz o resultado em HTTP — 204 no sucesso, ProblemDetails no erro.
-    /// </summary>
     private static async Task<IResult> RevisarAsync(
         string? publicoInformado,
         Func<PublicoAlvo, Task> revisao)
@@ -106,11 +98,6 @@ public static class RevisaoEndpoints
         }
     }
 
-    /// <summary>
-    /// Exceções do domínio → HTTP. Estado que impede a operação (sem comunicado gerado,
-    /// já aprovada, transição inválida) é 409, igual ao /processar; entrada inválida
-    /// (revisor ou motivo vazio) é 422. Qualquer outra segue como erro interno.
-    /// </summary>
     private static IResult? MapearFalhaDeRevisao(Exception exc) => exc switch
     {
         ReleaseNaoEncontradaException =>

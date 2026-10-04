@@ -6,15 +6,6 @@ using Microsoft.EntityFrameworkCore;
 
 namespace InvoiSys.Tests.Integration;
 
-/// <summary>
-/// Testes de integração de <see cref="ReleaseRepository"/> contra Postgres real
-/// (Testcontainers). Cobrem o agregado completo — Release + HistoriaJira, incluindo o
-/// array nativo <c>Labels</c> — e as constraints de banco (índice único composto,
-/// cascade delete) que um provider fake não validaria.
-///
-/// HistoriaJira é filha do agregado Release e é gravada só por este repository;
-/// HistoriaJiraRepository é porta somente leitura (ver HistoriaJiraRepositoryTests).
-/// </summary>
 [Collection("Postgres")]
 public class ReleaseRepositoryTests(PostgresContainerFixture fixture)
 {
@@ -34,8 +25,6 @@ public class ReleaseRepositoryTests(PostgresContainerFixture fixture)
         };
     }
 
-    // ChaveJira tem índice único global: sufixo aleatório evita colisão entre testes,
-    // sem precisar resetar o banco (cada teste só toca nos dados que ele mesmo criou).
     private static string ChaveJiraUnica() => $"RELEASE-TESTE-{Guid.NewGuid():N}";
 
     [Fact]
@@ -53,7 +42,6 @@ public class ReleaseRepositoryTests(PostgresContainerFixture fixture)
             await new ReleaseRepository(escrita).SalvarAsync(release);
         }
 
-        // Contexto novo: a releitura vai de fato ao banco, não ao change tracker de quem salvou.
         await using var leitura = fixture.CriarContexto();
         var recarregada = await new ReleaseRepository(leitura).BuscarPorIdAsync(release.Id);
 
@@ -107,7 +95,6 @@ public class ReleaseRepositoryTests(PostgresContainerFixture fixture)
     [Fact]
     public async Task SalvarAsync_com_chave_de_historia_duplicada_na_mesma_release_lanca_DbUpdateException()
     {
-        // Índice único (release_id, chave): a mesma issue do Jira não se repete dentro da Release.
         var release = new Release(ChaveJiraUnica(), [UmaHistoria("INV-1"), UmaHistoria("INV-1")]);
         await using var contexto = fixture.CriarContexto();
         var repositorio = new ReleaseRepository(contexto);
@@ -120,8 +107,6 @@ public class ReleaseRepositoryTests(PostgresContainerFixture fixture)
     [Fact]
     public async Task SalvarAsync_permite_a_mesma_chave_de_historia_em_releases_diferentes()
     {
-        // O índice é composto (release_id, chave), não global em chave: se fosse global,
-        // o SaveChanges abaixo lançaria DbUpdateException e o teste falharia.
         var primeira = new Release(ChaveJiraUnica(), [UmaHistoria("INV-1")]);
         var segunda = new Release(ChaveJiraUnica(), [UmaHistoria("INV-1")]);
 
@@ -157,8 +142,7 @@ public class ReleaseRepositoryTests(PostgresContainerFixture fixture)
             var persistida = await new ReleaseRepository(remocao).BuscarPorIdAsync(release.Id);
             persistida!.Historias.Should().HaveCount(2, "sem isso o teste passaria de forma vazia");
 
-            // IReleaseRepository não expõe delete — o Remove direto no DbContext é
-            // intencional: o alvo é a config OnDelete(Cascade) do mapeamento, não o repository.
+            // Remove direto no DbContext de propósito: o alvo é o OnDelete(Cascade), não o repository (que não tem delete).
             remocao.Releases.Remove(persistida);
             await remocao.SaveChangesAsync();
         }
@@ -179,8 +163,6 @@ public class ReleaseRepositoryTests(PostgresContainerFixture fixture)
             await new ReleaseRepository(criacao).SalvarAsync(release);
         }
 
-        // Segundo Save sobre uma Release já rastreada: cai no ramo de update do
-        // SalvarAsync (estado != Detached), não no Add.
         await using (var atualizacao = fixture.CriarContexto())
         {
             var repositorio = new ReleaseRepository(atualizacao);

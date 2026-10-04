@@ -3,15 +3,6 @@ using InvoiSys.Domain.Ports;
 
 namespace InvoiSys.Infrastructure.Jira;
 
-/// <summary>
-/// Adapter placeholder de <see cref="IJiraClient"/>, usado quando não há credencial de
-/// Jira configurada.
-///
-/// Simétrico ao <see cref="ProviderPendente"/> do LLM, e pelo mesmo motivo: sem
-/// BaseUrl o HttpClient estoura InvalidOperationException lá no fundo do adapter, e o
-/// usuário recebe um 500 com stack trace em vez da causa real. Falhar aqui, com
-/// mensagem que diz o que configurar, vira um 501 honesto.
-/// </summary>
 public sealed class JiraClientPendente : IJiraClient
 {
     private const string Mensagem =

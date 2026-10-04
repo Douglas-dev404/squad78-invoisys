@@ -39,6 +39,7 @@ histórico também é documentação.
 | [020](#adr-020--versão-aprovada-não-é-reprocessada-sem-reabrir) | Versão aprovada não é reprocessada sem reabrir | Aceita | 2026-09-29 |
 | [021](#adr-021--item-de-versão-aprovada-não-é-editado-sem-reabrir) | Item de versão aprovada não é editado sem reabrir | Aceita | 2026-09-30 |
 | [022](#adr-022--endpoint-só-chama-caso-de-uso-erros-de-revisão-padronizados) | Endpoint só chama caso de uso; erros de revisão padronizados | Aceita | 2026-10-03 |
+| [023](#adr-023--o-porquê-mora-na-documentação-não-em-comentário) | O porquê mora na documentação, não em comentário | Aceita | 2026-10-03 |
 | [P-02](#p-02--desenho-da-autenticação) | Desenho da autenticação | **Proposta** | — |
 | [P-03](#p-03--onde-mora-o-render-da-exportação) | Onde mora o render da exportação | **Proposta** | — |
 
@@ -598,6 +599,42 @@ entrada inválida. Sem regra explícita, cada PR inventava a sua.
 - ✅ Contrato de erro previsível para o frontend: 404 / 409 / 422.
 - ⚠️ Mais uma classe na Application por grupo de casos de uso.
 - Coberto por `ApiRevisaoTests` (HTTP) e `VersaoComunicadoTests` (domínio).
+
+---
+
+## ADR-023 — O porquê mora na documentação, não em comentário
+
+**Contexto.** O código acumulou ~1.250 linhas de comentário (`///` em quase todo tipo e
+membro, mais blocos explicando decisões), boa parte repetindo os READMEs e as ADRs. Duas
+fontes para a mesma explicação divergem com o tempo, e o comentário é a que ninguém
+revisa: o código muda e o texto acima dele continua dizendo outra coisa. O
+`CONTRIBUTING.md` ainda pedia "comentário no código explicando o porquê".
+
+**Opções consideradas.**
+1. Manter os comentários e só encurtá-los.
+2. Zero comentário: tudo para a documentação, inclusive armadilhas.
+3. O porquê vai para a documentação; no código fica só aviso de uma linha onde há
+   armadilha real.
+
+**Decisão.** Opção 3.
+
+- Sem `///` (XML doc) e sem bloco explicativo no código. Os nomes de domínio em português
+  já dizem o quê; o porquê vai para o README do projeto (`src/InvoiSys.*/README.md`,
+  `tests-dotnet/README.md`) ou para uma ADR, se for decisão.
+- Aviso de **uma linha** só onde o código parece errado ou removível e removê-lo
+  reintroduziria um bug já corrigido (ex.: `ValueGeneratedNever`, interpolação `{{chave}}`,
+  `Clear` + `AddRange` em coleção rastreada pelo EF, corpo de resposta externa só no log).
+  Quando existe ADR, o aviso aponta para ela.
+- `CONTRIBUTING.md`, template de PR e `AGENTS.md` passam a pedir documentação, não
+  comentário.
+
+**Consequências.**
+- ✅ Uma fonte só para cada explicação, revisada junto com o PR.
+- ✅ Os avisos que sobram chamam atenção justamente por serem raros (21 no total).
+- ⚠️ O IntelliSense deixa de mostrar descrição dos tipos: o contexto está no README do
+  projeto, não no tooltip.
+- ⚠️ Quem muda comportamento precisa lembrar de atualizar o README; o checklist do PR
+  cobra isso.
 
 ---
 

@@ -5,11 +5,6 @@ using InvoiSys.Infrastructure.Database;
 
 namespace InvoiSys.Tests.Integration;
 
-/// <summary>
-/// Testes de integração de <see cref="ExecucaoPipelineRepository"/> contra Postgres real.
-/// As execuções são gravadas pelo caminho de produção — <see cref="Release.RegistrarExecucao"/>
-/// + <see cref="ReleaseRepository"/> —, este repository só lê.
-/// </summary>
 [Collection("Postgres")]
 public class ExecucaoPipelineRepositoryTests(PostgresContainerFixture fixture)
 {
@@ -19,7 +14,7 @@ public class ExecucaoPipelineRepositoryTests(PostgresContainerFixture fixture)
         foreach (var desfecho in desfechos)
         {
             desfecho(release.RegistrarExecucao("openai/gpt-4o-mini"));
-            // Garante IniciadoEm distinto entre execuções para a ordenação ser verificável.
+            // IniciadoEm distinto entre execuções, para a ordenação ser verificável.
             await Task.Delay(5);
         }
 

@@ -6,14 +6,6 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace InvoiSys.Api.Endpoints;
 
-/// <summary>
-/// Revisão item a item do comunicado: editar o texto, excluir e reincluir. Camada fina:
-/// converte o DTO, chama <see cref="RevisaoComunicado"/> e traduz o resultado em HTTP. A
-/// regra de quando um item pode mudar (versão aprovada não pode) mora no domínio.
-///
-/// O <c>itemId</c> é global (uuid), então a rota não precisa do público-alvo: a Release
-/// acha a versão dona do item. Item que existe mas é de outra Release é 404.
-/// </summary>
 public static class ItemComunicadoEndpoints
 {
     public static IEndpointRouteBuilder MapItemComunicadoEndpoints(this IEndpointRouteBuilder rotas)
@@ -77,10 +69,6 @@ public static class ItemComunicadoEndpoints
         CancellationToken cancellationToken) =>
         RevisarItemAsync(() => revisao.ReincluirItemAsync(chaveRelease, itemId, cancellationToken));
 
-    /// <summary>
-    /// Caminho comum das três rotas: executa o caso de uso e devolve o item revisado, ou
-    /// o erro do domínio em ProblemDetails — nunca 500.
-    /// </summary>
     private static async Task<IResult> RevisarItemAsync(Func<Task<ItemRevisado>> revisao)
     {
         try
@@ -104,11 +92,6 @@ public static class ItemComunicadoEndpoints
         }
     }
 
-    /// <summary>
-    /// Exceções do domínio → HTTP, mesmo contrato das rotas de revisão (ADR-022): não
-    /// encontrado é 404, versão aprovada é 409 (o caminho é reabrir), entrada recusada pelo
-    /// domínio (texto vazio) é 422. Qualquer outra segue como erro interno.
-    /// </summary>
     private static IResult? MapearFalhaDeRevisaoDeItem(Exception exc) => exc switch
     {
         ReleaseNaoEncontradaException or ItemNaoEncontradoException =>

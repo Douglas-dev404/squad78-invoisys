@@ -124,6 +124,75 @@ Modelo completo, tabela por tabela: [docs/modelagem-de-dominio.md](../../docs/mo
 
 ---
 
+## Por que é assim
+
+**Configuração e transporte**
+- `JiraOptions` e `OpenRouterOptions` são a única entrada dessa configuração: nenhuma
+  camada lê variável de ambiente direto.
+- O Jira Cloud exige Basic Auth com **API token**, não senha.
+- `OpenRouter:ModelosFallback` vira o parâmetro `models` da requisição: em 5xx/429 a
+  própria OpenRouter tenta o próximo modelo, sem round-trip nosso.
+  `OpenRouter:Endpoint` é configurável para apontar para gateway compatível ou servidor
+  de teste.
+- Retry só em 429, 5xx e falha de transporte. 4xx de cliente (401, 404) sobe na
+  primeira tentativa, porque repetir não muda o resultado. O timeout do LLM é bem maior
+  que o do Jira porque geração de texto é lenta.
+- Sem credencial, o composition root entrega o adapter `*Pendente`: sem `BaseUrl`, o
+  `HttpClient` estouraria lá dentro e o usuário receberia um 500 opaco, em vez de um 501
+  dizendo o que configurar ([ADR-014](../../docs/decisoes-arquiteturais.md#adr-014--adapters-pendente-quando-falta-credencial-501-honesto)).
+
+**Jira**
+- `nextPageToken` expira em 7 dias, então não é guardado entre execuções.
+- `fields.subtasks` traz só id, chave, título e tipo. O corpo da Release Note exige uma
+  segunda chamada por subtarefa, custo aceitável no volume de uma Release (dezenas de
+  issues).
+
+**OpenRouter**
+- `temperature = 0.2`: no pipeline queremos consistência, não criatividade.
+- A categorização não usa JSON mode (a saída é uma palavra), e alguns modelos devolvem
+  a palavra entre aspas; por isso o `Trim('"')`.
+- Alguns modelos atrás do gateway ignoram `response_format` e cercam o JSON com
+  ```` ```json ````; por isso o `ParseJson` remove a cerca antes de parsear.
+- `ValidarGrupos` valida a forma completa: um `[["INV-1", 42]]` passaria numa checagem
+  rasa de "é array?" e sujaria `Origens`.
+
+**Banco**
+- `snake_case` é o idiomático no PostgreSQL. O C# continua em PascalCase; a convenção só
+  afeta o SQL.
+- `itens_comunicado.origens` é `text[]` com as chaves do Jira, e não FK ou tabela de
+  junção: é o que o domínio expõe, a chave já é validada na origem, e normalizar exigiria
+  mudar a assinatura do domínio sem ganho real. O índice GIN cobre "quais itens vieram da
+  história X".
+- Unique `(release_id, publico)` em `versoes_comunicado`: uma versão viva por público.
+  Reprocessar substitui o conteúdo; o histórico do que foi publicado fica em
+  `comunicados_exportados`.
+- Unique `(release_id, chave)` em `historias_jira`: a mesma issue não se repete dentro
+  de uma Release, mas pode aparecer em outra.
+- CHECK de motivo obrigatório quando a versão está reprovada: o domínio já bloqueia, e o
+  banco garante mesmo para INSERT via SQL direto.
+- FK `RESTRICT` de `comunicados_exportados` para a versão: apagar uma versão que já foi
+  publicada reescreveria a auditoria. Exportação não tem unique por combinação, porque
+  reexportar é evento novo.
+- `revisado_por` é texto livre até existir autenticação; depois vira `revisado_por_id`.
+- `ArrayConversionHelper.ListaStringComparer`: sem ele o EF compara `text[]` por
+  referência e marca a lista como alterada em todo `SaveChanges`.
+- A FK de `HistoriaJira` para a Release é shadow property, então o filtro por Release no
+  `HistoriaJiraRepository` usa `EF.Property`.
+
+**Repositories**
+- Portas de leitura usam `AsNoTracking`: rastrear só gastaria memória e abriria a chance
+  de salvar uma filha por fora do agregado. `ReleaseRepository` e `UsuarioRepository`
+  rastreiam de propósito, porque o `SalvarAsync` decide INSERT ou UPDATE pelo estado de
+  rastreamento.
+- `ComunicadoExportadoRepository.AdicionarAsync` sempre faz INSERT: exportação nunca é
+  atualizada.
+- `UsuarioRepository` compara o e-mail exatamente como gravado. Normalizar caixa é regra
+  da autenticação (e teria que valer também no cadastro).
+- Padrão para agregado novo: porta em `Domain.Ports`, implementação aqui, registro no
+  composition root.
+
+---
+
 ## Regras para quem for mexer aqui
 
 - Adapter novo = implementa uma porta do domínio + é registrado **só** no

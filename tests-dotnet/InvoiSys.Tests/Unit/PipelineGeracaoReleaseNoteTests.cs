@@ -23,9 +23,6 @@ public class PipelineGeracaoReleaseNoteTests
     [Fact]
     public async Task Chave_inventada_pelo_LLM_e_ignorada_em_vez_de_derrubar_o_pipeline()
     {
-        // Cenário real: o modelo alucina e devolve no agrupamento uma chave Jira que
-        // nunca existiu na Release. Antes da correção, o lookup por chave lançava
-        // KeyNotFoundException e a Release inteira falhava com 500.
         var jira = new FakeJiraClient { Historias = [Historia("INV-1"), Historia("INV-2")] };
         var llm = new FakeLlmProvider
         {
@@ -117,8 +114,6 @@ public class PipelineGeracaoReleaseNoteTests
         release.Itens[0].Origens.Should().Equal("INV-1", "INV-2");
         release.Itens[1].Origens.Should().Equal("INV-3");
 
-        // O grupo fundido manda os dois textos juntos para a reescrita — é isso que
-        // elimina a duplicata no comunicado final.
         llm.GruposReescritos[0].Should().HaveCount(2);
     }
 
@@ -148,8 +143,6 @@ public class PipelineGeracaoReleaseNoteTests
     [Fact]
     public void Estagio_1_normaliza_a_release_note_quando_ela_existe()
     {
-        // Este é o caso que um "sempre limpar DescricaoTecnica" quebraria em silêncio:
-        // TextoFonte devolveria a Release Note original, suja, ignorando a limpeza.
         var historia = Historia(
             "INV-1",
             descricao: "descrição técnica",
@@ -175,7 +168,6 @@ public class PipelineGeracaoReleaseNoteTests
         release.Itens.Should().BeEmpty();
         release.Status.Should().Be(StatusPipeline.AguardandoRevisao);
 
-        // E o gate segue valendo: sem itens, não há o que aprovar.
         var acao = () => release.Aprovar("darth.code", DateTimeOffset.UtcNow);
         acao.Should().Throw<ReleaseSemItensProcessadosException>();
     }

@@ -3,11 +3,6 @@ using InvoiSys.Domain.Ports;
 
 namespace InvoiSys.Tests.Fakes;
 
-/// <summary>
-/// Fake de <see cref="IReleaseRepository"/>: guarda as Releases salvas em memória, por
-/// Id e por ChaveJira. Sem distinção Add/Update do EF — devolve a mesma instância salva
-/// quando buscada de novo, o suficiente para testar o pipeline sem um banco real.
-/// </summary>
 public sealed class FakeReleaseRepository : IReleaseRepository
 {
     private readonly Dictionary<Guid, Release> _porId = [];

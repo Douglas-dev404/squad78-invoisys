@@ -4,16 +4,6 @@ using Microsoft.EntityFrameworkCore;
 
 namespace InvoiSys.Infrastructure.Database;
 
-/// <summary>
-/// Implementação real de <see cref="IUsuarioRepository"/> via EF Core — mesmo desenho de
-/// <see cref="ReleaseRepository"/>: consultas rastreadas (o usuário volta pronto para
-/// <see cref="Usuario.Desativar"/> etc.) e <see cref="SalvarAsync"/> decidindo Add/Update
-/// pelo estado de rastreamento.
-///
-/// E-mail comparado exatamente como gravado: normalizar caixa é regra de negócio da
-/// autenticação (e teria que valer também no cadastro), não algo para esta camada
-/// decidir sozinha.
-/// </summary>
 public sealed class UsuarioRepository(InvoiSysDbContext contexto) : IUsuarioRepository
 {
     private readonly InvoiSysDbContext _contexto = contexto;
