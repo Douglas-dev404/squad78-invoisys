@@ -134,6 +134,6 @@ forçada). Sem rede, sem token, determinístico.
 
 | Caso de uso | Issue | Observação |
 |---|---|---|
-| Exportar Markdown | #24 | ver [P-03](../../docs/decisoes-arquiteturais.md#p-03--onde-mora-o-render-da-exportação) |
+| ~~Exportar Markdown~~ feito em `Exportacao/` (`ExportacaoComunicado` + `RenderizadorMarkdown`) | #24 | ver [P-03](../../docs/decisoes-arquiteturais.md#p-03--onde-mora-o-render-da-exportação) |
 | Gerar versões Comercial/Suporte/Interno | Fase 6 | chamar `ConcluirProcessamento(..., publico)` por público, com prompt por público |
 | Paralelizar o loop por grupo | opcional | só se a latência de Releases grandes incomodar |
