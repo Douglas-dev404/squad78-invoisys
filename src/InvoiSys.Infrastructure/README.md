@@ -68,7 +68,7 @@ Implementa `ILlmProvider`. Cada método: **carrega o prompt** → **interpola** 
 | Método da porta | Prompt | Modo | Validação |
 |---|---|---|---|
 | `CategorizarAsync(texto)` | `02_categorizar.md` (`{{texto_fonte}}`) | texto | `Trim('"')` + `TentarConverter` → fora do enum = `LlmRespostaInvalidaException` |
-| `AgruparSemelhantesAsync(pares)` | `03_agrupar_semelhantes.md` (`{{lista_chave_texto}}`) | JSON | `ValidarGrupos` (lista de listas de **strings**, forma completa); chave omitida vira grupo próprio + `LogWarning` |
+| `AgruparSemelhantesAsync(pares)` | `03_agrupar_semelhantes.md` (`{{lista_chave_texto}}`) | JSON | `ValidarGrupos`: objeto `{"grupos": [...]}`, porque o `json_object` da OpenRouter/OpenAI exige objeto na raiz (lista crua segue aceita); lista de listas de **strings**, forma completa; chave omitida vira grupo próprio + `LogWarning` |
 | `ReescreverLinguagemNegocioAsync(textos, cat)` | `04_...md` (`{{categoria}}`, `{{textos_fonte}}`) | texto | `Trim()` |
 | `GerarTituloEResumoAsync(itens)` | `05_...md` (`{{itens_texto}}`) | JSON | exige `titulo` e `resumo` string |
 

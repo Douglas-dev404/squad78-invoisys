@@ -17,7 +17,7 @@ chamadas em [`OpenRouterProvider`](../src/InvoiSys.Infrastructure/Llm/OpenRouter
 | Arquivo | Estágio | Método | Placeholders | Saída esperada |
 |---|---|---|---|---|
 | [`02_categorizar.md`](02_categorizar.md) | Categorização | `CategorizarAsync` | `{{texto_fonte}}` | só o valor: `nova_funcionalidade` \| `melhoria` \| `correcao` \| `outros` |
-| [`03_agrupar_semelhantes.md`](03_agrupar_semelhantes.md) | Agrupamento semântico | `AgruparSemelhantesAsync` | `{{lista_chave_texto}}` (JSON `[[chave, texto], ...]`) | JSON: lista de listas de chaves; cada chave em exatamente um grupo |
+| [`03_agrupar_semelhantes.md`](03_agrupar_semelhantes.md) | Agrupamento semântico | `AgruparSemelhantesAsync` | `{{lista_chave_texto}}` (JSON `[[chave, texto], ...]`) | JSON: objeto `{"grupos": [[chave, ...], ...]}` (o JSON mode exige objeto na raiz); cada chave em exatamente um grupo |
 | [`04_reescrever_linguagem_negocio.md`](04_reescrever_linguagem_negocio.md) | Reescrita | `ReescreverLinguagemNegocioAsync` | `{{categoria}}`, `{{textos_fonte}}` | um parágrafo em linguagem de negócio |
 | [`05_gerar_titulo_resumo.md`](05_gerar_titulo_resumo.md) | Título e resumo | `GerarTituloEResumoAsync` | `{{itens_texto}}` | JSON: `{"titulo": "...", "resumo": "..."}` |
 
