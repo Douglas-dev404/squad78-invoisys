@@ -1,6 +1,5 @@
 namespace InvoiSys.Domain.Enums;
 
-/// <summary>Formatos de exportação do comunicado — Markdown é o único obrigatório do MVP.</summary>
 public enum FormatoExportacao
 {
     Markdown,

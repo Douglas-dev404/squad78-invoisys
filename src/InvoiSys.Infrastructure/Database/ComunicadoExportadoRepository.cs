@@ -5,13 +5,6 @@ using Microsoft.EntityFrameworkCore;
 
 namespace InvoiSys.Infrastructure.Database;
 
-/// <summary>
-/// Implementação real de <see cref="IComunicadoExportadoRepository"/> via EF Core.
-///
-/// Append-only: <see cref="AdicionarAsync"/> sempre faz INSERT (não passa pelo "Add ou
-/// Update pelo estado" de <see cref="ReleaseRepository"/>, porque exportação nunca é
-/// atualizada) e as consultas são <c>AsNoTracking</c> — não há o que alterar depois.
-/// </summary>
 public sealed class ComunicadoExportadoRepository(InvoiSysDbContext contexto) : IComunicadoExportadoRepository
 {
     private readonly InvoiSysDbContext _contexto = contexto;

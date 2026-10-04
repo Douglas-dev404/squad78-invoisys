@@ -3,17 +3,6 @@ using InvoiSys.Domain.Ports;
 
 namespace InvoiSys.Application.Pipeline;
 
-/// <summary>
-/// Orquestra o pipeline de 5 estágios de IA sobre uma Release e persiste o resultado.
-/// Depende só das portas (<see cref="IJiraClient"/>, <see cref="ILlmProvider"/>,
-/// <see cref="IReleaseRepository"/>) — nunca de adapter concreto. Isso é o que torna
-/// este código testável sem rede/DB reais: em teste injetamos fakes das portas; em
-/// produção, os adapters reais vêm pela DI do ASP.NET.
-///
-/// Estágio 1 (Extração e Limpeza) é normalização pura de texto — não chama LLM, fica
-/// aqui mesmo como método auxiliar. Estágios 2-5 chamam a porta ILlmProvider.
-/// Ver ADR-004 em docs/decisoes-arquiteturais.md para o desenho completo.
-/// </summary>
 public sealed class PipelineGeracaoReleaseNote(
     IJiraClient jiraClient,
     ILlmProvider llmProvider,
@@ -24,20 +13,15 @@ public sealed class PipelineGeracaoReleaseNote(
     private readonly ILlmProvider _llm = llmProvider;
     private readonly IReleaseRepository _releaseRepository = releaseRepository;
 
-    /// <summary>Identificação do modelo usado, só para registro no log de execução.</summary>
     private readonly string? _modeloLlm = modeloLlm;
 
     public async Task<Release> ExecutarAsync(
         string chaveRelease,
         CancellationToken cancellationToken = default)
     {
-        // Reprocessamento não pode virar um INSERT novo: SalvarAsync decide Insert vs.
-        // Update pelo estado de rastreamento do EF, então reusar a instância já
-        // carregada (em vez de sempre `new Release(...)`) é o que garante update.
+        // Reusar a instância carregada: SalvarAsync decide INSERT/UPDATE pelo rastreamento do EF.
         var release = await _releaseRepository.BuscarPorChaveJiraAsync(chaveRelease, cancellationToken);
 
-        // Antes do Jira e do LLM: versão já aprovada só volta a ser gerada depois que um
-        // humano reabrir a revisão. Recusar aqui não gasta token nem toca no agregado.
         release?.GarantirQuePodeReprocessar();
 
         var historias = await _jira.BuscarHistoriasDaReleaseAsync(chaveRelease, cancellationToken);
@@ -53,8 +37,6 @@ public sealed class PipelineGeracaoReleaseNote(
 
         release.MarcarProcessando();
 
-        // Rastreabilidade: cada rodada vira uma linha no histórico da Release, mesmo
-        // que falhe — o rastro da tentativa é justamente o que o requisito de log pede.
         var execucao = release.RegistrarExecucao(_modeloLlm);
 
         try
@@ -86,15 +68,7 @@ public sealed class PipelineGeracaoReleaseNote(
         return release;
     }
 
-    /// <summary>
-    /// Estágio 1: normaliza espaços/quebras de linha do texto fonte. Não chama LLM —
-    /// é limpeza determinística, não tem por que gastar tokens nisso.
-    ///
-    /// Limpa especificamente o campo que <see cref="HistoriaJira.TextoFonte"/> vai
-    /// devolver (Release Note dedicada, se existir; senão descrição técnica) — limpar
-    /// sempre DescricaoTecnica seria bug quando há Release Note, porque TextoFonte
-    /// ignoraria a limpeza e devolveria o texto original sujo.
-    /// </summary>
+    // Limpa o campo que TextoFonte devolve: limpar sempre DescricaoTecnica ignoraria a Release Note.
     internal static HistoriaJira ExtrairELimpar(HistoriaJira historia) =>
         historia.PossuiReleaseNoteDedicada
             ? historia with
@@ -108,7 +82,6 @@ public sealed class PipelineGeracaoReleaseNote(
                 DescricaoTecnica = Normalizar(historia.DescricaoTecnica),
             };
 
-    /// <summary>Colapsa qualquer sequência de espaços/quebras em um único espaço.</summary>
     private static string Normalizar(string texto) =>
         string.Join(' ', texto.Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries));
 
@@ -117,9 +90,7 @@ public sealed class PipelineGeracaoReleaseNote(
         IReadOnlyList<IReadOnlyList<string>> grupos,
         CancellationToken cancellationToken)
     {
-        // ToDictionary lançaria se o Jira devolvesse a mesma chave duas vezes (issue em
-        // duas páginas da paginação, por exemplo). A primeira ocorrência vence — são o
-        // mesmo dado, e derrubar o processamento por isso seria desproporcional.
+        // TryAdd abaixo: o Jira pode devolver a mesma chave em duas páginas.
         var porChave = new Dictionary<string, HistoriaJira>(historias.Count);
         foreach (var historia in historias)
         {
@@ -129,24 +100,16 @@ public sealed class PipelineGeracaoReleaseNote(
 
         foreach (var grupoChaves in grupos)
         {
-            // O LLM pode alucinar uma chave que nunca veio do Jira. Indexar direto
-            // (porChave[chave]) lançaria KeyNotFoundException e derrubaria a Release
-            // inteira por causa de uma linha inventada — filtramos em vez de confiar.
-            // O caso inverso (chave real que o modelo esqueceu) é tratado no adapter,
-            // que a reinsere como grupo próprio: história real nunca se perde.
+            // O LLM pode alucinar chave: filtrar, nunca indexar direto (ADR-017).
             var chavesConhecidas = grupoChaves.Where(porChave.ContainsKey).ToList();
 
             if (chavesConhecidas.Count == 0)
             {
-                // Grupo formado só por chaves inexistentes: não há texto real para
-                // reescrever, e gerar um item a partir do nada seria pior que omiti-lo.
                 continue;
             }
 
             var historiasDoGrupo = chavesConhecidas.Select(chave => porChave[chave]).ToList();
 
-            // Categoriza pela primeira história do grupo — elas já foram agrupadas por
-            // serem semanticamente equivalentes, então compartilham categoria.
             var categoria = await _llm.CategorizarAsync(
                 historiasDoGrupo[0].TextoFonte,
                 cancellationToken);

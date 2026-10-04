@@ -1,16 +1,5 @@
 namespace InvoiSys.Domain.Enums;
 
-/// <summary>
-/// Categorias fixas de alteração usadas para classificar cada história da Release.
-///
-/// Fixas por decisão de negócio — ver ADR-018 em docs/decisoes-arquiteturais.md.
-/// Não adicionar categoria nova sem necessidade real validada com o responsável
-/// técnico do projeto.
-///
-/// O valor serializado (o "nova_funcionalidade" que sai na API e que o LLM devolve)
-/// vive em <see cref="CategoriaAlteracaoExtensions"/>, não no nome do membro — assim
-/// o C# mantém PascalCase idiomático sem quebrar o contrato herdado do Python.
-/// </summary>
 public enum CategoriaAlteracao
 {
     NovaFuncionalidade,
@@ -34,10 +23,6 @@ public static class CategoriaAlteracaoExtensions
 
     public static string ParaValor(this CategoriaAlteracao categoria) => PorEnum[categoria];
 
-    /// <summary>
-    /// Converte o valor textual de volta para o enum. Case-insensitive porque a
-    /// origem é resposta de LLM, não entrada controlada.
-    /// </summary>
     public static bool TentarConverter(string valor, out CategoriaAlteracao categoria) =>
         PorValor.TryGetValue(valor.Trim().ToLowerInvariant(), out categoria);
 }

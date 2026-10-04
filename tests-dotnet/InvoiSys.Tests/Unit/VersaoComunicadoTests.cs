@@ -4,11 +4,6 @@ using InvoiSys.Domain.Enums;
 
 namespace InvoiSys.Tests.Unit;
 
-/// <summary>
-/// Invariantes da revisão por público. O ponto central: cada
-/// <see cref="VersaoComunicado"/> é revisada de forma independente — aprovar a versão
-/// do Cliente não libera a exportação do Suporte, e vice-versa.
-/// </summary>
 public class VersaoComunicadoTests
 {
     private static HistoriaJira UmaHistoria(string chave = "INV-1") => new()
@@ -264,8 +259,6 @@ public class VersaoComunicadoTests
     [Fact]
     public void Versao_aprovada_recusa_conteudo_novo_mesmo_chamada_direto()
     {
-        // Última linha de defesa: mesmo sem passar pela Release, a versão não aceita
-        // ter o conteúdo aprovado sobrescrito.
         var release = UmaReleaseProcessada();
         release.Aprovar("revisora@invoisys.com", DateTimeOffset.UtcNow);
 

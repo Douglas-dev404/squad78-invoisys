@@ -5,16 +5,6 @@ using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
 namespace InvoiSys.Infrastructure.Database.Configurations;
 
-/// <summary>
-/// Mapeamento de <see cref="ComunicadoExportado"/> — uma linha por exportação, sem
-/// unique constraint na combinação: reexportar é um evento novo, o histórico completo
-/// é o que importa para auditoria.
-///
-/// Aponta para a <see cref="VersaoComunicado"/> que originou o arquivo, e guarda
-/// <c>release_id</c> junto por conveniência de consulta. A FK da versão é
-/// <c>Restrict</c>: apagar uma versão que já gerou export publicado reescreveria o
-/// histórico de auditoria.
-/// </summary>
 public sealed class ComunicadoExportadoConfiguration : IEntityTypeConfiguration<ComunicadoExportado>
 {
     public void Configure(EntityTypeBuilder<ComunicadoExportado> builder)

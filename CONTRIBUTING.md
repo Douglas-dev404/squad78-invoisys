@@ -32,8 +32,11 @@ feature/xyz → PR → develop → (quando pronto pra release) → PR → main
    chmod +x .git/hooks/pre-push
    ```
 3. Se a mudança tocar em regra de negócio, invariante de domínio, ou decisão de
-   arquitetura: atualizar a documentação relevante do projeto, ou ao menos deixar
-   comentário no código explicando o porquê.
+   arquitetura: atualizar o README do projeto que mudou (`src/InvoiSys.*/README.md`,
+   `tests-dotnet/README.md`) e, se for decisão nova, uma ADR. **O porquê mora na
+   documentação, não em comentário no código** ([ADR-023](docs/decisoes-arquiteturais.md#adr-023--o-porquê-mora-na-documentação-não-em-comentário)):
+   sem `///` e sem bloco explicativo. Comentário só de uma linha, e só para armadilha
+   real (algo que parece errado ou removível e reintroduziria um bug).
 
 ## Abrindo o PR
 

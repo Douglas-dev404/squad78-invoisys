@@ -4,11 +4,6 @@ using InvoiSys.Domain.Enums;
 
 namespace InvoiSys.Tests.Unit;
 
-/// <summary>
-/// Revisão item a item pela Release (editar, excluir, reincluir). O ponto central: item
-/// de versão aprovada não muda — o texto aprovado por um humano só é alterado depois de
-/// reabrir a revisão (ADR-021).
-/// </summary>
 public class RevisaoDeItensTests
 {
     private static readonly DateTimeOffset Agora = new(2026, 9, 30, 12, 0, 0, TimeSpan.Zero);

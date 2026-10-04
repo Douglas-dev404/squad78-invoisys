@@ -5,15 +5,6 @@ using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
 namespace InvoiSys.Infrastructure.Database.Configurations;
 
-/// <summary>
-/// Mapeamento de <see cref="VersaoComunicado"/> — o comunicado de uma Release escrito
-/// para um público específico, com seu próprio ciclo de revisão.
-///
-/// Unique em <c>(release_id, publico)</c>: uma Release tem no máximo uma versão viva
-/// por audiência. Reprocessar um público substitui o conteúdo da versão existente em
-/// vez de criar outra — o histórico do que já foi publicado vive em
-/// <see cref="ComunicadoExportado"/>, não em versões duplicadas.
-/// </summary>
 public sealed class VersaoComunicadoConfiguration : IEntityTypeConfiguration<VersaoComunicado>
 {
     public void Configure(EntityTypeBuilder<VersaoComunicado> builder)
@@ -27,8 +18,6 @@ public sealed class VersaoComunicadoConfiguration : IEntityTypeConfiguration<Ver
                 "ck_versoes_comunicado_status",
                 $"""status IN ('{string.Join("','", Enum.GetValues<StatusRevisao>().Select(s => s.ParaValor()))}')""");
 
-            // Reprovar sem motivo é inconsistência de dados, não só de código: o
-            // domínio já bloqueia, o banco garante mesmo para INSERT via SQL direto.
             t.HasCheckConstraint(
                 "ck_versoes_comunicado_motivo_reprovacao",
                 "status <> 'reprovado' OR motivo_reprovacao IS NOT NULL");
@@ -56,8 +45,6 @@ public sealed class VersaoComunicadoConfiguration : IEntityTypeConfiguration<Ver
         builder.Property(v => v.TituloExecutivo).HasColumnType("text");
         builder.Property(v => v.ResumoExecutivo).HasColumnType("text");
 
-        // Texto livre, não FK para Usuario: autenticação ainda não está implementada
-        // no domínio. Quando entrar, este campo migra para RevisadoPorId (uuid).
         builder.Property(v => v.RevisadoPor).HasMaxLength(200);
         builder.Property(v => v.RevisadoEm);
         builder.Property(v => v.MotivoReprovacao).HasColumnType("text");
@@ -74,7 +61,6 @@ public sealed class VersaoComunicadoConfiguration : IEntityTypeConfiguration<Ver
             .HasField("_itens")
             .UsePropertyAccessMode(PropertyAccessMode.Field);
 
-        // Derivadas dos itens e do status — sem coluna própria.
         builder.Ignore(v => v.ItensPublicaveis);
         builder.Ignore(v => v.ProntaParaExportar);
     }

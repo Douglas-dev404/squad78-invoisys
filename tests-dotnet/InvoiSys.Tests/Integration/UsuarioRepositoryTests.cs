@@ -5,11 +5,9 @@ using Microsoft.EntityFrameworkCore;
 
 namespace InvoiSys.Tests.Integration;
 
-/// <summary>Testes de integração de <see cref="UsuarioRepository"/> contra Postgres real.</summary>
 [Collection("Postgres")]
 public class UsuarioRepositoryTests(PostgresContainerFixture fixture)
 {
-    // E-mail tem índice único global: sufixo aleatório isola os testes entre si.
     private static Usuario UmUsuario(string? email = null) =>
         new("Ana Revisora", email ?? $"ana-{Guid.NewGuid():N}@invoisys.com", "hash-bcrypt", "release_manager");
 

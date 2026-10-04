@@ -119,8 +119,8 @@ em [docs/decisoes-arquiteturais.md](docs/decisoes-arquiteturais.md) (ADRs). Deci
   consultar histórias (por id, por chave dentro de uma Release, ou por Release) sem
   carregar o agregado inteiro; por isso é somente leitura e sem tracking — uma porta de
   escrita deixaria gravar uma história por fora do agregado. A regra "repository é por
-  agregado, não por entidade filha" (docstring de
-  `src/InvoiSys.Domain/Ports/IReleaseRepository.cs`) segue valendo para as demais
+  agregado, não por entidade filha" (ADR-009 e seção Portas do
+  `src/InvoiSys.Domain/README.md`) segue valendo para as demais
   filhas: `ExecucaoPipeline` ganhou a mesma porta somente leitura
   (`IExecucaoPipelineRepository`, histórico de execuções/rastreabilidade);
   `VersaoComunicado` e `ItemComunicado` **não têm porta própria** — aprovar, reprovar,
@@ -148,6 +148,12 @@ em [docs/decisoes-arquiteturais.md](docs/decisoes-arquiteturais.md) (ADRs). Deci
 
 ## Padrões de código
 
+- **Comentário mínimo; o porquê mora na documentação** (ADR-023). Não escreva `///` nem
+  bloco de comentário explicando decisão. A explicação vai no README do projeto que você
+  mudou (`src/InvoiSys.*/README.md`, `tests-dotnet/README.md`) ou numa ADR. Exceção:
+  aviso de **uma linha** onde há armadilha real, algo que parece errado ou removível e
+  reintroduziria um bug já corrigido (ex.: `ValueGeneratedNever`, interpolação `{{chave}}`).
+  Não remova esses avisos.
 - Nomes de domínio em **português** (é o vocabulário de negócio da InvoiSys/Jira
   deles) — `Release`, `HistoriaJira`, `CategoriaAlteracao`. Nomes técnicos genéricos
   (framework, infra) seguem convenção inglesa normal (`JiraClient`, `LLMProvider`).

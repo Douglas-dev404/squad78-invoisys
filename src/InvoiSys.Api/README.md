@@ -87,6 +87,25 @@ contrato ([ADR-022](../../docs/decisoes-arquiteturais.md#adr-022--endpoint-só-c
 
 Respostas de erro seguem `ProblemDetails` (`Results.Problem`).
 
+## Contratos: por que são assim
+
+- DTO sempre, nunca entidade de domínio na resposta: o contrato HTTP fica estável mesmo
+  que o domínio mude. Enums saem no formato herdado do contrato original
+  (`nova_funcionalidade`, `aguardando_revisao`), e quem consome a API não precisa saber
+  que o backend trocou de linguagem.
+- Os campos dos DTOs de entrada da revisão são **anuláveis** porque é isso que o binder
+  JSON entrega quando o campo falta. A obrigatoriedade (revisor, motivo, texto) é
+  validada no domínio, não pela anotação do tipo.
+- `aprovadoPor`/`revisadoPor` são texto livre enquanto não há autenticação. Quando houver,
+  saem do corpo e passam a vir do usuário autenticado.
+- `ItemRevisaoOut` traz o `id` (alvo das rotas de item), o texto da IA e a edição humana
+  lado a lado, o `textoFinal` e se o item está incluído: o bastante para a tela atualizar
+  a linha sem buscar a Release inteira de novo.
+- As rotas de item não pedem público: o `itemId` é global, e a Release acha a versão
+  dona do item. Item de outra Release dá 404.
+- `GET .../historias` só consulta o Jira, nunca roda o pipeline, então o `status` da
+  resposta é sempre `pendente`.
+
 ## Detalhes do `Program.cs`
 
 - **Ordem de registro:** `AddOpenApi` → `AddInfrastructure` → `AddApplication`.
@@ -95,7 +114,9 @@ Respostas de erro seguem `ProblemDetails` (`Results.Problem`).
   contrato. Em Development apenas; `OpenApiTests` garante que não aparece em produção.
 - **Migração no startup** só com `Database:MigrarAoIniciar=true` ([ADR-016](../../docs/decisoes-arquiteturais.md#adr-016--migração-de-banco-no-startup-é-opt-in)).
 - **`--healthcheck`:** a imagem `aspnet` não tem curl/wget. O `HEALTHCHECK` do Docker
-  roda `dotnet InvoiSys.Api.dll --healthcheck`, que chama `/health` e sai com 0/1.
+  roda `dotnet InvoiSys.Api.dll --healthcheck`, que chama `/health` e sai com 0/1. A porta vem
+  de `ASPNETCORE_HTTP_PORTS`, para o check não mentir se a porta mudar, e API fora do ar
+  ou lenta (4 s) vira saída 1, não crash.
 - `public partial class Program` existe para o `WebApplicationFactory` dos testes.
 
 ## Regras para quem for mexer aqui

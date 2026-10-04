@@ -3,10 +3,6 @@ using System.Text;
 
 namespace InvoiSys.Tests.Fakes;
 
-/// <summary>
-/// Handler HTTP falso: devolve as respostas enfileiradas, na ordem, e guarda os
-/// corpos enviados. Permite testar os adapters sem tocar a rede.
-/// </summary>
 public sealed class FakeHttpMessageHandler : HttpMessageHandler
 {
     private readonly Queue<HttpResponseMessage> _respostas = new();
@@ -24,7 +20,6 @@ public sealed class FakeHttpMessageHandler : HttpMessageHandler
         return this;
     }
 
-    /// <summary>Resposta da OpenRouter no formato Chat Completions, com o conteúdo dado.</summary>
     public FakeHttpMessageHandler ResponderConteudoLlm(string conteudo)
     {
         var escapado = System.Text.Json.JsonSerializer.Serialize(conteudo);

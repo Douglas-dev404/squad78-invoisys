@@ -4,11 +4,6 @@ using InvoiSys.Infrastructure.Database;
 
 namespace InvoiSys.Tests.Integration;
 
-/// <summary>
-/// Testes de integração de <see cref="DestaqueHeroRepository"/> contra Postgres real
-/// (Testcontainers). O container é compartilhado com as outras classes de banco, então
-/// cada teste olha só para os destaques que ele mesmo semeou.
-/// </summary>
 [Collection("Postgres")]
 public class DestaqueHeroRepositoryTests(PostgresContainerFixture fixture)
 {
@@ -67,7 +62,6 @@ public class DestaqueHeroRepositoryTests(PostgresContainerFixture fixture)
         var desativado = UmDestaque(2, "Desativado");
         await Semear(ativo, desativado);
 
-        // Desativa depois de gravado: Desativar() é a transição real do domínio.
         await using (var contexto = fixture.CriarContexto())
         {
             var gravado = await contexto.DestaquesHero.FindAsync(desativado.Id);

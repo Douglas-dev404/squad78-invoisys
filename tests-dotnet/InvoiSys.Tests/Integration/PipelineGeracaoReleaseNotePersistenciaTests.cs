@@ -8,17 +8,6 @@ using Xunit.Abstractions;
 
 namespace InvoiSys.Tests.Integration;
 
-/// <summary>
-/// Testes de integração da persistência feita por <see cref="PipelineGeracaoReleaseNote"/>
-/// contra Postgres real (Testcontainers). Jira e LLM continuam fakes — o que este teste
-/// cobre é só o comportamento novo: gravar via <see cref="ReleaseRepository"/> ao fim do
-/// pipeline, inclusive no caminho de falha, e não duplicar linha ao reprocessar.
-///
-/// Cada contexto recebe a saída do teste: rodando com
-/// <c>--logger "console;verbosity=detailed"</c>, aparece o SQL que o EF Core executa
-/// (INSERT/UPDATE/SELECT com valores), intercalado com as etapas marcadas por
-/// <see cref="Etapa"/>.
-/// </summary>
 [Collection("Postgres")]
 public class PipelineGeracaoReleaseNotePersistenciaTests(
     PostgresContainerFixture fixture,
@@ -34,8 +23,6 @@ public class PipelineGeracaoReleaseNotePersistenciaTests(
         TipoIssue = "Story",
     };
 
-    // ChaveJira tem índice único global: sufixo aleatório evita colisão entre testes,
-    // sem precisar resetar o banco (mesmo helper de ReleaseRepositoryTests).
     private static string ChaveJiraUnica() => $"RELEASE-TESTE-{Guid.NewGuid():N}";
 
     [Fact]
@@ -55,7 +42,6 @@ public class PipelineGeracaoReleaseNotePersistenciaTests(
             await pipeline.ExecutarAsync(chaveRelease);
         }
 
-        // Contexto novo: simula o restart, a releitura vai de fato ao banco.
         Etapa("2. Contexto novo (simula restart): relê tudo do banco");
         await using var leitura = fixture.CriarContexto(saida);
         var recarregada = await new ReleaseRepository(leitura).BuscarPorChaveJiraAsync(chaveRelease);
@@ -141,7 +127,6 @@ public class PipelineGeracaoReleaseNotePersistenciaTests(
         Etapa("2. Revisor aprova a versão Cliente: UPDATE em versoes_comunicado e releases");
         await Revisar(chaveRelease, r => r.Aprovar("revisora@invoisys.com", DateTimeOffset.UtcNow));
 
-        // Reprocessar sem reabrir: recusado antes de tocar no Jira, banco intacto.
         jira.Historias = [Historia("INV-2")];
         llm.TextoReescrito = "Texto novo da IA.";
         jira.ChavesConsultadas.Clear();
@@ -160,7 +145,6 @@ public class PipelineGeracaoReleaseNotePersistenciaTests(
         bloqueada.Historias.Select(h => h.Chave).Should().Equal("INV-1");
         bloqueada.Execucoes.Should().HaveCount(1, "tentativa recusada não vira execução");
 
-        // Depois que um humano reabre, o reprocessamento segue normalmente.
         Etapa("4. Revisor reabre a revisão: UPDATE volta a versão para aguardando_revisao");
         await Revisar(chaveRelease, r => r.Reabrir());
         Etapa("5. Reprocessa: troca histórias e itens (DELETE + INSERT) e registra a 2ª execução");
@@ -178,7 +162,6 @@ public class PipelineGeracaoReleaseNotePersistenciaTests(
         reprocessada.Execucoes.Should().HaveCount(2);
     }
 
-    /// <summary>Carrega, aplica uma ação de revisão e salva — como fará a API de revisão.</summary>
     private async Task Revisar(string chaveRelease, Action<Release> acao)
     {
         await using var contexto = fixture.CriarContexto(saida);

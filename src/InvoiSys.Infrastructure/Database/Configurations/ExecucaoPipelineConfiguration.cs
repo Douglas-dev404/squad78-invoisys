@@ -5,14 +5,6 @@ using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
 namespace InvoiSys.Infrastructure.Database.Configurations;
 
-/// <summary>
-/// Mapeamento de <see cref="ExecucaoPipeline"/> — registro de rastreabilidade, uma
-/// linha por rodada do pipeline de IA sobre uma Release (histórico completo, uma
-/// Release pode ter várias). A relação em si é declarada em
-/// <see cref="ReleaseConfiguration"/>, porque a coleção vive no agregado
-/// (<c>Release.Execucoes</c>) — é o domínio que garante que toda rodada deixa rastro,
-/// não a camada de aplicação lembrar de gravar o log.
-/// </summary>
 public sealed class ExecucaoPipelineConfiguration : IEntityTypeConfiguration<ExecucaoPipeline>
 {
     public void Configure(EntityTypeBuilder<ExecucaoPipeline> builder)

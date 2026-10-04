@@ -4,11 +4,6 @@ using InvoiSys.Infrastructure.Database;
 
 namespace InvoiSys.Tests.Integration;
 
-/// <summary>
-/// Testes de integração de <see cref="HistoriaJiraRepository"/> contra Postgres real
-/// (Testcontainers). Os dados são semeados via <see cref="ReleaseRepository"/> — é ele que
-/// grava o agregado; este repository só lê.
-/// </summary>
 [Collection("Postgres")]
 public class HistoriaJiraRepositoryTests(PostgresContainerFixture fixture)
 {
@@ -72,7 +67,6 @@ public class HistoriaJiraRepositoryTests(PostgresContainerFixture fixture)
     [Fact]
     public async Task BuscarPorChaveAsync_nao_confunde_a_mesma_chave_de_releases_diferentes()
     {
-        // A chave só é única por Release: INV-1 existe nas duas, com títulos distintos.
         var primeira = await SalvarRelease(UmaHistoria("INV-1", titulo: "Da primeira"));
         var segunda = await SalvarRelease(UmaHistoria("INV-1", titulo: "Da segunda"));
 
@@ -134,8 +128,6 @@ public class HistoriaJiraRepositoryTests(PostgresContainerFixture fixture)
         await repositorio.ListarPorReleaseAsync(release.Id);
         await repositorio.BuscarPorChaveAsync(release.Id, "INV-1");
 
-        // Sem tracking: nenhuma História rastreada e, principalmente, nenhuma Release
-        // materializada — é a diferença para IReleaseRepository, que carrega o agregado.
         contexto.ChangeTracker.Entries().Should().BeEmpty();
     }
 }

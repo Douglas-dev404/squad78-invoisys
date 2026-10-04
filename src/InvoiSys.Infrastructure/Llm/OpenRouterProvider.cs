@@ -9,25 +9,6 @@ using Microsoft.Extensions.Options;
 
 namespace InvoiSys.Infrastructure.Llm;
 
-/// <summary>
-/// Adapter concreto de <see cref="ILlmProvider"/> contra a API da OpenRouter.
-///
-/// Contrato verificado em 2026-08-24 contra a documentação oficial:
-/// - Endpoint único: POST https://openrouter.ai/api/v1/chat/completions
-/// - Schema de request/response compatível com OpenAI Chat Completions — não
-///   precisamos de SDK dedicado, HttpClient direto resolve.
-/// - Saída estruturada via response_format: {"type": "json_object"}.
-/// - Modelo especificado como "provedor/modelo" (ex: "openai/gpt-4o-mini").
-/// - Fallback nativo entre modelos: parâmetro models (lista) — se o primeiro falhar
-///   com 5xx/429, a OpenRouter tenta o próximo automaticamente, sem round-trip nosso.
-/// - Erro 429 vem com header Retry-After e corpo {"error": {"code","message","type"}}.
-///
-/// Fonte: openrouter.ai/docs/api_reference/overview.
-///
-/// Cada método carrega o prompt correspondente de prompts/*.md (via PromptLoader),
-/// interpola os placeholders, e faz uma chamada ao modelo. Parsing de JSON da resposta
-/// é defensivo — LLM pode devolver JSON malformado mesmo com response_format pedido.
-/// </summary>
 public sealed partial class OpenRouterProvider(
     HttpClient http,
     IOptions<OpenRouterOptions> options,
@@ -45,9 +26,6 @@ public sealed partial class OpenRouterProvider(
         var prompt = prompts.Montar("02_categorizar.md", ("texto_fonte", textoFonte));
         var resposta = await ChamarAsync(prompt, jsonMode: false, cancellationToken);
 
-        // Trim('"'): esse estágio não usa jsonMode (a saída é só a palavra da
-        // categoria, não um objeto), mas o prompt pede a resposta "apenas com o
-        // valor" — alguns modelos ecoam aspas ao redor mesmo fora de JSON mode.
         var valor = resposta.Trim().Trim('"');
 
         if (!CategoriaAlteracaoExtensions.TentarConverter(valor, out var categoria))
@@ -80,10 +58,6 @@ public sealed partial class OpenRouterProvider(
 
         if (!chavesEntrada.SetEquals(chavesSaida))
         {
-            // Regra de negócio: cada chave de entrada aparece em exatamente um grupo.
-            // Se o modelo "perdeu" alguma, isolamos ela como grupo próprio em vez de
-            // descartar silenciosamente — perder uma história do comunicado é pior que
-            // ela aparecer sem agrupamento.
             var faltando = chavesEntrada.Except(chavesSaida).ToList();
             if (faltando.Count > 0)
             {
@@ -139,12 +113,6 @@ public sealed partial class OpenRouterProvider(
         return (titulo.GetString()!, resumo.GetString()!);
     }
 
-    /// <summary>
-    /// Valida a forma completa da resposta, não só o nível externo — um LLM pode
-    /// devolver [["INV-1", 42]] (elemento não-string no meio) e passar por uma
-    /// checagem rasa de "é array?" sem que ninguém perceba até Origens de um
-    /// ItemComunicado conter lixo.
-    /// </summary>
     private static List<IReadOnlyList<string>> ValidarGrupos(JsonElement raiz)
     {
         if (raiz.ValueKind != JsonValueKind.Array)
@@ -180,11 +148,6 @@ public sealed partial class OpenRouterProvider(
         return grupos;
     }
 
-    /// <summary>
-    /// Parsing defensivo: modelo pode envolver o JSON em ```json ... ``` mesmo com
-    /// response_format pedido — alguns modelos atrás do gateway ignoram o parâmetro.
-    /// Extrai o bloco antes de tentar parsear puro.
-    /// </summary>
     private static JsonDocument ParseJson(string resposta, string contexto)
     {
         var texto = resposta.Trim();
@@ -212,15 +175,11 @@ public sealed partial class OpenRouterProvider(
         bool jsonMode,
         CancellationToken cancellationToken)
     {
-        // Tipo concreto, não Dictionary<string, object>: o System.Text.Json serializa
-        // pelo tipo DECLARADO, então um objeto guardado como `object` sai como {} —
-        // o prompt iria vazio para o modelo, sem erro nenhum. Propriedades nulas são
-        // omitidas (JsonIgnore abaixo), que é como os campos opcionais somem do corpo.
+        // Tipo concreto, não Dictionary<string, object>: o System.Text.Json serializaria o prompt como {} em silêncio.
         var payload = new ChatCompletionRequest
         {
             Model = _opcoes.Modelo,
             Messages = [new ChatMessage { Role = "user", Content = prompt }],
-            // Temperatura baixa — queremos consistência, não criatividade, no pipeline.
             Temperature = 0.2,
             Models = _opcoes.ModelosFallback.Count > 0
                 ? [_opcoes.Modelo, .. _opcoes.ModelosFallback]
@@ -262,9 +221,7 @@ public sealed partial class OpenRouterProvider(
 
             logger.LogError("OpenRouter respondeu erro {Status}: {Corpo}", status, corpo);
 
-            // Erro transitório — a policy de resiliência do HttpClient já re-tentou
-            // antes de chegar aqui; envelopamos para o chamador não depender de
-            // HttpRequestException crua. Corpo só no log: esta mensagem chega a quem chamou.
+            // Corpo da resposta só no log: esta mensagem chega a quem chamou a API.
             throw new LlmApiException($"OpenRouter retornou {status}.");
         }
 
