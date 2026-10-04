@@ -212,4 +212,140 @@ public class ApiReleasesTests
 
         resposta.StatusCode.Should().Be(HttpStatusCode.BadGateway);
     }
+
+    [Fact]
+    public async Task Listar_releases_sem_filtro_devolve_todas_as_persistidas()
+    {
+        var repositorio = new FakeReleaseRepository();
+        await repositorio.SalvarAsync(new Release("RELEASE-2026-08", [Historia("INV-1")]));
+        var processando = new Release("RELEASE-2026-09", [Historia("INV-2")]);
+        processando.MarcarProcessando();
+        await repositorio.SalvarAsync(processando);
+
+        using var app = CriarApp(repositorio: repositorio);
+        using var client = app.CreateClient();
+
+        var resposta = await client.GetAsync("/api/v1/releases");
+
+        resposta.StatusCode.Should().Be(HttpStatusCode.OK);
+        var corpo = await resposta.Content.ReadFromJsonAsync<JsonElement>();
+        corpo.EnumerateArray().Select(r => r.GetProperty("chaveJira").GetString())
+            .Should().BeEquivalentTo(["RELEASE-2026-08", "RELEASE-2026-09"]);
+    }
+
+    [Fact]
+    public async Task Listar_releases_com_filtro_de_status_so_devolve_o_status_pedido()
+    {
+        var repositorio = new FakeReleaseRepository();
+        await repositorio.SalvarAsync(new Release("RELEASE-2026-08", [Historia("INV-1")]));
+        var processando = new Release("RELEASE-2026-09", [Historia("INV-2")]);
+        processando.MarcarProcessando();
+        await repositorio.SalvarAsync(processando);
+
+        using var app = CriarApp(repositorio: repositorio);
+        using var client = app.CreateClient();
+
+        var resposta = await client.GetAsync("/api/v1/releases?status=processando");
+
+        resposta.StatusCode.Should().Be(HttpStatusCode.OK);
+        var corpo = await resposta.Content.ReadFromJsonAsync<JsonElement>();
+        var releases = corpo.EnumerateArray().ToList();
+        releases.Should().ContainSingle();
+        releases[0].GetProperty("chaveJira").GetString().Should().Be("RELEASE-2026-09");
+    }
+
+    [Fact]
+    public async Task Listar_releases_com_status_invalido_responde_422()
+    {
+        using var app = CriarApp();
+        using var client = app.CreateClient();
+
+        var resposta = await client.GetAsync("/api/v1/releases?status=nao-existe");
+
+        resposta.StatusCode.Should().Be(HttpStatusCode.UnprocessableEntity);
+        resposta.Content.Headers.ContentType!.MediaType.Should().Be("application/problem+json");
+        var corpo = await resposta.Content.ReadAsStringAsync();
+        corpo.Should().Contain("nao-existe", "a resposta diz qual valor foi rejeitado");
+    }
+
+    [Fact]
+    public async Task Buscar_release_existente_devolve_todas_as_versoes_por_publico()
+    {
+        var repositorio = new FakeReleaseRepository();
+        var release = new Release("RELEASE-2026-08", [Historia("INV-1")]);
+        release.ConcluirProcessamento(
+            [new ItemComunicado(Domain.Enums.CategoriaAlteracao.Melhoria, "Pro cliente.", ["INV-1"])],
+            "Título Cliente",
+            "Resumo Cliente");
+        release.ConcluirProcessamento(
+            [new ItemComunicado(Domain.Enums.CategoriaAlteracao.Melhoria, "Pro suporte.", ["INV-1"])],
+            "Título Suporte",
+            "Resumo Suporte",
+            Domain.Enums.PublicoAlvo.Suporte);
+        await repositorio.SalvarAsync(release);
+
+        using var app = CriarApp(repositorio: repositorio);
+        using var client = app.CreateClient();
+
+        var resposta = await client.GetAsync("/api/v1/releases/RELEASE-2026-08");
+
+        resposta.StatusCode.Should().Be(HttpStatusCode.OK);
+        var corpo = await resposta.Content.ReadFromJsonAsync<JsonElement>();
+
+        corpo.GetProperty("chaveJira").GetString().Should().Be("RELEASE-2026-08");
+        corpo.GetProperty("historias").GetArrayLength().Should().Be(1);
+
+        var versoes = corpo.GetProperty("versoes").EnumerateArray().ToList();
+        versoes.Select(v => v.GetProperty("publico").GetString())
+            .Should().BeEquivalentTo(["cliente", "suporte"], "não é só o atalho da versão Cliente");
+
+        var cliente = versoes.Single(v => v.GetProperty("publico").GetString() == "cliente");
+        var itemCliente = cliente.GetProperty("itens").EnumerateArray().Single();
+        itemCliente.GetProperty("id").GetGuid().Should().Be(release.VersaoCliente!.Itens[0].Id);
+        itemCliente.GetProperty("publico").GetString().Should().Be("cliente");
+        itemCliente.GetProperty("texto").GetString().Should().Be("Pro cliente.");
+        itemCliente.GetProperty("textoFinal").GetString().Should().Be("Pro cliente.");
+        itemCliente.GetProperty("incluido").GetBoolean().Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task Id_do_item_no_detalhe_e_o_alvo_das_rotas_de_item()
+    {
+        var repositorio = new FakeReleaseRepository();
+        var release = new Release("RELEASE-2026-08", [Historia("INV-1")]);
+        release.ConcluirProcessamento(
+            [new ItemComunicado(Domain.Enums.CategoriaAlteracao.Melhoria, "Texto da IA.", ["INV-1"])],
+            "Título",
+            "Resumo");
+        await repositorio.SalvarAsync(release);
+
+        using var app = CriarApp(repositorio: repositorio);
+        using var client = app.CreateClient();
+
+        // O fluxo da tela: abre o detalhe, pega o id do item, edita por ele.
+        var detalhe = await client.GetFromJsonAsync<JsonElement>("/api/v1/releases/RELEASE-2026-08");
+        var itemId = detalhe.GetProperty("versoes")[0].GetProperty("itens")[0].GetProperty("id").GetGuid();
+
+        var edicao = await client.PatchAsJsonAsync(
+            $"/api/v1/releases/RELEASE-2026-08/itens/{itemId}",
+            new { texto = "Texto revisado." });
+        edicao.StatusCode.Should().Be(HttpStatusCode.OK);
+
+        var depois = await client.GetFromJsonAsync<JsonElement>("/api/v1/releases/RELEASE-2026-08");
+        var item = depois.GetProperty("versoes")[0].GetProperty("itens")[0];
+        item.GetProperty("texto").GetString().Should().Be("Texto da IA.", "o texto da IA é preservado");
+        item.GetProperty("textoEditadoManualmente").GetString().Should().Be("Texto revisado.");
+        item.GetProperty("textoFinal").GetString().Should().Be("Texto revisado.");
+    }
+
+    [Fact]
+    public async Task Buscar_release_inexistente_responde_404()
+    {
+        using var app = CriarApp();
+        using var client = app.CreateClient();
+
+        var resposta = await client.GetAsync("/api/v1/releases/RELEASE-INEXISTENTE");
+
+        resposta.StatusCode.Should().Be(HttpStatusCode.NotFound);
+    }
 }

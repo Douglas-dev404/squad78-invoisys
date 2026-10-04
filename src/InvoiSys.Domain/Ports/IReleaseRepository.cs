@@ -1,4 +1,5 @@
 using InvoiSys.Domain.Entities;
+using InvoiSys.Domain.Enums;
 
 namespace InvoiSys.Domain.Ports;
 
@@ -39,4 +40,20 @@ public interface IReleaseRepository
     /// porta vazaria detalhe de ORM para o domínio/aplicação.
     /// </summary>
     Task SalvarAsync(Release release, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Lista Releases, da mais recente para a mais antiga, opcionalmente filtrando por
+    /// status (ex.: fila de revisão pendente = AguardandoRevisao).
+    ///
+    /// Devolve <see cref="ReleaseResumo"/>, nunca a entidade: uma Release sem as coleções
+    /// carregadas pareceria um agregado válido sem versões (ProntaParaExportar = false,
+    /// VersaoCliente = null), e se chegasse a SalvarAsync viraria INSERT de uma Release
+    /// que já existe. Para abrir uma, <see cref="BuscarPorChaveJiraAsync"/>.
+    /// </summary>
+    Task<IReadOnlyList<ReleaseResumo>> ListarResumosAsync(
+        StatusPipeline? status,
+        CancellationToken cancellationToken = default);
 }
+
+/// <summary>Linha da listagem de Releases — modelo de leitura, não o agregado.</summary>
+public sealed record ReleaseResumo(string ChaveJira, StatusPipeline Status, DateTimeOffset CriadoEm);

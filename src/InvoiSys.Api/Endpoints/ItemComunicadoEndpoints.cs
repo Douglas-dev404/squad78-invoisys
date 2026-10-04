@@ -87,16 +87,7 @@ public static class ItemComunicadoEndpoints
         {
             var (item, publico) = await revisao();
 
-            return Results.Ok(new ItemRevisaoOut(
-                item.Id,
-                publico.ParaValor(),
-                item.Categoria.ParaValor(),
-                item.Texto,
-                item.TextoEditadoManualmente,
-                item.TextoFinal,
-                item.Incluido,
-                item.MotivoExclusao,
-                item.Origens));
+            return Results.Ok(ItemRevisaoOut.De(item, publico));
         }
         catch (Exception exc) when (MapearFalhaDeRevisaoDeItem(exc) is { } problema)
         {

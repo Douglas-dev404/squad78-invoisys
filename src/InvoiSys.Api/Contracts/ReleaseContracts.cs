@@ -33,3 +33,30 @@ public sealed record ReleaseProcessadaOut(
     string? TituloExecutivo,
     string? ResumoExecutivo,
     IReadOnlyList<ItemComunicadoOut> Itens);
+
+/// <summary>Linha da listagem de Releases (fila de revisão).</summary>
+public sealed record ReleaseResumoOut(string ChaveJira, string Status, DateTimeOffset CriadoEm);
+
+public sealed record VersaoComunicadoOut(
+    string Publico,
+    string Status,
+    string? TituloExecutivo,
+    string? ResumoExecutivo,
+    IReadOnlyList<ItemRevisaoOut> Itens,
+    string? RevisadoPor,
+    DateTimeOffset? RevisadoEm,
+    string? MotivoReprovacao);
+
+public sealed record ExecucaoPipelineOut(
+    string Status,
+    string? ModeloLlm,
+    string? Erro,
+    DateTimeOffset IniciadoEm,
+    DateTimeOffset? ConcluidoEm);
+
+public sealed record ReleaseDetalheOut(
+    string ChaveJira,
+    string Status,
+    IReadOnlyList<HistoriaJiraOut> Historias,
+    IReadOnlyList<VersaoComunicadoOut> Versoes,
+    IReadOnlyList<ExecucaoPipelineOut> Execucoes);
