@@ -115,6 +115,12 @@ public sealed partial class OpenRouterProvider(
 
     private static List<IReadOnlyList<string>> ValidarGrupos(JsonElement raiz)
     {
+        // JSON mode exige objeto na raiz: o prompt pede {"grupos": [...]}; lista crua segue aceita.
+        if (raiz.ValueKind == JsonValueKind.Object && raiz.TryGetProperty("grupos", out var listaDeGrupos))
+        {
+            raiz = listaDeGrupos;
+        }
+
         if (raiz.ValueKind != JsonValueKind.Array)
         {
             throw new LlmRespostaInvalidaException(

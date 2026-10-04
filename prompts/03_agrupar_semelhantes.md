@@ -21,9 +21,10 @@ de problemas de negócio diferentes (ex: dois bugs de ICMS em módulos totalment
 distintos do sistema não são o mesmo assunto).
 
 ## Formato de saída
-JSON: lista de listas de chaves.
+Um objeto JSON com a chave `grupos`, contendo uma lista de listas de chaves. Responda só
+com o objeto, sem texto antes ou depois.
 ```json
-[["INV-101", "INV-105"], ["INV-110"]]
+{"grupos": [["INV-101", "INV-105"], ["INV-110"]]}
 ```
 
 ## Few-shot example (placeholder — substituir por exemplo real da InvoiSys)
@@ -38,5 +39,5 @@ JSON: lista de listas de chaves.
 ```
 **Saída:**
 ```json
-[["INV-201", "INV-203"], ["INV-210"]]
+{"grupos": [["INV-201", "INV-203"], ["INV-210"]]}
 ```

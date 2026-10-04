@@ -90,6 +90,29 @@ public class OpenRouterProviderTests
     }
 
     [Fact]
+    public async Task Agrupar_aceita_o_objeto_com_grupos_que_o_json_mode_exige()
+    {
+        var (provider, _) = Criar(h => h.ResponderConteudoLlm(
+            """{"grupos": [["INV-1", "INV-2"], ["INV-3"]]}"""));
+
+        var grupos = await provider.AgruparSemelhantesAsync(
+            [("INV-1", "a"), ("INV-2", "b"), ("INV-3", "c")]);
+
+        grupos.Should().HaveCount(2);
+        grupos[0].Should().Equal("INV-1", "INV-2");
+    }
+
+    [Fact]
+    public async Task Agrupar_com_objeto_sem_grupos_e_resposta_invalida()
+    {
+        var (provider, _) = Criar(h => h.ResponderConteudoLlm("""{"[[": null}"""));
+
+        var acao = async () => await provider.AgruparSemelhantesAsync([("INV-1", "a")]);
+
+        await acao.Should().ThrowAsync<LlmRespostaInvalidaException>();
+    }
+
+    [Fact]
     public async Task Agrupar_rejeita_elemento_nao_string_dentro_do_grupo()
     {
         var (provider, _) = Criar(h => h.ResponderConteudoLlm("""[["INV-1", 42]]"""));
