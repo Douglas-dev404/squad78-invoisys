@@ -138,7 +138,7 @@ Respostas de erro seguem `ProblemDetails` (`Results.Problem`).
 | Item | Issue / fase |
 |---|---|
 | Paginação de `GET /api/v1/releases` (hoje lista tudo) | quando o volume pedir |
-| Exportar Markdown (mapear `ReleaseNaoAprovadaException` para 409) | #24 |
+| ~~Exportar Markdown~~ feito: `POST /{chaveRelease}/exportar` (201; `ReleaseNaoAprovadaException` → 409; público/formato inválido ou html/pdf → 422) | #24 |
 | `/auth/login`, `/auth/me`, `/auth/logout`, `/auth/forgot-password` + JWT + `[Authorize]` nas rotas de revisão | Fase 3 |
 | `GET /api/v1/branding/highlights` (repository já existe) | Fase 3 |
 | **CORS** para o frontend (hoje não configurado) | Fase 3 |

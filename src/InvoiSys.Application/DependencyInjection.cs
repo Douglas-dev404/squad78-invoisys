@@ -1,4 +1,5 @@
 using InvoiSys.Application.Consulta;
+using InvoiSys.Application.Exportacao;
 using InvoiSys.Application.Pipeline;
 using InvoiSys.Application.Revisao;
 using InvoiSys.Domain.Ports;
@@ -22,6 +23,7 @@ public static class DependencyInjection
 
         services.AddScoped<RevisaoComunicado>();
         services.AddScoped<ConsultaReleases>();
+        services.AddScoped<ExportacaoComunicado>();
 
         return services;
     }
