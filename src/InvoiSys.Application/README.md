@@ -6,6 +6,8 @@ concretos chegam por injeção de dependência.
 
 ```
 InvoiSys.Application/
+├── Consulta/
+│   └── ConsultaReleases.cs             # listagem (resumo) e detalhe (agregado completo)
 ├── Pipeline/
 │   └── PipelineGeracaoReleaseNote.cs   # o caso de uso central
 ├── Revisao/
@@ -90,6 +92,15 @@ porque a Infrastructure não referencia a Application: quem conhece as duas é a
 
 ---
 
+## `ConsultaReleases`
+
+Só leitura. `ListarAsync(status?)` devolve `ReleaseResumo` (chave, status, criada em) via
+`IReleaseRepository.ListarResumosAsync`, projeção leve sem carregar o agregado.
+`DetalharAsync(chave)` devolve a `Release` completa ou lança `ReleaseNaoEncontradaException`
+(404 na API). Registrado como **Scoped**.
+
+---
+
 ## `RevisaoComunicado`
 
 Revisão humana: `AprovarAsync`, `ReprovarAsync`, `ReabrirAsync` (por público) e
@@ -123,7 +134,6 @@ forçada). Sem rede, sem token, determinístico.
 
 | Caso de uso | Issue | Observação |
 |---|---|---|
-| Consultar e listar Releases | #21 | pode ser direto do repository no endpoint, ou um serviço de consulta |
 | Exportar Markdown | #24 | ver [P-03](../../docs/decisoes-arquiteturais.md#p-03--onde-mora-o-render-da-exportação) |
 | Gerar versões Comercial/Suporte/Interno | Fase 6 | chamar `ConcluirProcessamento(..., publico)` por público, com prompt por público |
 | Paralelizar o loop por grupo | opcional | só se a latência de Releases grandes incomodar |

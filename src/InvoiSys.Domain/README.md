@@ -109,7 +109,8 @@ Python.
 | [`FormatoExportacao`](Enums/FormatoExportacao.cs) | `markdown` · `html` · `pdf` | exportação |
 
 `CategoriaAlteracaoExtensions.TentarConverter` é case-insensitive de propósito, porque a
-entrada é resposta de LLM. `PublicoAlvoExtensions.TentarConverter` também, e **não tem
+entrada é resposta de LLM. `StatusPipelineExtensions.TentarConverter` (filtro `?status=` da listagem) e
+`PublicoAlvoExtensions.TentarConverter` também, e **não têm
 default**: valor ausente não converte (na revisão, assumir Cliente aprovaria o público
 errado em silêncio).
 
@@ -121,7 +122,7 @@ errado em silêncio).
 |---|---|---|---|
 | [`IJiraClient`](Ports/IJiraClient.cs) | saída (integração) | `JiraRestClient` / `JiraClientPendente` | `BuscarHistoriasDaReleaseAsync(fixVersion)`: todas as issues, paginação resolvida por dentro |
 | [`ILlmProvider`](Ports/ILlmProvider.cs) | saída (integração) | `OpenRouterProvider` / `ProviderPendente` | um método por estágio de IA: `CategorizarAsync`, `AgruparSemelhantesAsync`, `ReescreverLinguagemNegocioAsync`, `GerarTituloEResumoAsync` |
-| [`IReleaseRepository`](Ports/IReleaseRepository.cs) | persistência (agregado) | `ReleaseRepository` | `BuscarPorIdAsync`, `BuscarPorChaveJiraAsync` (agregado completo), `SalvarAsync` |
+| [`IReleaseRepository`](Ports/IReleaseRepository.cs) | persistência (agregado) | `ReleaseRepository` | `BuscarPorIdAsync`, `BuscarPorChaveJiraAsync` (agregado completo), `SalvarAsync`, `ListarResumosAsync(status?)` (devolve o modelo de leitura `ReleaseResumo`, nunca uma `Release` parcial) |
 | [`IHistoriaJiraRepository`](Ports/IHistoriaJiraRepository.cs) | **somente leitura** | `HistoriaJiraRepository` | consultar histórias sem carregar o agregado |
 | [`IExecucaoPipelineRepository`](Ports/IExecucaoPipelineRepository.cs) | **somente leitura** | `ExecucaoPipelineRepository` | histórico de execuções (mais recente primeiro) |
 | [`IComunicadoExportadoRepository`](Ports/IComunicadoExportadoRepository.cs) | **append-only** | `ComunicadoExportadoRepository` | `AdicionarAsync`, `BuscarPorIdAsync`, `ListarPorReleaseAsync` |

@@ -1,3 +1,4 @@
+using InvoiSys.Application.Consulta;
 using InvoiSys.Application.Pipeline;
 using InvoiSys.Application.Revisao;
 using InvoiSys.Domain.Ports;
@@ -20,6 +21,7 @@ public static class DependencyInjection
             configuration["OpenRouter:Modelo"]));
 
         services.AddScoped<RevisaoComunicado>();
+        services.AddScoped<ConsultaReleases>();
 
         return services;
     }

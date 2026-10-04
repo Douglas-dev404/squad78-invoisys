@@ -7,11 +7,13 @@ e o resultado em DTO. **Nenhuma regra de negócio mora aqui.**
 InvoiSys.Api/
 ├── Program.cs              # bootstrap: DI, migração opt-in, /health, modo --healthcheck
 ├── Endpoints/
-│   ├── ReleaseEndpoints.cs # rotas /api/v1/releases (historias, processar)
-│   └── RevisaoEndpoints.cs # rotas de revisão humana (aprovar, reprovar, reabrir)
+│   ├── ReleaseEndpoints.cs        # rotas /api/v1/releases (listar, detalhe, historias, processar)
+│   ├── RevisaoEndpoints.cs        # revisão humana por público (aprovar, reprovar, reabrir)
+│   └── ItemComunicadoEndpoints.cs # revisão de item (editar, excluir, reincluir)
 ├── Contracts/
-│   ├── ReleaseContracts.cs # DTOs (records) — nunca expor entidade de domínio
-│   └── RevisaoContracts.cs # DTOs de entrada da revisão
+│   ├── ReleaseContracts.cs        # DTOs (records) — nunca expor entidade de domínio
+│   ├── RevisaoContracts.cs        # DTOs de entrada da revisão
+│   └── ItemComunicadoContracts.cs # DTOs de item (ItemRevisaoOut: detalhe e rotas de item)
 └── appsettings*.json
 ```
 
@@ -22,6 +24,8 @@ InvoiSys.Api/
 | Método | Rota | Handler | Resposta | Erros |
 |---|---|---|---|---|
 | `GET` | `/health` | inline em `Program.cs` | `{ "status": "ok" }` | — |
+| `GET` | `/api/v1/releases?status=` | `ListarReleasesAsync` → `ConsultaReleases` | `ReleaseResumoOut[]` (mais recente primeiro) | 422 (status desconhecido) |
+| `GET` | `/api/v1/releases/{chaveRelease}` | `BuscarReleaseAsync` → `ConsultaReleases` | `ReleaseDetalheOut` (todas as versões por público; itens como `ItemRevisaoOut`, com `id`) | 404 |
 | `GET` | `/api/v1/releases/{chaveRelease}/historias` | `BuscarHistoriasAsync` → `IJiraClient` | `ReleaseOut` | 501, 502 |
 | `POST` | `/api/v1/releases/{chaveRelease}/processar` | `ProcessarReleaseAsync` → `PipelineGeracaoReleaseNote` | `ReleaseProcessadaOut` | 409, 501, 502 |
 | `POST` | `/api/v1/releases/{chaveRelease}/aprovar` | `AprovarAsync` → `RevisaoComunicado` | 204 | 404, 409, 422 |
@@ -133,7 +137,7 @@ Respostas de erro seguem `ProblemDetails` (`Results.Problem`).
 
 | Item | Issue / fase |
 |---|---|
-| `GET /api/v1/releases` e `GET /api/v1/releases/{chave}` (com versões por público, itens, execuções) | #21 |
+| Paginação de `GET /api/v1/releases` (hoje lista tudo) | quando o volume pedir |
 | Exportar Markdown (mapear `ReleaseNaoAprovadaException` para 409) | #24 |
 | `/auth/login`, `/auth/me`, `/auth/logout`, `/auth/forgot-password` + JWT + `[Authorize]` nas rotas de revisão | Fase 3 |
 | `GET /api/v1/branding/highlights` (repository já existe) | Fase 3 |
