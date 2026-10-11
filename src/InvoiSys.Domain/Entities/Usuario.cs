@@ -2,11 +2,13 @@ namespace InvoiSys.Domain.Entities;
 
 public sealed class Usuario
 {
+    public const string PapelAdmin = "admin";
+
     public Usuario(string nome, string email, string senhaHash, string papel)
     {
         Id = Guid.NewGuid();
         Nome = nome;
-        Email = email;
+        Email = NormalizarEmail(email);
         SenhaHash = senhaHash;
         Papel = papel;
         Ativo = true;
@@ -28,6 +30,9 @@ public sealed class Usuario
     public bool Ativo { get; private set; }
 
     public DateTimeOffset CriadoEm { get; private init; }
+
+    public static string NormalizarEmail(string email) =>
+        email.Trim().ToLowerInvariant();
 
     public void Desativar() => Ativo = false;
 

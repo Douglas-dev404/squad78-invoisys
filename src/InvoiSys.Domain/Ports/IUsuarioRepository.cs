@@ -8,5 +8,7 @@ public interface IUsuarioRepository
 
     Task<Usuario?> BuscarPorEmailAsync(string email, CancellationToken cancellationToken = default);
 
+    Task<bool> ExisteAlgumAsync(CancellationToken cancellationToken = default);
+
     Task SalvarAsync(Usuario usuario, CancellationToken cancellationToken = default);
 }
