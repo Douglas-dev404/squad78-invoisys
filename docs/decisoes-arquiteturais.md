@@ -664,8 +664,8 @@ O banco impede a Release duplicada, mas não o gasto duplicado.
   (`DisposeAsync`: `pg_advisory_unlock` e fecha). Se o processo morrer, o Postgres encerra
   a sessão e libera a trava.
 - O índice único continua sendo a segunda defesa.
-- O parâmetro `bloqueio` do pipeline é opcional (`null` = sem trava) para os testes
-  unitários que não tratam concorrência. O composition root sempre injeta.
+- A trava é dependência obrigatória do pipeline: não existe "pipeline sem trava". Os
+  testes que não tratam concorrência usam `FakeBloqueioProcessamento`.
 
 **Consequências.**
 - ✅ A segunda execução é recusada em ~25 ms, sem gastar token. Cada recusa soma em
@@ -752,8 +752,8 @@ erros, latência, runtime e o comportamento do pipeline.
   `Npgsql` e os próprios (`InvoiSys`): `invoisys.pipeline.execucoes`, `.duracao`,
   `.bloqueios` e `invoisys.llm.chamadas`, `.duracao`, `.tokens`. No Prometheus o ponto
   vira `_`, a unidade `s` vira `_seconds` e o counter ganha `_total`.
-- Os exporters são nomeados (`langfuse`, `prometheus`): têm endpoints diferentes e não
-  devem dividir a mesma configuração.
+- Traces e métricas usam endpoints diferentes; `ObservabilidadeTests` confere que cada
+  sinal chega no seu (traces com autenticação Basic e `x-langfuse-ingestion-version: 4`).
 - **Buckets explícitos.** Os histogramas próprios, com unidade em segundos, definem os
   limites via `InstrumentAdvice`. Os limites padrão do OpenTelemetry foram pensados em
   milissegundos (0, 5, 10, 25…) e jogam toda a latência no primeiro bucket: o p95 saía

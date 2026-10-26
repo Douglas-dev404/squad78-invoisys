@@ -262,28 +262,33 @@ public sealed partial class OpenRouterProvider(
             return;
         }
 
-        if (uso.TryGetProperty("prompt_tokens", out var entrada) && entrada.TryGetInt64(out var tokensEntrada))
-        {
-            atividade?.SetTag("gen_ai.usage.input_tokens", tokensEntrada);
-            Telemetria.LlmTokens.Add(
-                tokensEntrada,
-                new KeyValuePair<string, object?>("tipo", "entrada"),
-                new KeyValuePair<string, object?>("modelo", modelo));
-        }
-
-        if (uso.TryGetProperty("completion_tokens", out var saida) && saida.TryGetInt64(out var tokensSaida))
-        {
-            atividade?.SetTag("gen_ai.usage.output_tokens", tokensSaida);
-            Telemetria.LlmTokens.Add(
-                tokensSaida,
-                new KeyValuePair<string, object?>("tipo", "saida"),
-                new KeyValuePair<string, object?>("modelo", modelo));
-        }
+        RegistrarTokens(uso, "prompt_tokens", "entrada", "gen_ai.usage.input_tokens", modelo, atividade);
+        RegistrarTokens(uso, "completion_tokens", "saida", "gen_ai.usage.output_tokens", modelo, atividade);
 
         if (uso.TryGetProperty("cost", out var custo) && custo.TryGetDouble(out var valorCusto))
         {
             atividade?.SetTag("gen_ai.usage.cost", valorCusto);
         }
+    }
+
+    private static void RegistrarTokens(
+        JsonElement uso,
+        string propriedade,
+        string tipo,
+        string atributo,
+        string modelo,
+        Activity? atividade)
+    {
+        if (!uso.TryGetProperty(propriedade, out var valor) || !valor.TryGetInt64(out var tokens))
+        {
+            return;
+        }
+
+        atividade?.SetTag(atributo, tokens);
+        Telemetria.LlmTokens.Add(
+            tokens,
+            new KeyValuePair<string, object?>("tipo", tipo),
+            new KeyValuePair<string, object?>("modelo", modelo));
     }
 
     private async Task<JsonElement> PostAsync(

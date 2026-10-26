@@ -19,7 +19,7 @@ public class PipelineBloqueioTests
         FakeJiraClient jira,
         FakeLlmProvider llm,
         FakeBloqueioProcessamento bloqueio) =>
-        new(jira, llm, new FakeReleaseRepository(), modeloLlm: null, bloqueio);
+        new(jira, llm, new FakeReleaseRepository(), bloqueio);
 
     [Fact]
     public async Task Release_ja_em_processamento_e_recusada_sem_chamar_Jira_nem_LLM()

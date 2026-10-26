@@ -38,7 +38,7 @@ public static class ObservabilidadeExtensions
         {
             otel.WithTracing(tracing => tracing
                 .AddSource(Telemetria.Nome)
-                .AddOtlpExporter("langfuse", exportador =>
+                .AddOtlpExporter(exportador =>
                 {
                     exportador.Endpoint = new Uri(opcoes.Langfuse.Endpoint);
                     exportador.Protocol = OtlpExportProtocol.HttpProtobuf;
@@ -51,7 +51,7 @@ public static class ObservabilidadeExtensions
             otel.WithMetrics(metricas => metricas
                 .AddMeter(Telemetria.Nome)
                 .AddMeter(MetersDoRuntime)
-                .AddOtlpExporter("prometheus", (exportador, leitor) =>
+                .AddOtlpExporter((exportador, leitor) =>
                 {
                     exportador.Endpoint = new Uri(opcoes.Prometheus.Endpoint);
                     exportador.Protocol = OtlpExportProtocol.HttpProtobuf;

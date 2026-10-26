@@ -9,26 +9,25 @@ public sealed class PipelineGeracaoReleaseNote(
     IJiraClient jiraClient,
     ILlmProvider llmProvider,
     IReleaseRepository releaseRepository,
-    string? modeloLlm = null,
-    IBloqueioProcessamento? bloqueio = null)
+    IBloqueioProcessamento bloqueio,
+    string? modeloLlm = null)
 {
     private readonly IJiraClient _jira = jiraClient;
     private readonly ILlmProvider _llm = llmProvider;
     private readonly IReleaseRepository _releaseRepository = releaseRepository;
 
+    private readonly IBloqueioProcessamento _bloqueio = bloqueio;
+
     private readonly string? _modeloLlm = modeloLlm;
-    private readonly IBloqueioProcessamento? _bloqueio = bloqueio;
 
     public async Task<Release> ExecutarAsync(
         string chaveRelease,
         CancellationToken cancellationToken = default)
     {
         // A trava vem antes de Jira e LLM: é ela que impede a segunda chamada paga à IA.
-        await using var trava = _bloqueio is null
-            ? null
-            : await _bloqueio.TentarAdquirirAsync(chaveRelease, cancellationToken);
+        await using var trava = await _bloqueio.TentarAdquirirAsync(chaveRelease, cancellationToken);
 
-        if (_bloqueio is not null && trava is null)
+        if (trava is null)
         {
             Telemetria.PipelineBloqueios.Add(1);
             throw new ProcessamentoEmAndamentoException(chaveRelease);

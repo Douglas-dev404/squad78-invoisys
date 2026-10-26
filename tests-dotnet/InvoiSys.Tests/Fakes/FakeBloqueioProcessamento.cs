@@ -7,8 +7,6 @@ public sealed class FakeBloqueioProcessamento : IBloqueioProcessamento
     private readonly HashSet<string> _ocupadas = [];
     private readonly Lock _trava = new();
 
-    public int Liberacoes { get; private set; }
-
     public Task<IAsyncDisposable?> TentarAdquirirAsync(
         string chaveRelease,
         CancellationToken cancellationToken = default)
@@ -47,7 +45,6 @@ public sealed class FakeBloqueioProcessamento : IBloqueioProcessamento
             lock (dono._trava)
             {
                 dono._ocupadas.Remove(chave);
-                dono.Liberacoes++;
             }
 
             return ValueTask.CompletedTask;

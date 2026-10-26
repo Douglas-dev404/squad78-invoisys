@@ -23,9 +23,8 @@ O caso de uso central. Recebe a chave de uma Release e devolve o agregado `Relea
 a versão Cliente gerada e pronta para **revisão** (nunca publicada direto).
 
 **Dependências (construtor):** `IJiraClient`, `ILlmProvider`, `IReleaseRepository`,
-`string? modeloLlm` (rótulo do modelo para o log de execução) e
-`IBloqueioProcessamento? bloqueio` (a trava por Release; `null` = sem trava, só nos testes
-unitários que não tratam concorrência).
+`IBloqueioProcessamento` (a trava por Release) e `string? modeloLlm` (rótulo do modelo
+para o log de execução).
 
 ### `ExecutarAsync(chaveRelease)`: o que acontece, em ordem
 

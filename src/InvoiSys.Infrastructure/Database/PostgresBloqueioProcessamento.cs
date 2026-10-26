@@ -36,7 +36,7 @@ public sealed class PostgresBloqueioProcessamento(NpgsqlDataSource dataSource) :
         return null;
     }
 
-    internal static long CalcularChave(string chaveRelease)
+    private static long CalcularChave(string chaveRelease)
     {
         var bytes = SHA256.HashData(
             Encoding.UTF8.GetBytes($"invoisys:processar-release:{chaveRelease.Trim().ToUpperInvariant()}"));

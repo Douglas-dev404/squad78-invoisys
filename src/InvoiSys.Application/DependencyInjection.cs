@@ -18,8 +18,8 @@ public static class DependencyInjection
             provider.GetRequiredService<IJiraClient>(),
             provider.GetRequiredService<ILlmProvider>(),
             provider.GetRequiredService<IReleaseRepository>(),
-            configuration["OpenRouter:Modelo"],
-            provider.GetRequiredService<IBloqueioProcessamento>()));
+            provider.GetRequiredService<IBloqueioProcessamento>(),
+            configuration["OpenRouter:Modelo"]));
 
         services.AddScoped<RevisaoComunicado>();
         services.AddScoped<ConsultaReleases>();

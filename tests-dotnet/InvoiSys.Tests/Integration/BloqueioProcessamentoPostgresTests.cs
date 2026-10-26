@@ -31,7 +31,7 @@ public class BloqueioProcessamentoPostgresTests(PostgresContainerFixture fixture
         var jiraPrimeira = new FakeJiraClient { Historias = [Historia("INV-1")] };
         await using var contextoPrimeira = fixture.CriarContexto();
         var primeira = new PipelineGeracaoReleaseNote(
-            jiraPrimeira, llmPrimeira, new ReleaseRepository(contextoPrimeira), null, bloqueio);
+            jiraPrimeira, llmPrimeira, new ReleaseRepository(contextoPrimeira), bloqueio);
 
         var execucaoPrimeira = primeira.ExecutarAsync(chave);
         await llmPrimeira.IniciouAgrupar.Task.WaitAsync(TimeSpan.FromSeconds(10));
@@ -40,7 +40,7 @@ public class BloqueioProcessamentoPostgresTests(PostgresContainerFixture fixture
         var jiraSegunda = new FakeJiraClient { Historias = [Historia("INV-1")] };
         await using var contextoSegunda = fixture.CriarContexto();
         var segunda = new PipelineGeracaoReleaseNote(
-            jiraSegunda, llmSegunda, new ReleaseRepository(contextoSegunda), null, bloqueio);
+            jiraSegunda, llmSegunda, new ReleaseRepository(contextoSegunda), bloqueio);
 
         var acaoSegunda = async () => await segunda.ExecutarAsync(chave);
 

@@ -52,7 +52,8 @@ public class TelemetriaTests
         };
 
         using var requisicao = new Activity("requisicao-http").Start();
-        await new PipelineGeracaoReleaseNote(jira, new FakeLlmProvider(), new FakeReleaseRepository())
+        await new PipelineGeracaoReleaseNote(
+            jira, new FakeLlmProvider(), new FakeReleaseRepository(), new FakeBloqueioProcessamento())
             .ExecutarAsync("REL-TELEMETRIA");
 
         var raiz = gravadas
@@ -83,7 +84,7 @@ public class TelemetriaTests
         bloqueio.Ocupar("REL-1");
 
         var acao = async () => await new PipelineGeracaoReleaseNote(
-            new FakeJiraClient(), new FakeLlmProvider(), new FakeReleaseRepository(), null, bloqueio)
+            new FakeJiraClient(), new FakeLlmProvider(), new FakeReleaseRepository(), bloqueio)
             .ExecutarAsync("REL-1");
 
         await acao.Should().ThrowAsync<ProcessamentoEmAndamentoException>();
