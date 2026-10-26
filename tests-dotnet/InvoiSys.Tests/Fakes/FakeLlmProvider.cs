@@ -29,16 +29,30 @@ public sealed class FakeLlmProvider : ILlmProvider
         return Task.FromResult(CategoriaFixa);
     }
 
-    public Task<IReadOnlyList<IReadOnlyList<string>>> AgruparSemelhantesAsync(
+    public int ChamadasAgrupar { get; private set; }
+
+    public TaskCompletionSource? Portao { get; set; }
+
+    public TaskCompletionSource IniciouAgrupar { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+
+    public async Task<IReadOnlyList<IReadOnlyList<string>>> AgruparSemelhantesAsync(
         IReadOnlyList<(string Chave, string Texto)> textos,
         CancellationToken cancellationToken = default)
     {
         LancarSeConfigurado();
 
+        ChamadasAgrupar++;
+        IniciouAgrupar.TrySetResult();
+
+        if (Portao is not null)
+        {
+            await Portao.Task;
+        }
+
         IReadOnlyList<IReadOnlyList<string>> grupos = GruposFixos
             ?? [.. textos.Select(t => (IReadOnlyList<string>)new[] { t.Chave })];
 
-        return Task.FromResult(grupos);
+        return grupos;
     }
 
     public Task<string> ReescreverLinguagemNegocioAsync(

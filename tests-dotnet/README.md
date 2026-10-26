@@ -63,6 +63,8 @@ reprocessamento recusado → UPDATE ao reabrir → DELETE + INSERT ao reprocessa
 | `VersaoComunicadoTests` | Transições `Aprovar`/`Reprovar`/`Reabrir`, itens excluídos, `ProntaParaExportar`, bloqueio de `ComunicadoExportado` |
 | `HistoriaJiraTests` | Prioridade da Release Note sobre a descrição técnica (`TextoFonte`) |
 | `PipelineGeracaoReleaseNoteTests` | Orquestração dos 5 estágios, limpeza, chave alucinada, falha marca Release/execução |
+| `PipelineBloqueioTests` | A trava por Release: ocupada recusa sem chamar Jira nem IA, é liberada no fim e na falha, Releases diferentes não se bloqueiam ([ADR-025](../docs/decisoes-arquiteturais.md#adr-025--trava-por-release-antes-do-pipeline-advisory-lock-no-postgres)) |
+| `TelemetriaTests` | Regressão do span raiz: filho de `Activity` não amostrada some, `IniciarRaiz` não; o pipeline gera o trace de raiz com o nome esperado; a métrica de bloqueios sobe ([ADR-026](../docs/decisoes-arquiteturais.md#adr-026--observabilidade-da-ia-langfuse-self-hosted-via-opentelemetry)) |
 | `OpenRouterProviderTests` | Foco no parsing defensivo (o que quebra em produção é resposta fora do formato). Corpo da request, fallback de modelos, JSON em code fence, validação de grupos, categoria inválida, erros HTTP → exceção de domínio |
 | `JiraRestClientAdfTests` | Achatamento de ADF em texto. Isolado porque, se falhar, o pipeline recebe texto vazio e o comunicado sai oco sem erro nenhum |
 
@@ -73,11 +75,13 @@ reprocessamento recusado → UPDATE ao reabrir → DELETE + INSERT ao reprocessa
 | `ReleaseRepositoryTests` | Round-trip do agregado, busca por id/chave, chave de história única por Release (mas repetível entre Releases), cascade delete, salvar de novo não duplica histórias |
 | `PipelineGeracaoReleaseNotePersistenciaTests` | Pipeline gravando de verdade: sobrevive a restart, reprocessar não duplica, falha persiste a execução, versão aprovada só é reprocessada depois de reaberta |
 | `PersistenciaAgregadoReleaseTests` | Ciclo processar → revisar → aprovar → reprocessar, adicionando filhos a Release já persistida (regressão do [ADR-010](../docs/decisoes-arquiteturais.md#adr-010--ids-gerados-no-domínio-com-valuegeneratednever)) |
+| `ObservabilidadeTests` | Cada sinal chega no seu endpoint: traces no do Langfuse (com Basic auth e `ingestion=4`) e métricas no do Prometheus, contra um coletor falso; desligada por padrão não registra provedor ([ADR-026](../docs/decisoes-arquiteturais.md#adr-026--observabilidade-da-ia-langfuse-self-hosted-via-opentelemetry)) |
+| `BloqueioProcessamentoPostgresTests` | O advisory lock contra Postgres real: a segunda execução simultânea da mesma Release é barrada **antes** de chamar a IA, a trava é liberada ao terminar, Releases diferentes não se bloqueiam |
 | `HistoriaJiraRepositoryTests`, `ExecucaoPipelineRepositoryTests` | Portas somente leitura: consulta, ordenação, sem tracking |
 | `ComunicadoExportadoRepositoryTests` | Cada reexportação vira linha nova, filtro por público, apagar versão já exportada é barrado pelo banco (`RESTRICT`) |
 | `UsuarioRepositoryTests` | Busca por id/e-mail, salvar de novo atualiza sem duplicar, e-mail repetido viola o unique |
 | `DestaqueHeroRepositoryTests` | Só ativos, ordenados |
-| `ApiReleasesTests` | Endpoints via `WebApplicationFactory<Program>` com as portas trocadas por fakes; 200/501/502 |
+| `ApiReleasesTests` | Endpoints via `WebApplicationFactory<Program>` com as portas (inclusive a trava) trocadas por fakes; 200/409/501/502 |
 | `ApiRevisaoTests` | Contrato HTTP de aprovar/reprovar/reabrir: 204/404/409/422, ProblemDetails, efeito na Release (as transições em si são cobertas no domínio) |
 | `ApiItensTests` | Contrato HTTP de editar/excluir/reincluir item (a persistência real fica em `PersistenciaAgregadoReleaseTests`) |
 | `OpenApiTests` | O spec publica as rotas, os schemas dos DTOs e as respostas de erro. A documentação é entregável, e a falha aqui é silenciosa: sem `.Produces<T>()` o handler funciona, mas o spec sai com "200" e nenhum schema |

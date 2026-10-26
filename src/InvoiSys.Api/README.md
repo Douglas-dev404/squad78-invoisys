@@ -63,6 +63,7 @@ InvoiSys.Api/
 | Exceção | Status | Significado |
 |---|---|---|
 | `RevisaoHumanaObrigatoriaException` (só em `/processar`) | **409** | a versão já foi aprovada; é preciso reabrir a revisão antes de reprocessar |
+| `ProcessamentoEmAndamentoException` (só em `/processar`) | **409** | a mesma Release já está sendo processada; tente de novo quando a execução atual terminar (a trava devolve a resposta sem chamar Jira nem IA) |
 | `ProviderNaoConfiguradoException` | **501** | falta credencial (Jira ou OpenRouter). O `detail` diz o que configurar |
 | `IntegracaoExternaException` (e filhas) | **502** | Jira/LLM falhou ou respondeu fora do formato |
 | qualquer outra | 500 | erro interno de verdade |
@@ -105,6 +106,25 @@ Respostas de erro seguem `ProblemDetails` (`Results.Problem`).
   dona do item. Item de outra Release dá 404.
 - `GET .../historias` só consulta o Jira, nunca roda o pipeline, então o `status` da
   resposta é sempre `pendente`.
+
+## Observabilidade
+
+`AddObservabilidade` (`Observabilidade/ObservabilidadeExtensions.cs`) liga o OpenTelemetry
+**só** com `Observabilidade:Habilitada = true`; por padrão fica desligado, e a API roda sem
+nenhum coletor. Traces vão para o Langfuse; métricas, para o Prometheus
+([ADR-026](../../docs/decisoes-arquiteturais.md#adr-026--observabilidade-da-ia-langfuse-self-hosted-via-opentelemetry),
+[ADR-027](../../docs/decisoes-arquiteturais.md#adr-027--métricas-do-sistema-opentelemetry--prometheus-otlp--grafana)).
+
+| Chave (`__` em variável de ambiente) | Para quê |
+|---|---|
+| `Observabilidade:Habilitada` | liga o OpenTelemetry |
+| `Observabilidade:NomeServico` | `service.name` (padrão `invoisys-api`); vira o `job` no Prometheus |
+| `Observabilidade:Langfuse:Endpoint`, `PublicKey`, `SecretKey` | destino dos traces (OTLP HTTP/protobuf, caminho completo `.../api/public/otel/v1/traces`). Sem os três, não exporta traces |
+| `Observabilidade:Prometheus:Endpoint`, `IntervaloExportacaoSegundos` | destino das métricas (`.../api/v1/otlp/v1/metrics`) e intervalo do push (padrão 15 s). Sem endpoint, não exporta métricas |
+
+Para subir tudo com as chaves já preenchidas, use o
+[`docker-compose.observabilidade.yml`](../../docker-compose.observabilidade.yml)
+(ver [README raiz](../../README.md#observabilidade)).
 
 ## Detalhes do `Program.cs`
 

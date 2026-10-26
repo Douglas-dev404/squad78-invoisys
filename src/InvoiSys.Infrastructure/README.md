@@ -77,7 +77,11 @@ Internos:
 - **`ChamarAsync`** monta `ChatCompletionRequest` (tipo concreto: um
   `Dictionary<string, object>` serializaria o prompt como `{}` em silêncio), com
   `temperature = 0.2`, `models = [principal, ...fallback]` quando houver fallback, e
-  `response_format = json_object` no modo JSON.
+  `response_format = json_object` no modo JSON. Cada chamada abre um span `llm.<estágio>`
+  (tipo `generation` do Langfuse) com prompt, resposta, modelo, tokens e custo, e alimenta
+  `invoisys.llm.chamadas`, `.duracao` e `.tokens`. O `usage` vem da resposta da
+  OpenRouter; o modelo gravado é o que **respondeu** (`model` da resposta), que pode ser
+  um fallback.
 - **`ParseJson`** remove cerca ```` ```json ```` antes de parsear.
 - **`PostAsync`**: erro HTTP → corpo só no log → `LlmApiException("OpenRouter retornou N.")`.
 
@@ -123,6 +127,20 @@ substitui `{{chave}}` literalmente ([ADR-005](../../docs/decisoes-arquiteturais.
 Modelo completo, tabela por tabela: [docs/modelagem-de-dominio.md](../../docs/modelagem-de-dominio.md).
 
 ---
+
+## Trava de processamento: `PostgresBloqueioProcessamento`
+
+Implementa `IBloqueioProcessamento` com **advisory lock de sessão** do Postgres
+([ADR-025](../../docs/decisoes-arquiteturais.md#adr-025--trava-por-release-antes-do-pipeline-advisory-lock-no-postgres)).
+
+| Passo | O que faz |
+|---|---|
+| `TentarAdquirirAsync(chave)` | abre uma conexão do `NpgsqlDataSource`, roda `SELECT pg_try_advisory_lock(@chave)`; se não obteve, devolve a conexão e retorna `null` |
+| Chave | 64 bits do SHA-256 de `invoisys:processar-release:<CHAVE em maiúsculas>`; releases diferentes não se bloqueiam |
+| `DisposeAsync` da trava | `pg_advisory_unlock` e fecha a conexão (com `CancellationToken.None`: cancelar a requisição não pode deixar a trava presa) |
+
+A trava segura uma conexão do pool durante toda a execução. `NpgsqlDataSource` é
+singleton no composition root (registrado por factory, para o container descartá-lo).
 
 ## Por que é assim
 

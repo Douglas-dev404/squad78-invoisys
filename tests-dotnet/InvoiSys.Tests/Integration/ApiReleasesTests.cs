@@ -17,15 +17,18 @@ public class ApiReleasesTests
     private static WebApplicationFactory<Program> CriarApp(
         IJiraClient? jira = null,
         ILlmProvider? llm = null,
-        IReleaseRepository? repositorio = null) =>
+        IReleaseRepository? repositorio = null,
+        IBloqueioProcessamento? bloqueio = null) =>
         new WebApplicationFactory<Program>().WithWebHostBuilder(builder =>
             builder.ConfigureServices(services =>
             {
                 services.RemoveAll<IJiraClient>();
                 services.RemoveAll<ILlmProvider>();
                 services.RemoveAll<IReleaseRepository>();
+                services.RemoveAll<IBloqueioProcessamento>();
                 services.AddScoped(_ => jira ?? new FakeJiraClient());
                 services.AddScoped(_ => llm ?? new FakeLlmProvider());
+                services.AddSingleton(bloqueio ?? new FakeBloqueioProcessamento());
                 // Sem Postgres aqui: o pipeline persistiria contra uma connection string que não existe neste host.
                 services.AddScoped<IReleaseRepository>(_ => repositorio ?? new FakeReleaseRepository());
             }));
@@ -135,6 +138,26 @@ public class ApiReleasesTests
         var corpo = await resposta.Content.ReadAsStringAsync();
         corpo.Should().Contain("Reabra a revisão", "a resposta diz ao usuário o que fazer");
         aprovada.Itens.Single().Texto.Should().Be("Texto aprovado.");
+    }
+
+    [Fact]
+    public async Task Processar_release_ja_em_processamento_responde_409_sem_chamar_a_IA()
+    {
+        var bloqueio = new FakeBloqueioProcessamento();
+        bloqueio.Ocupar("RELEASE-2026-08");
+        var jira = new FakeJiraClient { Historias = [Historia("INV-1")] };
+        var llm = new FakeLlmProvider();
+
+        using var app = CriarApp(jira, llm, bloqueio: bloqueio);
+        using var client = app.CreateClient();
+
+        var resposta = await client.PostAsync("/api/v1/releases/RELEASE-2026-08/processar", null);
+
+        resposta.StatusCode.Should().Be(HttpStatusCode.Conflict);
+        var corpo = await resposta.Content.ReadAsStringAsync();
+        corpo.Should().Contain("já está sendo processada");
+        llm.ChamadasAgrupar.Should().Be(0);
+        jira.ChavesConsultadas.Should().BeEmpty();
     }
 
     [Fact]
