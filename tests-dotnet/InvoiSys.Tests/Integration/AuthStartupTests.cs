@@ -12,6 +12,7 @@ public class AuthStartupTests
         var valores = new Dictionary<string, string?>
         {
             ["ConnectionStrings:Default"] = "Host=localhost;Database=x;Username=x;Password=x",
+            ["Auth:RecuperacaoSenha:UrlBase"] = ConfiguracaoDeTestes.UrlRedefinicao,
         };
         foreach (var (chave, valor) in extras)
         {
@@ -27,6 +28,16 @@ public class AuthStartupTests
         var acao = () => new ServiceCollection().AddInfrastructure(Config());
 
         acao.Should().Throw<InvalidOperationException>().WithMessage("*Auth__Jwt__Chave*");
+    }
+
+    [Fact]
+    public void Sem_a_URL_de_redefinicao_o_composition_root_falha_citando_a_variavel()
+    {
+        var acao = () => new ServiceCollection().AddInfrastructure(Config(
+            ("Auth:Jwt:Chave", ConfiguracaoDeTestes.ChaveJwt),
+            ("Auth:RecuperacaoSenha:UrlBase", "")));
+
+        acao.Should().Throw<InvalidOperationException>().WithMessage("*Auth__RecuperacaoSenha__UrlBase*");
     }
 
     [Fact]

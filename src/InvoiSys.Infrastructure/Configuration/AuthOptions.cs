@@ -10,6 +10,8 @@ public sealed class AuthOptions
 
     public AdminInicialOptions AdminInicial { get; set; } = new();
 
+    public RecuperacaoSenhaOptions RecuperacaoSenha { get; set; } = new();
+
     public void Validar()
     {
         if (string.IsNullOrWhiteSpace(Jwt.Chave))
@@ -32,6 +34,15 @@ public sealed class AuthOptions
             throw new InvalidOperationException(
                 "Auth:Jwt:Emissor e Auth:Jwt:Audiencia são obrigatórios " +
                 "(Auth__Jwt__Emissor, Auth__Jwt__Audiencia).");
+        }
+
+        if (!Uri.TryCreate(RecuperacaoSenha.UrlBase, UriKind.Absolute, out var url)
+            || url.Scheme is not ("http" or "https"))
+        {
+            throw new InvalidOperationException(
+                "Auth:RecuperacaoSenha:UrlBase não configurada ou inválida. Defina " +
+                "Auth__RecuperacaoSenha__UrlBase com a URL absoluta da tela de redefinição de " +
+                "senha do front (ex.: https://app.invoisys.com/redefinir-senha).");
         }
 
         if (Jwt.ExpiracaoHoras <= 0)
@@ -65,4 +76,15 @@ public sealed class AdminInicialOptions
         !string.IsNullOrWhiteSpace(Email)
         && !string.IsNullOrWhiteSpace(Senha)
         && !string.IsNullOrWhiteSpace(Nome);
+}
+
+public sealed class RecuperacaoSenhaOptions
+{
+    public string UrlBase { get; set; } = string.Empty;
+
+    public int CooldownSegundos { get; set; } = 60;
+
+    public int LimiteRequisicoes { get; set; } = 5;
+
+    public int JanelaMinutos { get; set; } = 15;
 }

@@ -5,6 +5,7 @@ using InvoiSys.Domain.Ports;
 using InvoiSys.Infrastructure.Auth;
 using InvoiSys.Infrastructure.Configuration;
 using InvoiSys.Infrastructure.Database;
+using InvoiSys.Infrastructure.Email;
 using InvoiSys.Infrastructure.Jira;
 using InvoiSys.Infrastructure.Llm;
 using Microsoft.EntityFrameworkCore;
@@ -45,6 +46,7 @@ public static class DependencyInjection
         services.AddSingleton<IHashSenha, Argon2idHashSenha>();
         services.AddSingleton<IEmissorToken, JwtEmissorToken>();
         services.AddScoped<AdminInicialSemeador>();
+        services.AddScoped<IEnvioEmail, EnvioEmailPendente>();
     }
 
     private static void AddDatabase(IServiceCollection services, IConfiguration configuration)
@@ -63,6 +65,7 @@ public static class DependencyInjection
         services.AddScoped<IExecucaoPipelineRepository, ExecucaoPipelineRepository>();
         services.AddScoped<IComunicadoExportadoRepository, ComunicadoExportadoRepository>();
         services.AddScoped<IUsuarioRepository, UsuarioRepository>();
+        services.AddScoped<ITokenRedefinicaoSenhaRepository, TokenRedefinicaoSenhaRepository>();
         services.AddScoped<IDestaqueHeroRepository, DestaqueHeroRepository>();
     }
 
