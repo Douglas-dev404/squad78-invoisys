@@ -22,6 +22,8 @@ public sealed class InvoiSysDbContext(DbContextOptions<InvoiSysDbContext> option
 
     public DbSet<DestaqueHero> DestaquesHero => Set<DestaqueHero>();
 
+    public DbSet<TokenRedefinicaoSenha> TokensRedefinicaoSenha => Set<TokenRedefinicaoSenha>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder.ApplyConfigurationsFromAssembly(typeof(InvoiSysDbContext).Assembly);

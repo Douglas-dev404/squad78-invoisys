@@ -2,6 +2,8 @@ using InvoiSys.Api.Auth;
 using InvoiSys.Api.Contracts;
 using InvoiSys.Api.Validacao;
 using InvoiSys.Application.Acesso;
+using InvoiSys.Application.Autenticacao;
+using InvoiSys.Domain.Entities;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
 
@@ -37,6 +39,31 @@ public static class AuthEndpoints
             .WithSummary("Sem efeito no servidor: o cliente descarta o token.")
             .Produces(StatusCodes.Status204NoContent);
 
+        grupo.MapPost("/forgot-password", EsqueciSenhaAsync)
+            .AllowAnonymous()
+            .WithName("EsqueciSenha")
+            .WithSummary("Envia o link de redefinição de senha, sem revelar se o e-mail existe.")
+            .RequireRateLimiting(LimiteDeLogin.PoliticaEsqueciSenha)
+            .Produces<EsqueciSenhaOut>()
+            .ProducesProblem(StatusCodes.Status422UnprocessableEntity)
+            .ProducesProblem(StatusCodes.Status429TooManyRequests);
+
+        grupo.MapPost("/resend-forgot-password", ReenviarEsqueciSenhaAsync)
+            .AllowAnonymous()
+            .WithName("ReenviarEsqueciSenha")
+            .WithSummary("Reenvia o link de redefinição e invalida o token anterior.")
+            .RequireRateLimiting(LimiteDeLogin.PoliticaEsqueciSenha)
+            .Produces<EsqueciSenhaOut>()
+            .ProducesProblem(StatusCodes.Status422UnprocessableEntity)
+            .ProducesProblem(StatusCodes.Status429TooManyRequests);
+
+        grupo.MapPost("/reset-password", RedefinirSenhaAsync)
+            .AllowAnonymous()
+            .WithName("RedefinirSenha")
+            .WithSummary("Troca a senha usando o token recebido por e-mail (uso único, 30 minutos).")
+            .Produces(StatusCodes.Status204NoContent)
+            .ProducesProblem(StatusCodes.Status422UnprocessableEntity);
+
         return rotas;
     }
 
@@ -71,4 +98,54 @@ public static class AuthEndpoints
                 statusCode: StatusCodes.Status401Unauthorized)
             : Results.Ok(UsuarioOut.De(usuario));
     }
+
+    private static Task<IResult> EsqueciSenhaAsync(
+        [FromBody] EsqueciSenhaIn corpo,
+        [FromServices] RecuperacaoSenha recuperacao,
+        CancellationToken cancellationToken) =>
+        EnviarAsync(() => recuperacao.SolicitarAsync(corpo.Email, cancellationToken));
+
+    private static Task<IResult> ReenviarEsqueciSenhaAsync(
+        [FromBody] EsqueciSenhaIn corpo,
+        [FromServices] RecuperacaoSenha recuperacao,
+        CancellationToken cancellationToken) =>
+        EnviarAsync(() => recuperacao.ReenviarAsync(corpo.Email, cancellationToken));
+
+    private static async Task<IResult> RedefinirSenhaAsync(
+        [FromBody] RedefinirSenhaIn corpo,
+        [FromServices] RecuperacaoSenha recuperacao,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            await recuperacao.RedefinirAsync(corpo.Token, corpo.NovaSenha, cancellationToken);
+            return Results.NoContent();
+        }
+        catch (Exception exc) when (exc is ArgumentException or TokenRedefinicaoInvalidoException)
+        {
+            return Results.Problem(
+                detail: exc is ArgumentException arg ? SemNomeDoParametro(arg) : exc.Message,
+                statusCode: StatusCodes.Status422UnprocessableEntity);
+        }
+    }
+
+    private static async Task<IResult> EnviarAsync(Func<Task> acao)
+    {
+        try
+        {
+            await acao();
+            return Results.Ok(new EsqueciSenhaOut(
+                RecuperacaoSenha.MensagemEnvio,
+                TokenRedefinicaoSenha.ValidadeMinutos));
+        }
+        catch (ArgumentException exc)
+        {
+            return Results.Problem(
+                detail: SemNomeDoParametro(exc),
+                statusCode: StatusCodes.Status422UnprocessableEntity);
+        }
+    }
+
+    private static string SemNomeDoParametro(ArgumentException exc) =>
+        exc.Message.Split(" (Parameter", 2)[0];
 }

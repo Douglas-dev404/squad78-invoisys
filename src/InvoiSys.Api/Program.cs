@@ -81,11 +81,11 @@ app.MapGet("/health", () => Results.Ok(new StatusSaude("ok")))
     .WithName("Health")
     .WithSummary("Verificação de que a API está no ar.")
     .Produces<StatusSaude>();
+app.MapAuthEndpoints();
 app.MapReleaseEndpoints();
 app.MapRevisaoEndpoints();
 app.MapItemComunicadoEndpoints();
 app.MapExportacaoEndpoints();
-app.MapAuthEndpoints();
 
 app.Run();
 return 0;

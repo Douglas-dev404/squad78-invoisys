@@ -11,6 +11,8 @@ InvoiSys.Api/
 │   └── BearerSecuritySchemeTransformer.cs  # esquema Bearer no OpenAPI (botão Authorize)
 ├── Endpoints/
 │   ├── AuthEndpoints.cs           # sessão: login, me, logout
+
+│   ├── AuthEndpoints.cs           # rotas /api/v1/auth (esqueci a senha, redefinir)
 │   ├── ReleaseEndpoints.cs        # rotas /api/v1/releases (listar, detalhe, historias, processar)
 │   ├── RevisaoEndpoints.cs        # revisão humana por público (aprovar, reprovar, reabrir)
 │   └── ItemComunicadoEndpoints.cs # revisão de item (editar, excluir, reincluir)
@@ -35,6 +37,10 @@ InvoiSys.Api/
 | `POST` | `/api/v1/auth/login` | `LoginAsync` → `Autenticacao` | `LoginOut` · corpo `{ "email": "...", "senha": "..." }` | 401, 422, 429 |
 | `GET` | `/api/v1/auth/me` | `MeAsync` → `Autenticacao` | `UsuarioOut` (exige Bearer) | 401 |
 | `POST` | `/api/v1/auth/logout` | inline | 204 (não há o que revogar no servidor) | — |
+
+| `POST` | `/api/v1/auth/forgot-password` | `EsqueciSenhaAsync` → `RecuperacaoSenha` | `{ mensagem, expiraEmMinutos: 30 }` · corpo `{ "email" }` · mesma resposta para e-mail existente ou não | 422, 429 |
+| `POST` | `/api/v1/auth/resend-forgot-password` | `ReenviarEsqueciSenhaAsync` → `RecuperacaoSenha` | igual ao `forgot-password`; invalida o token anterior | 422, 429 |
+| `POST` | `/api/v1/auth/reset-password` | `RedefinirSenhaAsync` → `RecuperacaoSenha` | 204 · corpo `{ "token", "novaSenha" }` | 422 (token inválido, expirado ou já usado; senha fora da política) |
 | `GET` | `/api/v1/releases?status=` | `ListarReleasesAsync` → `ConsultaReleases` | `ReleaseResumoOut[]` (mais recente primeiro) | 422 (status desconhecido) |
 | `GET` | `/api/v1/releases/{chaveRelease}` | `BuscarReleaseAsync` → `ConsultaReleases` | `ReleaseDetalheOut` (todas as versões por público; itens como `ItemRevisaoOut`, com `id`) | 404 |
 | `GET` | `/api/v1/releases/{chaveRelease}/historias` | `BuscarHistoriasAsync` → `IJiraClient` | `ReleaseOut` | 501, 502 |
@@ -65,6 +71,15 @@ InvoiSys.Api/
   ]
 }
 ```
+
+## Rate limit
+
+`/auth/forgot-password` e `/auth/resend-forgot-password` dividem a política `esqueci-senha`
+(`AddRateLimiter`, janela fixa por IP, padrão 5 por 15 min, 429 com `Retry-After`). Contador
+em memória por instância; atrás de proxy, configurar `ForwardedHeaders` para enxergar o IP
+real ([ADR-025](../../docs/decisoes-arquiteturais.md#adr-025--recuperação-de-senha-token-opaco-de-uso-único-e-resposta-uniforme)).
+
+---
 
 ## Tradução de erro → HTTP
 
@@ -254,5 +269,7 @@ O rate limit conta por IP. Atrás de proxy ou Docker, o IP visto pode ser o do p
 | Paginação de `GET /api/v1/releases` (hoje lista tudo) | quando o volume pedir |
 | ~~Exportar Markdown~~ feito: `POST /{chaveRelease}/exportar` (201; `ReleaseNaoAprovadaException` → 409; público/formato inválido ou html/pdf → 422) | #24 |
 | ~~`/auth/login`, `/auth/me`, `/auth/logout`~~ feito (CORS e rate limit do login incluídos). Falta `/auth/forgot-password` e `[Authorize]` nas rotas de revisão | #49 feito; #52 e #50 |
+
+| `/auth/login`, `/auth/me`, `/auth/logout` + JWT + `[Authorize]` nas rotas de revisão | Fase 3 |
 | `GET /api/v1/branding/highlights` (repository já existe) | Fase 3 |
 | Endpoint de histórico de execuções (`IExecucaoPipelineRepository`) e de exportações | Fase 4 |

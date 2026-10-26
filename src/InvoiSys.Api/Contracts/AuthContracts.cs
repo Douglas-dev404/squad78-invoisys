@@ -12,3 +12,9 @@ public sealed record UsuarioOut(
 }
 
 public sealed record LoginOut(UsuarioOut Usuario, string Token, DateTimeOffset ExpiraEm);
+
+public sealed record EsqueciSenhaIn(string? Email);
+
+public sealed record EsqueciSenhaOut(string Mensagem, int ExpiraEmMinutos);
+
+public sealed record RedefinirSenhaIn(string? Token, string? NovaSenha);

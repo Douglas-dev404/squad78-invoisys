@@ -45,7 +45,7 @@ public class AdminInicialTests(PostgresContainerFixture fixture)
     private async Task LimparUsuarios()
     {
         await using var contexto = fixture.CriarContexto();
-        await contexto.Database.ExecuteSqlRawAsync("DELETE FROM usuarios");
+        await contexto.Database.ExecuteSqlRawAsync("DELETE FROM tokens_redefinicao_senha; DELETE FROM usuarios");
     }
 
     [Fact]

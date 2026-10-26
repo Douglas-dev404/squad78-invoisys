@@ -10,7 +10,7 @@ mapeamento em [`src/InvoiSys.Infrastructure/Database/`](../src/InvoiSys.Infrastr
 - **SGBD**: PostgreSQL 16
 - **ORM**: EF Core 10 (Code-First) + Npgsql + EFCore.NamingConventions
 - **Convenção**: `snake_case` no SQL, `PascalCase` em C# — a naming convention traduz
-- **8 tabelas · 66 colunas · 6 chaves estrangeiras · 20 índices**
+- **9 tabelas · 72 colunas · 7 chaves estrangeiras · 22 índices**
 
 ---
 
@@ -74,9 +74,9 @@ preciso lidar com o histórico antes, conscientemente.
 A FK #6 para `releases` continua `CASCADE` porque apagar a Release inteira é uma operação
 deliberada de limpeza total, não uma correção de conteúdo.
 
-### `usuarios` e `destaques_hero` não têm FK
+### `usuarios` e `destaques_hero` quase não têm FK
 
-Aparecem com borda tracejada no ERD. `usuarios` ainda não é referenciado porque
+Aparecem com borda tracejada no ERD (o ERD ainda não inclui `tokens_redefinicao_senha`). `usuarios` só é referenciado por `tokens_redefinicao_senha`; o resto não, porque
 autenticação não está implementada no domínio — `revisado_por` e `gerado_por` são texto
 livre por enquanto (ver [Pendências](#pendências-conhecidas)). `destaques_hero` é
 conteúdo editorial independente, sem relação com o pipeline.
@@ -346,6 +346,19 @@ ao padrão das outras colunas de vocabulário.
 
 **`ativo` em vez de DELETE**: usuário que aprovou Release não pode sumir do histórico.
 
+### `tokens_redefinicao_senha` — recuperação de senha
+
+Decisão em [ADR-025](decisoes-arquiteturais.md#adr-025--recuperação-de-senha-token-opaco-de-uso-único-e-resposta-uniforme).
+
+| Coluna | Tipo | Nulo | Default | Observação |
+|---|---|---|---|---|
+| `id` | `uuid` | não | `gen_random_uuid()` | **PK**. |
+| `usuario_id` | `uuid` | não | — | **FK** → `usuarios.id`, `RESTRICT`. |
+| `token_hash` | `varchar(64)` | não | — | **UNIQUE**. SHA-256 em hex; o token cru nunca é gravado. |
+| `criado_em` | `timestamptz` | não | `now()` | Base do cooldown de reenvio. |
+| `expira_em` | `timestamptz` | não | — | `criado_em` + 30 minutos. |
+| `usado_em` | `timestamptz` | **sim** | — | Nulo até o uso; também marca token invalidado por reenvio ou troca de senha. |
+
 ---
 
 ### `destaques_hero` — conteúdo da tela de login
@@ -396,6 +409,9 @@ pretendido.
 | `comunicados_exportados` | `ix_comunicados_exportados_release_id` | btree | `release_id` | Exports de uma Release |
 | `usuarios` | `pk_usuarios` | btree UNIQUE | `id` | PK |
 | `usuarios` | `ix_usuarios_email` | btree UNIQUE | `email` | Login; garante e-mail único |
+| `tokens_redefinicao_senha` | `pk_tokens_redefinicao_senha` | btree UNIQUE | `id` | PK |
+| `tokens_redefinicao_senha` | `ix_tokens_redefinicao_senha_token_hash` | btree UNIQUE | `token_hash` | Busca do token recebido; garante unicidade |
+| `tokens_redefinicao_senha` | `ix_tokens_redefinicao_senha_usuario_id` | btree | `usuario_id` | Tokens pendentes e último token do usuário |
 | `destaques_hero` | `pk_destaques_hero` | btree UNIQUE | `id` | PK |
 | `destaques_hero` | `ix_destaques_hero_ativo_ordem` | btree | `ativo, ordem` | `WHERE ativo ORDER BY ordem` |
 
@@ -484,6 +500,7 @@ evento (`execucoes_pipeline`, `comunicados_exportados`) ou de cadastro simples
 | Revisão: excluir item | ✅ | `itens_comunicado.incluido` |
 | Exportação Markdown | ✅ schema | `comunicados_exportados` — render pendente |
 | Autenticação | ✅ schema | `usuarios` — JWT pendente |
+| Recuperação de senha | ✅ | `tokens_redefinicao_senha` — e-mail real pendente (SMTP) |
 | Logs / rastreabilidade | ✅ | `execucoes_pipeline` |
 | **Múltiplos públicos** (diferencial) | ✅ | `versoes_comunicado` |
 | Exportação HTML/PDF (diferencial) | ✅ schema | `formato` |
@@ -494,9 +511,8 @@ evento (`execucoes_pipeline`, `comunicados_exportados`) ou de cadastro simples
 
 1. **`revisado_por` / `gerado_por` são texto livre, não FK para `usuarios`** —
    autenticação não está implementada no domínio ainda. Vira FK quando o JWT entrar.
-2. **Recuperação de senha sem entidade** — o frontend já chama
-   `POST /auth/forgot-password` e espera `{ message, expiresInMinutes }`, o que implica um
-   token de reset com expiração. Não modelado.
+2. **Recuperação de senha sem e-mail real** — o token está modelado
+   (`tokens_redefinicao_senha`), mas o envio é o adapter pendente, que só loga o link.
 3. **Repositories prontos, API de revisão ainda não os usa** — o pipeline já persiste
    via `IReleaseRepository` (issue #20; `PipelineGeracaoReleaseNotePersistenciaTests`).
    `IUsuarioRepository`, `IComunicadoExportadoRepository` e as portas somente leitura de

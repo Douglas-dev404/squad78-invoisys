@@ -7,6 +7,7 @@ namespace InvoiSys.Api.Auth;
 public static class LimiteDeLogin
 {
     public const string Politica = "login";
+    public const string PoliticaEsqueciSenha = "esqueci-senha";
 }
 
 public static class ConfiguracaoHttp
@@ -48,15 +49,27 @@ public static class ConfiguracaoHttp
                     QueueLimit = 0,
                 }));
 
+            var envios = configuracao.GetValue("Auth:RecuperacaoSenha:LimiteRequisicoes", 5);
+            var janelaEnvios = TimeSpan.FromMinutes(configuracao.GetValue("Auth:RecuperacaoSenha:JanelaMinutos", 15));
+
+            limitador.AddPolicy(LimiteDeLogin.PoliticaEsqueciSenha, contexto => RateLimitPartition.GetFixedWindowLimiter(
+                contexto.Connection.RemoteIpAddress?.ToString() ?? "desconhecido",
+                _ => new FixedWindowRateLimiterOptions
+                {
+                    PermitLimit = envios,
+                    Window = janelaEnvios,
+                    QueueLimit = 0,
+                }));
+
             limitador.OnRejected = async (contexto, _) =>
             {
                 if (contexto.Lease.TryGetMetadata(MetadataName.RetryAfter, out var espera))
                 {
-                    contexto.HttpContext.Response.Headers.RetryAfter = ((int)espera.TotalSeconds).ToString();
+                    contexto.HttpContext.Response.Headers.RetryAfter = ((int)espera.TotalSeconds).ToString(System.Globalization.CultureInfo.InvariantCulture);
                 }
 
                 await Results.Problem(
-                    detail: "Muitas tentativas de login. Tente novamente em instantes.",
+                    detail: "Muitas solicitações. Tente novamente em instantes.",
                     statusCode: StatusCodes.Status429TooManyRequests)
                     .ExecuteAsync(contexto.HttpContext);
             };
