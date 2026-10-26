@@ -72,6 +72,7 @@ classDiagram
 | Entidade | Papel |
 |---|---|
 | [`ComunicadoExportado`](Entities/ComunicadoExportado.cs) | Registro de publicação (append-only). **O construtor lança `ReleaseNaoAprovadaException` se a versão não estiver `ProntaParaExportar`** |
+| [`TokenRedefinicaoSenha`](Entities/TokenRedefinicaoSenha.cs) | Token de "esqueci a senha": guarda só o hash, vale 30 minutos e é de uso único (`MarcarComoUsado`) |
 | [`Usuario`](Entities/Usuario.cs) | Quem faz login, revisa e aprova. `Papel` é texto livre até o RBAC existir (`PapelAdmin` é a única constante). O e-mail é normalizado (trim + minúsculas) no construtor e por `NormalizarEmail`. Desligar = `Desativar()`, nunca DELETE |
 | [`DestaqueHero`](Entities/DestaqueHero.cs) | Conteúdo institucional da tela de login (`GET /branding/highlights`). Sem relação com o pipeline |
 
@@ -129,6 +130,8 @@ errado em silêncio).
 | [`IUsuarioRepository`](Ports/IUsuarioRepository.cs) | persistência (agregado) | `UsuarioRepository` | `BuscarPorIdAsync`, `BuscarPorEmailAsync` (normaliza o argumento), `ExisteAlgumAsync`, `SalvarAsync` (sem delete) |
 | [`IHashSenha`](Ports/IHashSenha.cs) | saída (criptografia) | `Argon2idHashSenha` | `Gerar`, `Verificar` |
 | [`IEmissorToken`](Ports/IEmissorToken.cs) | saída (criptografia) | `JwtEmissorToken` | `Emitir(usuario)` → `TokenEmitido(Token, ExpiraEm)` |
+| [`IEnvioEmail`](Ports/IEnvioEmail.cs) | saída (e-mail) | `EnvioEmailPendente` | `EnviarRedefinicaoSenhaAsync` |
+| [`ITokenRedefinicaoSenhaRepository`](Ports/ITokenRedefinicaoSenhaRepository.cs) | persistência | `TokenRedefinicaoSenhaRepository` | `AdicionarAsync`, `BuscarPorHashAsync`, `BuscarUltimoDoUsuarioAsync`, `ConsumirAsync` (atômico), `InvalidarPendentesDoUsuarioAsync` |
 | [`IDestaqueHeroRepository`](Ports/IDestaqueHeroRepository.cs) | somente leitura | `DestaqueHeroRepository` | `ListarAtivosAsync` (ordenado) |
 
 **Não existe** porta para `VersaoComunicado` nem `ItemComunicado`, e isso é proposital:
@@ -258,8 +261,6 @@ ProviderNaoConfiguradoException ─► 501
 
 ## O que ainda falta neste módulo
 
-- Mapear o fluxo de recuperação de senha (token de reset com expiração), se entrar no
-  escopo ([ADR-024](../../docs/decisoes-arquiteturais.md#adr-024--autenticação-jwt-stateless-argon2id-e-admin-inicial)).
 - Porta de renderização da exportação, se a opção escolhida em
   [P-03](../../docs/decisoes-arquiteturais.md#p-03--onde-mora-o-render-da-exportação)
   for essa.

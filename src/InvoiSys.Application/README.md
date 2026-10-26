@@ -6,6 +6,8 @@ concretos chegam por injeção de dependência.
 
 ```
 InvoiSys.Application/
+├── Autenticacao/
+│   └── RecuperacaoSenha.cs             # esqueci a senha: solicitar, reenviar, redefinir
 ├── Consulta/
 │   └── ConsultaReleases.cs             # listagem (resumo) e detalhe (agregado completo)
 ├── Pipeline/
@@ -14,6 +16,21 @@ InvoiSys.Application/
 │   └── RevisaoComunicado.cs            # aprovar/reprovar/reabrir + editar/excluir/reincluir item
 └── DependencyInjection.cs              # AddApplication(): registra os casos de uso
 ```
+
+---
+
+## `RecuperacaoSenha`
+
+Fluxo de "esqueci a senha" ([ADR-025](../../docs/decisoes-arquiteturais.md#adr-025--recuperação-de-senha-token-opaco-de-uso-único-e-resposta-uniforme)).
+
+**Dependências:** `IUsuarioRepository`, `ITokenRedefinicaoSenhaRepository`, `IHashSenha`,
+`IEnvioEmail`, `OpcoesRecuperacaoSenha` (URL base do link e cooldown) e `TimeProvider`.
+
+| Método | O que faz |
+|---|---|
+| `SolicitarAsync(email)` | Usuário ativo e fora do cooldown: invalida os tokens pendentes, gera um token (32 bytes), grava só o hash SHA-256 e envia o link `{UrlBase}#token=...`. Caso contrário, não faz nada e não avisa: a API responde igual |
+| `ReenviarAsync(email)` | Mesma regra de `SolicitarAsync` |
+| `RedefinirAsync(token, novaSenha)` | Valida a senha (8 a 128), consome o token de forma atômica, troca o hash e invalida os demais tokens. Falha → `TokenRedefinicaoInvalidoException` (422) |
 
 ---
 
