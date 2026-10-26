@@ -10,7 +10,7 @@ mapeamento em [`src/InvoiSys.Infrastructure/Database/`](../src/InvoiSys.Infrastr
 - **SGBD**: PostgreSQL 16
 - **ORM**: EF Core 10 (Code-First) + Npgsql + EFCore.NamingConventions
 - **Convenção**: `snake_case` no SQL, `PascalCase` em C# — a naming convention traduz
-- **9 tabelas · 72 colunas · 7 chaves estrangeiras · 22 índices**
+- **9 tabelas · 74 colunas · 9 chaves estrangeiras · 24 índices**
 
 ---
 
@@ -61,6 +61,9 @@ em torno de garanti-lo estruturalmente, não por convenção.
 | 4 | `itens_comunicado` → `versoes_comunicado` | `versao_comunicado_id` | 1:N | `CASCADE` | Itens pertencem à versão (público), não à Release direto. |
 | 5 | `comunicados_exportados` → `versoes_comunicado` | `versao_comunicado_id` | 1:N | **`RESTRICT`** | **Protege auditoria** — ver abaixo. |
 | 6 | `comunicados_exportados` → `releases` | `release_id` | 1:N | `CASCADE` | Conveniência de consulta ("tudo que já foi exportado desta Release"). |
+| 7 | `tokens_redefinicao_senha` → `usuarios` | `usuario_id` | 1:N | `RESTRICT` | Usuário nunca é apagado, só desativado. |
+| 8 | `versoes_comunicado` → `usuarios` | `revisado_por_id` | N:1 (anulável) | `RESTRICT` | Quem aprovou/reprovou: trilha de auditoria; apagar o usuário reescreveria a história ([ADR-026](decisoes-arquiteturais.md#adr-026--rotas-de-release-exigem-token-e-o-revisor-vem-dele)). |
+| 9 | `comunicados_exportados` → `usuarios` | `gerado_por_id` | N:1 (anulável) | `RESTRICT` | Quem gerou a exportação. |
 
 ### Por que a FK #5 é `RESTRICT` e não `CASCADE`
 
@@ -74,9 +77,9 @@ preciso lidar com o histórico antes, conscientemente.
 A FK #6 para `releases` continua `CASCADE` porque apagar a Release inteira é uma operação
 deliberada de limpeza total, não uma correção de conteúdo.
 
-### `usuarios` e `destaques_hero` quase não têm FK
+### `usuarios` e `destaques_hero` no ERD
 
-Aparecem com borda tracejada no ERD (o ERD ainda não inclui `tokens_redefinicao_senha`). `usuarios` só é referenciado por `tokens_redefinicao_senha`; o resto não, porque
+O ERD (`erd.png`/`erd.svg`) está **desatualizado**: ainda desenha `usuarios` sem FK e não inclui `tokens_redefinicao_senha` nem as colunas `revisado_por_id`/`gerado_por_id`. `usuarios` hoje é referenciado por `tokens_redefinicao_senha`, `versoes_comunicado` e `comunicados_exportados` (FKs 7 a 9). Antes era isolado porque
 autenticação não está implementada no domínio — `revisado_por` e `gerado_por` são texto
 livre por enquanto (ver [Pendências](#pendências-conhecidas)). `destaques_hero` é
 conteúdo editorial independente, sem relação com o pipeline.
@@ -195,7 +198,8 @@ Release × público-alvo, cada uma com **seu próprio ciclo de revisão**.
 | `status` | `varchar(30)` | não | — | **Indexada**. `StatusRevisao`, com CHECK. |
 | `titulo_executivo` | `text` | **sim** | — | Pode diferir por audiência. |
 | `resumo_executivo` | `text` | **sim** | — | Pode diferir por audiência. |
-| `revisado_por` | `varchar(200)` | **sim** | — | Texto livre — ver pendência 1. |
+| `revisado_por_id` | `uuid` | **sim** | — | **FK** → `usuarios.id` `RESTRICT`. Indexada. Nulo nos registros anteriores à autenticação e enquanto a versão não foi decidida. |
+| `revisado_por` | `varchar(200)` | **sim** | — | Nome exibido de quem decidiu, gravado no momento da decisão. Texto livre nos registros antigos. |
 | `revisado_em` | `timestamptz` | **sim** | — | |
 | `motivo_reprovacao` | `text` | **sim** | — | **CHECK**: obrigatório se `status='reprovado'`. |
 | `criado_em` | `timestamptz` | não | — | |
@@ -302,7 +306,8 @@ cada público, em cada formato.
 | `formato` | `varchar(20)` | não | — | `FormatoExportacao`, com CHECK. |
 | `conteudo` | `text` | **sim** | — | Markdown / HTML. |
 | `caminho_arquivo` | `text` | **sim** | — | Caminho/URL quando binário (PDF). |
-| `gerado_por` | `varchar(200)` | **sim** | — | Texto livre — ver pendência 1. |
+| `gerado_por_id` | `uuid` | **sim** | — | **FK** → `usuarios.id` `RESTRICT`. Indexada. Preenchida quando o endpoint de exportação (#24) passar a usar o usuário do token. |
+| `gerado_por` | `varchar(200)` | **sim** | — | Nome exibido de quem gerou. |
 | `gerado_em` | `timestamptz` | não | — | |
 
 **O gate estrutural**: o construtor em C# lança `ReleaseNaoAprovadaException` se a versão
@@ -407,6 +412,8 @@ pretendido.
 | `comunicados_exportados` | `pk_comunicados_exportados` | btree UNIQUE | `id` | PK |
 | `comunicados_exportados` | `ix_comunicados_exportados_versao_comunicado_id` | btree | `versao_comunicado_id` | Exports de uma versão |
 | `comunicados_exportados` | `ix_comunicados_exportados_release_id` | btree | `release_id` | Exports de uma Release |
+| `versoes_comunicado` | `ix_versoes_comunicado_revisado_por_id` | btree | `revisado_por_id` | Índice da FK do revisor |
+| `comunicados_exportados` | `ix_comunicados_exportados_gerado_por_id` | btree | `gerado_por_id` | Índice da FK de quem gerou |
 | `usuarios` | `pk_usuarios` | btree UNIQUE | `id` | PK |
 | `usuarios` | `ix_usuarios_email` | btree UNIQUE | `email` | Login; garante e-mail único |
 | `tokens_redefinicao_senha` | `pk_tokens_redefinicao_senha` | btree UNIQUE | `id` | PK |
@@ -509,8 +516,11 @@ evento (`execucoes_pipeline`, `comunicados_exportados`) ou de cadastro simples
 
 ## Pendências conhecidas
 
-1. **`revisado_por` / `gerado_por` são texto livre, não FK para `usuarios`** —
-   autenticação não está implementada no domínio ainda. Vira FK quando o JWT entrar.
+1. ~~`revisado_por` / `gerado_por` são texto livre, não FK para `usuarios`~~ — **resolvida**
+   ([ADR-026](decisoes-arquiteturais.md#adr-026--rotas-de-release-exigem-token-e-o-revisor-vem-dele)):
+   `revisado_por_id` e `gerado_por_id` são FK `RESTRICT`. Resta que os registros anteriores
+   à autenticação ficam com o id nulo (o texto antigo foi preservado, sem backfill) e que o
+   endpoint de exportação (#24) ainda precisa passar o usuário do token.
 2. **Recuperação de senha sem e-mail real** — o token está modelado
    (`tokens_redefinicao_senha`), mas o envio é o adapter pendente, que só loga o link.
 3. **Repositories prontos, API de revisão ainda não os usa** — o pipeline já persiste

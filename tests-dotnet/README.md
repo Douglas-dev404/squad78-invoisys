@@ -13,6 +13,15 @@ dotnet test InvoiSys.slnx                                   # tudo (Docker preci
 dotnet test InvoiSys.slnx --filter "FullyQualifiedName~Unit" # só unitários, sem Docker
 ```
 
+### Autenticação nos testes de API
+
+`Fakes/AutenticacaoDeTeste.cs` é o helper compartilhado: `CriarToken(usuario)` emite um JWT
+com `JwtEmissorToken` e a chave de `ConfiguracaoDeTestes`; `services.ComUsuarios(...)`
+registra o `FakeUsuarioRepository` (a API consulta o usuário a cada requisição, então todo
+teste de API precisa dele); `app.CriarClienteAutenticado()` devolve um `HttpClient` com o
+Bearer do revisor padrão. Testes de persistência usam `fixture.SalvarRevisorAsync()`, porque
+`revisado_por_id` é FK para `usuarios`.
+
 ### Vendo o EF Core persistir
 
 `PipelineGeracaoReleaseNotePersistenciaTests` imprime cada comando SQL que o EF Core

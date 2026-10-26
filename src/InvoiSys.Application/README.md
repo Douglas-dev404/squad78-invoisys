@@ -136,7 +136,7 @@ As operações de item devolvem `ItemRevisado` (o item + o público da versão d
 via `Release.PublicoDoItem`), o bastante para a API montar a resposta sem refazer a busca.
 
 Nenhuma decisão de negócio aqui: o público chega já convertido e obrigatório (sem
-default para Cliente); revisor, motivo e texto de edição são validados pelo domínio.
+default para Cliente); motivo e texto de edição são validados pelo domínio. O revisor chega como id do usuário do token: `RevisaoComunicado` o carrega e recusa inexistente ou desativado (`RevisorInvalidoException`, 401).
 Registrado como **Scoped** (depende do repository, que é scoped).
 
 ---

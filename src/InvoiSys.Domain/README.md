@@ -87,7 +87,7 @@ classDiagram
 | `ItemNaoEncontradoException` | editar/excluir/reincluir um item que não existe na Release |
 | `ReleaseNaoAprovadaException` | construir `ComunicadoExportado` de versão não aprovada |
 | `ReleaseNaoEncontradaException` | caso de uso aponta para uma chave de Release que não foi persistida |
-| `ArgumentException` | reprovar sem motivo, aprovar/reprovar sem identificar o revisor (trilha de auditoria da revisão humana), ou editar item com texto vazio |
+| `ArgumentException` | reprovar sem motivo, aprovar/reprovar sem um `Usuario` revisor ativo (trilha de auditoria da revisão humana), ou editar item com texto vazio |
 
 > Mapeamento para HTTP das exceções de revisão: ver `MapearFalhaDeRevisao` e `MapearFalhaDeRevisaoDeItem` no
 > [README da API](../InvoiSys.Api/README.md#tradução-de-erro--http).
@@ -213,7 +213,8 @@ ProviderNaoConfiguradoException ─► 501
 - `PreencherConteudo` não sobrescreve versão aprovada: a IA não desfaz em silêncio uma
   decisão humana.
 - `Aprovar` exige itens, ao menos um incluído, status `AguardandoRevisao` e o revisor
-  identificado. Sem revisor, a aprovação não serve como trilha de auditoria.
+  identificado: `Aprovar(Usuario, ...)` grava `RevisadoPorId` e o nome (`RevisadoPor`). Sem
+  revisor ativo, a aprovação não serve como trilha de auditoria.
 - `EditarItem` recusa texto vazio. Para voltar ao texto da IA, o caminho é reprocessar;
   para tirar o item, é excluir.
 - `Reabrir` não apaga `ComunicadoExportado` anteriores: o que já foi publicado

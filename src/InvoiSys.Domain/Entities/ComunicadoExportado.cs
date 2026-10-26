@@ -15,7 +15,8 @@ public sealed class ComunicadoExportado
         FormatoExportacao formato,
         string? conteudo,
         string? caminhoArquivo,
-        string? geradoPor)
+        string? geradoPor,
+        Guid? geradoPorId = null)
     {
         if (!versao.ProntaParaExportar)
         {
@@ -32,6 +33,7 @@ public sealed class ComunicadoExportado
         Conteudo = conteudo;
         CaminhoArquivo = caminhoArquivo;
         GeradoPor = geradoPor;
+        GeradoPorId = geradoPorId;
         GeradoEm = DateTimeOffset.UtcNow;
     }
 
@@ -48,6 +50,8 @@ public sealed class ComunicadoExportado
     public string? Conteudo { get; private init; }
 
     public string? CaminhoArquivo { get; private init; }
+
+    public Guid? GeradoPorId { get; private init; }
 
     public string? GeradoPor { get; private init; }
 

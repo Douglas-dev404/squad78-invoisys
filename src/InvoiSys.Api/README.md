@@ -22,6 +22,8 @@ InvoiSys.Api/
 
 ## Endpoints atuais
 
+> **Autenticação:** todas as rotas `/api/v1/releases/**` exigem `Authorization: Bearer <token>` (401 sem ele, com token inválido/expirado ou de usuário inexistente/desativado). Públicas: `/health` e `/api/v1/auth/*`.
+
 | Método | Rota | Handler | Resposta | Erros |
 |---|---|---|---|---|
 | `GET` | `/health` | inline em `Program.cs` | `{ "status": "ok" }` | — |
@@ -86,7 +88,8 @@ Nas rotas de revisão, `MapearFalhaDeRevisao` (em `RevisaoEndpoints`):
 |---|---|---|
 | `ReleaseNaoEncontradaException` | **404** | não há Release persistida com essa chave |
 | `ReleaseSemItensProcessadosException`, `RevisaoHumanaObrigatoriaException`, `TransicaoDeStatusInvalidaException` | **409** | o estado atual impede a operação (sem comunicado, já aprovada, reabrir o que não foi aprovado) |
-| `ArgumentException` | **422** | revisor ou motivo vazio |
+| `RevisorInvalidoException` | **401** | o usuário do token não existe mais ou está desativado |
+| `ArgumentException` | **422** | motivo vazio |
 | público ausente ou desconhecido | **422** | validado na conversão do DTO, sem default para Cliente |
 
 Nas rotas de item, `MapearFalhaDeRevisaoDeItem` (em `ItemComunicadoEndpoints`), mesmo
@@ -107,10 +110,13 @@ Respostas de erro seguem `ProblemDetails` (`Results.Problem`).
   (`nova_funcionalidade`, `aguardando_revisao`), e quem consome a API não precisa saber
   que o backend trocou de linguagem.
 - Os campos dos DTOs de entrada da revisão são **anuláveis** porque é isso que o binder
-  JSON entrega quando o campo falta. A obrigatoriedade (revisor, motivo, texto) é
+  JSON entrega quando o campo falta. A obrigatoriedade (motivo, texto) é
   validada no domínio, não pela anotação do tipo.
-- `aprovadoPor`/`revisadoPor` são texto livre enquanto não há autenticação. Quando houver,
-  saem do corpo e passam a vir do usuário autenticado.
+- O revisor **não vem do corpo**: `AprovarIn` e `ReprovarIn` não têm mais `aprovadoPor` nem
+  `revisadoPor` (se um cliente antigo enviar, o campo é ignorado). O endpoint lê o claim `sub`
+  do token e o caso de uso grava `revisado_por_id` (FK) e o nome do usuário
+  ([ADR-026](../../docs/decisoes-arquiteturais.md#adr-026--rotas-de-release-exigem-token-e-o-revisor-vem-dele)).
+  `ReleaseDetalheOut` traz `revisadoPorId` e `revisadoPor` em cada versão.
 - `ItemRevisaoOut` traz o `id` (alvo das rotas de item), o texto da IA e a edição humana
   lado a lado, o `textoFinal` e se o item está incluído: o bastante para a tela atualizar
   a linha sem buscar a Release inteira de novo.

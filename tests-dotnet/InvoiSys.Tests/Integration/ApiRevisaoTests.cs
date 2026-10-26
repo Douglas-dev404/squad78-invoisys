@@ -20,6 +20,7 @@ public class ApiRevisaoTests
             builder.ConfigureServices(services =>
             {
                 services.RemoveAll<IReleaseRepository>();
+                services.ComUsuarios(AutenticacaoDeTeste.Revisor);
                 services.AddScoped(_ => repositorio);
             }));
 
@@ -56,7 +57,7 @@ public class ApiRevisaoTests
         string chave = Chave)
     {
         using var app = CriarApp(repositorio);
-        using var client = app.CreateClient();
+        using var client = app.CriarClienteAutenticado();
         return await client.PostAsJsonAsync($"/api/v1/releases/{chave}/{acao}", corpo);
     }
 
@@ -65,24 +66,40 @@ public class ApiRevisaoTests
     {
         var (repositorio, release) = await ReleaseSalva();
 
-        var resposta = await Post(repositorio, "aprovar", new { publico = "cliente", aprovadoPor = "victor" });
+        var resposta = await Post(repositorio, "aprovar", new { publico = "cliente" });
 
         resposta.StatusCode.Should().Be(HttpStatusCode.NoContent);
         release.VersaoCliente!.Status.Should().Be(StatusRevisao.Aprovado);
-        release.VersaoCliente.RevisadoPor.Should().Be("victor");
+        release.VersaoCliente.RevisadoPor.Should().Be(AutenticacaoDeTeste.Revisor.Nome);
+        release.VersaoCliente.RevisadoPorId.Should().Be(AutenticacaoDeTeste.Revisor.Id);
         release.Status.Should().Be(StatusPipeline.Aprovado);
     }
 
     [Fact]
-    public async Task Aprovar_sem_revisor_responde_422_e_nao_aprova()
+    public async Task Aprovar_ignora_aprovadoPor_do_corpo_e_usa_o_usuario_do_token()
     {
         var (repositorio, release) = await ReleaseSalva();
 
-        var resposta = await Post(repositorio, "aprovar", new { publico = "cliente" });
+        var resposta = await Post(repositorio, "aprovar", new { publico = "cliente", aprovadoPor = "impostor" });
 
-        resposta.StatusCode.Should().Be(HttpStatusCode.UnprocessableEntity);
-        release.VersaoCliente!.Status.Should().Be(StatusRevisao.AguardandoRevisao);
-        release.VersaoCliente.RevisadoPor.Should().BeNull();
+        resposta.StatusCode.Should().Be(HttpStatusCode.NoContent);
+        release.VersaoCliente!.RevisadoPor.Should().Be(AutenticacaoDeTeste.Revisor.Nome);
+        release.VersaoCliente.RevisadoPorId.Should().Be(AutenticacaoDeTeste.Revisor.Id);
+    }
+
+    [Fact]
+    public async Task Reprovar_ignora_revisadoPor_do_corpo_e_usa_o_usuario_do_token()
+    {
+        var (repositorio, release) = await ReleaseSalva();
+
+        var resposta = await Post(
+            repositorio,
+            "reprovar",
+            new { publico = "cliente", motivo = "Tom técnico demais.", revisadoPor = "impostor" });
+
+        resposta.StatusCode.Should().Be(HttpStatusCode.NoContent);
+        release.VersaoCliente!.RevisadoPorId.Should().Be(AutenticacaoDeTeste.Revisor.Id);
+        release.VersaoCliente.RevisadoPor.Should().Be(AutenticacaoDeTeste.Revisor.Nome);
     }
 
     [Fact]
@@ -90,7 +107,7 @@ public class ApiRevisaoTests
     {
         var (repositorio, release) = await ReleaseSalva();
 
-        var resposta = await Post(repositorio, "aprovar", new { aprovadoPor = "victor" });
+        var resposta = await Post(repositorio, "aprovar", new { });
 
         resposta.StatusCode.Should().Be(HttpStatusCode.UnprocessableEntity);
         release.VersaoCliente!.Status.Should().Be(StatusRevisao.AguardandoRevisao);
@@ -101,7 +118,7 @@ public class ApiRevisaoTests
     {
         var (repositorio, _) = await ReleaseSalva();
 
-        var resposta = await Post(repositorio, "aprovar", new { publico = "financeiro", aprovadoPor = "victor" });
+        var resposta = await Post(repositorio, "aprovar", new { publico = "financeiro" });
 
         resposta.StatusCode.Should().Be(HttpStatusCode.UnprocessableEntity);
     }
@@ -111,7 +128,7 @@ public class ApiRevisaoTests
     {
         var (repositorio, _) = await ReleaseSalva(comComunicado: false);
 
-        var resposta = await Post(repositorio, "aprovar", new { publico = "cliente", aprovadoPor = "victor" });
+        var resposta = await Post(repositorio, "aprovar", new { publico = "cliente" });
 
         resposta.StatusCode.Should().Be(HttpStatusCode.Conflict);
         resposta.Content.Headers.ContentType!.MediaType.Should().Be("application/problem+json");
@@ -122,12 +139,12 @@ public class ApiRevisaoTests
     public async Task Aprovar_versao_ja_aprovada_responde_409()
     {
         var (repositorio, release) = await ReleaseSalva();
-        release.Aprovar("victor", DateTimeOffset.UtcNow);
+        release.Aprovar(AutenticacaoDeTeste.UmRevisor("Victor"), DateTimeOffset.UtcNow);
 
-        var resposta = await Post(repositorio, "aprovar", new { publico = "cliente", aprovadoPor = "outra.pessoa" });
+        var resposta = await Post(repositorio, "aprovar", new { publico = "cliente" });
 
         resposta.StatusCode.Should().Be(HttpStatusCode.Conflict);
-        release.VersaoCliente!.RevisadoPor.Should().Be("victor");
+        release.VersaoCliente!.RevisadoPor.Should().Be("Victor");
     }
 
     [Fact]
@@ -136,7 +153,7 @@ public class ApiRevisaoTests
         var resposta = await Post(
             new FakeReleaseRepository(),
             "aprovar",
-            new { publico = "cliente", aprovadoPor = "victor" },
+            new { publico = "cliente" },
             chave: "RELEASE-INEXISTENTE");
 
         resposta.StatusCode.Should().Be(HttpStatusCode.NotFound);
@@ -150,12 +167,13 @@ public class ApiRevisaoTests
         var resposta = await Post(
             repositorio,
             "reprovar",
-            new { publico = "cliente", motivo = "Texto precisa ser revisado.", revisadoPor = "victor" });
+            new { publico = "cliente", motivo = "Texto precisa ser revisado." });
 
         resposta.StatusCode.Should().Be(HttpStatusCode.NoContent);
         release.VersaoCliente!.Status.Should().Be(StatusRevisao.Reprovado);
         release.VersaoCliente.MotivoReprovacao.Should().Be("Texto precisa ser revisado.");
-        release.VersaoCliente.RevisadoPor.Should().Be("victor");
+        release.VersaoCliente.RevisadoPor.Should().Be(AutenticacaoDeTeste.Revisor.Nome);
+        release.VersaoCliente.RevisadoPorId.Should().Be(AutenticacaoDeTeste.Revisor.Id);
     }
 
     [Fact]
@@ -166,7 +184,7 @@ public class ApiRevisaoTests
         var resposta = await Post(
             repositorio,
             "reprovar",
-            new { publico = "cliente", motivo = "", revisadoPor = "victor" });
+            new { publico = "cliente", motivo = "" });
 
         resposta.StatusCode.Should().Be(HttpStatusCode.UnprocessableEntity);
         release.VersaoCliente!.Status.Should().Be(StatusRevisao.AguardandoRevisao);
@@ -176,7 +194,7 @@ public class ApiRevisaoTests
     public async Task Reabrir_versao_aprovada_limpa_o_revisor_e_responde_204()
     {
         var (repositorio, release) = await ReleaseSalva();
-        release.Aprovar("victor", DateTimeOffset.UtcNow);
+        release.Aprovar(AutenticacaoDeTeste.UmRevisor("Victor"), DateTimeOffset.UtcNow);
 
         var resposta = await Post(repositorio, "reabrir", new { publico = "cliente" });
 

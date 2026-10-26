@@ -6,27 +6,32 @@ namespace InvoiSys.Application.Revisao;
 
 public sealed record ItemRevisado(ItemComunicado Item, PublicoAlvo Publico);
 
-public sealed class RevisaoComunicado(IReleaseRepository releases)
+public sealed class RevisorInvalidoException()
+    : Exception("O usuário do token não existe ou está desativado.");
+
+public sealed class RevisaoComunicado(IReleaseRepository releases, IUsuarioRepository usuarios)
 {
     public Task AprovarAsync(
         string chaveRelease,
         PublicoAlvo publico,
-        string aprovadoPor,
+        Guid revisorId,
         CancellationToken cancellationToken = default) =>
-        RevisarAsync(
+        RevisarComoAsync(
             chaveRelease,
-            release => release.Aprovar(aprovadoPor, DateTimeOffset.UtcNow, publico),
+            revisorId,
+            (release, revisor) => release.Aprovar(revisor, DateTimeOffset.UtcNow, publico),
             cancellationToken);
 
     public Task ReprovarAsync(
         string chaveRelease,
         PublicoAlvo publico,
-        string revisadoPor,
+        Guid revisorId,
         string motivo,
         CancellationToken cancellationToken = default) =>
-        RevisarAsync(
+        RevisarComoAsync(
             chaveRelease,
-            release => release.Reprovar(revisadoPor, motivo, DateTimeOffset.UtcNow, publico),
+            revisorId,
+            (release, revisor) => release.Reprovar(revisor, motivo, DateTimeOffset.UtcNow, publico),
             cancellationToken);
 
     public Task ReabrirAsync(
@@ -69,6 +74,21 @@ public sealed class RevisaoComunicado(IReleaseRepository releases)
             itemId,
             release => release.ReincluirItem(itemId),
             cancellationToken);
+
+    private async Task RevisarComoAsync(
+        string chaveRelease,
+        Guid revisorId,
+        Action<Release, Usuario> revisao,
+        CancellationToken cancellationToken)
+    {
+        var revisor = await usuarios.BuscarPorIdAsync(revisorId, cancellationToken);
+        if (revisor is null || !revisor.Ativo)
+        {
+            throw new RevisorInvalidoException();
+        }
+
+        await RevisarAsync(chaveRelease, release => revisao(release, revisor), cancellationToken);
+    }
 
     private Task<ItemRevisado> RevisarItemAsync(
         string chaveRelease,
