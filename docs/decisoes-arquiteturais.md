@@ -42,6 +42,7 @@ histórico também é documentação.
 | [023](#adr-023--o-porquê-mora-na-documentação-não-em-comentário) | O porquê mora na documentação, não em comentário | Aceita | 2026-10-03 |
 | [024](#adr-024--autenticação-jwt-stateless-argon2id-e-admin-inicial) | Autenticação: JWT stateless, Argon2id e admin inicial | Aceita | 2026-10-11 |
 | [025](#adr-025--recuperação-de-senha-token-opaco-de-uso-único-e-resposta-uniforme) | Recuperação de senha: token opaco de uso único e resposta uniforme | Aceita | 2026-10-26 |
+| [026](#adr-026--rotas-de-release-exigem-token-e-o-revisor-vem-dele) | Rotas de Release exigem token e o revisor vem dele | Aceita | 2026-10-27 |
 | [P-02](#p-02--desenho-da-autenticação) | Desenho da autenticação | **Resolvida** → ADR-024 | 2026-10-11 |
 | [P-03](#p-03--onde-mora-o-render-da-exportação) | Onde mora o render da exportação | **Proposta** | — |
 
@@ -601,6 +602,9 @@ entrada inválida. Sem regra explícita, cada PR inventava a sua.
 - ✅ Contrato de erro previsível para o frontend: 404 / 409 / 422.
 - ⚠️ Mais uma classe na Application por grupo de casos de uso.
 - Coberto por `ApiRevisaoTests` (HTTP) e `VersaoComunicadoTests` (domínio).
+- Atualização ([ADR-026](#adr-026--rotas-de-release-exigem-token-e-o-revisor-vem-dele)): o
+  revisor deixou de vir do corpo; vem do usuário do token, e quem não existe ou está
+  desativado é 401.
 
 ---
 
@@ -682,8 +686,9 @@ nasce o primeiro usuário.
 **Consequências.**
 - ✅ Sem estado de sessão no servidor; a API escala sem tabela nova.
 - ✅ Domínio e Application seguem sem dependência de criptografia.
-- ⚠️ Token emitido vale até expirar: desativar usuário só bloqueia novos logins até lá
-  (a checagem de `Ativo` por requisição fica para o #50).
+- ⚠️ Token emitido vale até expirar, mas a API consulta `Ativo` a cada requisição
+  ([ADR-026](#adr-026--rotas-de-release-exigem-token-e-o-revisor-vem-dele)): desativar o
+  usuário derruba o acesso na hora.
 - ⚠️ Trocar a chave JWT invalida todos os tokens emitidos.
 - ⚠️ Argon2id consome ~19 MiB por verificação; o login concorrente em massa pesa na
   memória do container.
@@ -738,6 +743,44 @@ a API revela e como limitar abuso.
   sair da requisição (fila) para fechar esse canal de tempo.
 - ⚠️ Trocar a senha não derruba JWTs já emitidos (até 8 h), conforme a
   [ADR-024](#adr-024--autenticação-jwt-stateless-argon2id-e-admin-inicial).
+
+---
+
+## ADR-026 — Rotas de Release exigem token e o revisor vem dele
+
+**Contexto.** Qualquer um chamava `/api/v1/releases/**` e o revisor (`aprovadoPor`,
+`revisadoPor`) era texto livre no corpo: a trilha de auditoria da revisão humana
+([ADR-007](#adr-007--revisão-humana-como-invariante-do-domínio-entidades-ricas)) dependia da
+palavra do cliente. A pendência 1 da modelagem pedia FK para `usuarios`.
+
+**Decisão.**
+
+- **Autenticação obrigatória:** todo o grupo `/api/v1/releases` (consulta, processar,
+  revisão, itens) usa `RequireAuthorization()`. Ficam públicos `/health` e
+  `/api/v1/auth/*` (esqueci-senha). Um teste percorre o `EndpointDataSource` e falha se
+  uma rota de negócio nova ficar sem autorização.
+- **Revisor vem do token:** `aprovadoPor` e `revisadoPor` saem de `AprovarIn` e
+  `ReprovarIn`. O endpoint lê o claim `sub`; `RevisaoComunicado` carrega o `Usuario` e o
+  domínio (`VersaoComunicado.Aprovar/Reprovar(Usuario, ...)`) exige revisor identificado e
+  ativo. Campo antigo enviado no corpo é ignorado.
+- **FK para usuários:** `versoes_comunicado.revisado_por_id` e
+  `comunicados_exportados.gerado_por_id`, anuláveis, `ON DELETE RESTRICT`. As colunas de
+  texto continuam e guardam o **nome exibido** no momento da decisão (histórico legível
+  mesmo se o cadastro mudar). Usuário nunca é apagado, só desativado.
+- **Registros antigos:** ficam com o id nulo e o texto preservado, sem backfill: o texto
+  era livre e não dá para ligá-lo a um usuário com segurança.
+- **Usuário desativado:** `OnTokenValidated` consulta o usuário a cada requisição e rejeita
+  token de quem não existe ou está inativo (401). Custa uma consulta por requisição.
+- **Exportação (#24):** a coluna `gerado_por_id` e a propriedade na entidade já existem
+  (parâmetro opcional no construtor); ligar o endpoint ao usuário do token é feito quando a
+  #24 for integrada.
+
+**Consequências.**
+- ✅ Revisão e exportação ficam atribuídas a um usuário real, com integridade referencial.
+- ✅ Migration só adiciona (colunas anuláveis, índices, FKs): sem `DROP` no `Up`.
+- ⚠️ Uma consulta ao banco por requisição autenticada.
+- ⚠️ Qualquer usuário autenticado revisa: não há RBAC por papel nesta fatia.
+- ⚠️ Edição, exclusão e reinclusão de itens ainda não registram quem agiu (#53).
 
 ---
 

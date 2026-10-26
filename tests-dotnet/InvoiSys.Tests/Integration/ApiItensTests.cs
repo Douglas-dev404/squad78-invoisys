@@ -21,6 +21,7 @@ public class ApiItensTests
             builder.ConfigureServices(services =>
             {
                 services.RemoveAll<IReleaseRepository>();
+                services.ComUsuarios(AutenticacaoDeTeste.Revisor);
                 services.AddScoped(_ => repositorio);
             }));
 
@@ -48,7 +49,7 @@ public class ApiItensTests
         var (repositorio, release) = await ReleaseProcessadaAsync();
         var item = release.VersaoCliente!.Itens[0];
         using var app = CriarApp(repositorio);
-        using var client = app.CreateClient();
+        using var client = app.CriarClienteAutenticado();
 
         var resposta = await client.PatchAsJsonAsync(
             $"/api/v1/releases/{Chave}/itens/{item.Id}",
@@ -72,7 +73,7 @@ public class ApiItensTests
     {
         var (repositorio, release) = await ReleaseProcessadaAsync();
         using var app = CriarApp(repositorio);
-        using var client = app.CreateClient();
+        using var client = app.CriarClienteAutenticado();
         var item = release.VersaoCliente!.Itens[0];
 
         var resposta = await client.PatchAsJsonAsync(
@@ -90,7 +91,7 @@ public class ApiItensTests
         var (repositorio, release) = await ReleaseProcessadaAsync();
         var item = release.VersaoCliente!.Itens[1];
         using var app = CriarApp(repositorio);
-        using var client = app.CreateClient();
+        using var client = app.CriarClienteAutenticado();
 
         var resposta = await client.PostAsJsonAsync(
             $"/api/v1/releases/{Chave}/itens/{item.Id}/excluir",
@@ -109,7 +110,7 @@ public class ApiItensTests
         var (repositorio, release) = await ReleaseProcessadaAsync();
         var item = release.VersaoCliente!.Itens[1];
         using var app = CriarApp(repositorio);
-        using var client = app.CreateClient();
+        using var client = app.CriarClienteAutenticado();
 
         var resposta = await client.PostAsync($"/api/v1/releases/{Chave}/itens/{item.Id}/excluir", null);
 
@@ -124,7 +125,7 @@ public class ApiItensTests
         var (repositorio, release) = await ReleaseProcessadaAsync();
         var item = release.ExcluirItem(release.VersaoCliente!.Itens[1].Id, "Engano");
         using var app = CriarApp(repositorio);
-        using var client = app.CreateClient();
+        using var client = app.CriarClienteAutenticado();
 
         var resposta = await client.PostAsync($"/api/v1/releases/{Chave}/itens/{item.Id}/reincluir", null);
 
@@ -139,9 +140,9 @@ public class ApiItensTests
     {
         var (repositorio, release) = await ReleaseProcessadaAsync();
         var item = release.VersaoCliente!.Itens[0];
-        release.Aprovar("revisora@invoisys.com", DateTimeOffset.UtcNow);
+        release.Aprovar(AutenticacaoDeTeste.Revisor, DateTimeOffset.UtcNow);
         using var app = CriarApp(repositorio);
-        using var client = app.CreateClient();
+        using var client = app.CriarClienteAutenticado();
 
         var editar = await client.PatchAsJsonAsync(
             $"/api/v1/releases/{Chave}/itens/{item.Id}",
@@ -159,7 +160,7 @@ public class ApiItensTests
     public async Task Release_inexistente_responde_404()
     {
         using var app = CriarApp(new FakeReleaseRepository());
-        using var client = app.CreateClient();
+        using var client = app.CriarClienteAutenticado();
 
         var resposta = await client.PostAsync($"/api/v1/releases/NAO-EXISTE/itens/{Guid.NewGuid()}/reincluir", null);
 
@@ -179,7 +180,7 @@ public class ApiItensTests
             "Resumo");
         await repositorio.SalvarAsync(outra);
         using var app = CriarApp(repositorio);
-        using var client = app.CreateClient();
+        using var client = app.CriarClienteAutenticado();
 
         var resposta = await client.PatchAsJsonAsync(
             $"/api/v1/releases/{Chave}/itens/{outra.VersaoCliente!.Itens[0].Id}",
@@ -194,7 +195,7 @@ public class ApiItensTests
     {
         var (repositorio, _) = await ReleaseProcessadaAsync();
         using var app = CriarApp(repositorio);
-        using var client = app.CreateClient();
+        using var client = app.CriarClienteAutenticado();
 
         var resposta = await client.PostAsync($"/api/v1/releases/{Chave}/itens/abc/reincluir", null);
 

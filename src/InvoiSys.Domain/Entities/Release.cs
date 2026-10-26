@@ -111,7 +111,7 @@ public sealed class Release
     public void MarcarFalha() => Status = StatusPipeline.Falhou;
 
     public void Aprovar(
-        string aprovadoPor,
+        Usuario revisor,
         DateTimeOffset agora,
         PublicoAlvo publico = PublicoAlvo.Cliente)
     {
@@ -129,7 +129,7 @@ public sealed class Release
 
         try
         {
-            versao.Aprovar(aprovadoPor, agora);
+            versao.Aprovar(revisor, agora);
         }
         catch (VersaoSemItensException exc)
         {
@@ -147,7 +147,7 @@ public sealed class Release
     }
 
     public void Reprovar(
-        string revisadoPor,
+        Usuario revisor,
         string motivo,
         DateTimeOffset agora,
         PublicoAlvo publico = PublicoAlvo.Cliente)
@@ -157,7 +157,7 @@ public sealed class Release
                 $"Release {ChaveJira} não tem comunicado gerado para o público "
                 + $"{publico.ParaValor()}.");
 
-        versao.Reprovar(revisadoPor, motivo, agora);
+        versao.Reprovar(revisor, motivo, agora);
         Status = StatusPipeline.AguardandoRevisao;
     }
 
