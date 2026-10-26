@@ -174,6 +174,21 @@ ProviderNaoConfiguradoException ─► 501
 
 ---
 
+### Trava de processamento e telemetria
+
+- **`IBloqueioProcessamento`** (`Ports/`): `TentarAdquirirAsync(chaveRelease)` devolve um
+  `IAsyncDisposable` (a trava, liberada no `DisposeAsync`) ou `null` se outra execução da
+  mesma Release já a segura. Quem chama decide o que fazer com o `null`: o pipeline lança
+  `ProcessamentoEmAndamentoException`, que a API traduz em 409
+  ([ADR-025](../../docs/decisoes-arquiteturais.md#adr-025--trava-por-release-antes-do-pipeline-advisory-lock-no-postgres)).
+- **`ProcessamentoEmAndamentoException`** (`Entities/Release.cs`, junto das demais
+  exceções de regra): a Release já está sendo processada.
+- **`Observabilidade/Telemetria`**: o `ActivitySource` e o `Meter` `InvoiSys` e os
+  instrumentos usados pelo pipeline e pelo provider de IA. Só usa `System.Diagnostics`
+  (BCL), então não quebra a regra de zero dependência de infraestrutura. `IniciarRaiz`
+  abre o span raiz de um trace novo, ignorando a `Activity` da requisição HTTP
+  ([ADR-026](../../docs/decisoes-arquiteturais.md#adr-026--observabilidade-da-ia-langfuse-self-hosted-via-opentelemetry)).
+
 ## Por que o modelo é assim
 
 **Release**

@@ -636,6 +636,141 @@ revisa: o código muda e o texto acima dele continua dizendo outra coisa. O
 - ⚠️ Quem muda comportamento precisa lembrar de atualizar o README; o checklist do PR
   cobra isso.
 
+## ADR-025 — Trava por Release antes do pipeline (advisory lock no Postgres)
+
+**Contexto.** `Release.ChaveJira` é única no banco, mas o `SalvarAsync` só roda no **fim**
+do pipeline: durante a execução o status `Processando` existe apenas em memória. Dois
+`POST /processar` simultâneos da mesma Release leem o banco sem ver nada e disparam, cada
+um, todas as chamadas pagas à IA (1 de agrupar, 1 de categorizar e 1 de reescrever por
+grupo, 1 de título/resumo). Só no `SalvarAsync` o segundo é derrubado pelo índice único.
+O banco impede a Release duplicada, mas não o gasto duplicado.
+
+**Opções consideradas.**
+1. Gravar `Processando` no início e checar o status. Exige recuperar a Release "presa" em
+   `Processando` quando o processo cai no meio.
+2. `SemaphoreSlim` em memória. Não vale com mais de uma instância da API.
+3. Lock distribuído em Redis. Infraestrutura nova só para isso.
+4. Advisory lock de sessão do Postgres (`pg_try_advisory_lock`).
+
+**Decisão.** Opção 4.
+
+- Porta `IBloqueioProcessamento` (`Domain/Ports`) e adapter `PostgresBloqueioProcessamento`
+  (`Infrastructure/Database`). A chave de 64 bits é o início do SHA-256 de
+  `invoisys:processar-release:<CHAVE em maiúsculas, sem espaços nas pontas>`.
+- O pipeline adquire a trava **antes** de consultar o Jira ou chamar a IA. Se está
+  ocupada, lança `ProcessamentoEmAndamentoException` e a API responde **409**, sem nenhuma
+  chamada externa.
+- A trava vive numa conexão dedicada, aberta no início e devolvida no fim
+  (`DisposeAsync`: `pg_advisory_unlock` e fecha). Se o processo morrer, o Postgres encerra
+  a sessão e libera a trava.
+- O índice único continua sendo a segunda defesa.
+- O parâmetro `bloqueio` do pipeline é opcional (`null` = sem trava) para os testes
+  unitários que não tratam concorrência. O composition root sempre injeta.
+
+**Consequências.**
+- ✅ A segunda execução é recusada em ~25 ms, sem gastar token. Cada recusa soma em
+  `invoisys_pipeline_bloqueios_total`.
+- ✅ Não há nada para "destravar" à mão.
+- ⚠️ Segura uma conexão do pool durante toda a execução (minutos). O pool padrão do
+  Npgsql (100) comporta, mas muitas Releases simultâneas contam.
+- ⚠️ A trava é por Release, não por usuário.
+- ⚠️ `Processando` continua só em memória: `GET /releases` não mostra execução em curso.
+
+---
+
+## ADR-026 — Observabilidade da IA: Langfuse self-hosted via OpenTelemetry
+
+**Contexto.** O pipeline era uma caixa-preta: não dava para ver qual prompt saiu, o que a
+IA respondeu, quantos tokens e quanto custou cada chamada, nem em qual estágio o tempo
+foi gasto. A orientação do squad foi coletar isso.
+
+**Opções consideradas.**
+1. Langfuse Cloud.
+2. Langfuse self-hosted.
+3. Tabela própria de chamadas no Postgres.
+
+**Decisão.** Opção 2. Prompt e resposta carregam o texto das histórias do Jira da
+InvoiSys; self-hosted mantém esse conteúdo na infraestrutura do squad.
+
+- O Langfuse não tem SDK .NET, mas aceita **OTLP por HTTP** (versão 3.22 ou superior; gRPC
+  não é suportado). A API exporta um `ActivitySource` (`InvoiSys`) com
+  `OpenTelemetry.Exporter.OpenTelemetryProtocol`, autenticação Basic (`chave-pública:chave-secreta`)
+  e o header `x-langfuse-ingestion-version: 4` (sem ele os dados levam até 10 minutos
+  para aparecer).
+- **Um trace por execução do pipeline.** Span raiz `pipeline.gerar-release-note`
+  (`langfuse.trace.name`) e um span `generation` por chamada, `llm.<estágio>`
+  (`agrupar`, `categorizar`, `reescrever`, `titulo_resumo`), com
+  `langfuse.observation.input`/`output`, `gen_ai.request.model`/`gen_ai.response.model`,
+  `gen_ai.usage.input_tokens`/`output_tokens` e `gen_ai.usage.cost` (o `usage.cost` da
+  OpenRouter, quando ele vem).
+- **Raiz explícita (`Telemetria.IniciarRaiz`).** No .NET, `parentContext: default` quer
+  dizer "use `Activity.Current`", não "sem pai". O ASP.NET cria uma `Activity` por
+  requisição só para correlacionar logs, sem amostragem, e o `ParentBasedSampler` do SDK
+  descarta todo filho dela: os traces sumiam em silêncio. `IniciarRaiz` zera
+  `Activity.Current` antes de abrir o span. `TelemetriaTests` reproduz a armadilha.
+- Os traces levam só os spans do pipeline e da IA, sem instrumentação de ASP.NET nem de
+  `HttpClient`: o Langfuse é centrado em LLM, e o tráfego HTTP fica nas métricas
+  ([ADR-027](#adr-027--métricas-do-sistema-opentelemetry--prometheus-otlp--grafana)).
+- Desligado por padrão (`Observabilidade:Habilitada = false`); o
+  `docker-compose.observabilidade.yml` liga.
+- O Langfuse v4 roda em modo `events_only`: a API antiga `/api/public/traces` responde
+  404. Para consultar por API, use `/api/public/v2/observations`.
+- O compose sobe 6 containers (web, worker, Postgres próprio, ClickHouse, Redis, MinIO),
+  com organização, projeto, chaves e usuário criados por `LANGFUSE_INIT_*`. Nenhuma porta
+  de dados é publicada; o web escuta só em `127.0.0.1:3000`. Os segredos são obrigatórios
+  (`${VAR:?}`) e saem de `observabilidade/gerar-segredos.sh`.
+
+**Consequências.**
+- ✅ Cada chamada à IA fica auditável: prompt, resposta, modelo, tokens, custo e latência.
+- ✅ Trocar para o Langfuse Cloud é só mudar endpoint e chaves; o código é o mesmo.
+- ⚠️ O texto das histórias do Jira e as respostas da IA ficam gravados no Langfuse: tratar
+  o volume como dado do cliente.
+- ⚠️ Validado de ponta a ponta com um mock de Jira e de OpenRouter. O campo de custo da
+  OpenRouter real não foi conferido; sem `usage.cost` a geração fica sem custo.
+
+---
+
+## ADR-027 — Métricas do sistema: OpenTelemetry → Prometheus (OTLP) + Grafana
+
+**Contexto.** Além da IA, o squad pediu observabilidade do sistema em si: tráfego HTTP,
+erros, latência, runtime e o comportamento do pipeline.
+
+**Opções consideradas.**
+1. `prometheus-net` (outra biblioteca de métricas, em paralelo ao OpenTelemetry).
+2. `OpenTelemetry.Exporter.Prometheus.AspNetCore`, com o Prometheus raspando `/metrics`.
+   O pacote só tem versão beta.
+3. Métricas OpenTelemetry enviadas por OTLP direto ao receiver do Prometheus 3.
+
+**Decisão.** Opção 3, com Grafana por cima.
+
+- Um único pipeline OpenTelemetry: traces para o Langfuse, métricas para o Prometheus,
+  só com pacotes estáveis (1.20.1) e sem endpoint `/metrics` para proteger.
+- O Prometheus sobe com `--web.enable-otlp-receiver`. A API empurra a cada 15 s
+  (`Observabilidade:Prometheus:IntervaloExportacaoSegundos`).
+- Meters: os embutidos do .NET 10 (`System.Runtime`, `Microsoft.AspNetCore.Hosting`,
+  `Microsoft.AspNetCore.Server.Kestrel`, `Microsoft.AspNetCore.Routing`, `System.Net.Http`),
+  `Npgsql` e os próprios (`InvoiSys`): `invoisys.pipeline.execucoes`, `.duracao`,
+  `.bloqueios` e `invoisys.llm.chamadas`, `.duracao`, `.tokens`. No Prometheus o ponto
+  vira `_`, a unidade `s` vira `_seconds` e o counter ganha `_total`.
+- Os exporters são nomeados (`langfuse`, `prometheus`): têm endpoints diferentes e não
+  devem dividir a mesma configuração.
+- **Buckets explícitos.** Os histogramas próprios, com unidade em segundos, definem os
+  limites via `InstrumentAdvice`. Os limites padrão do OpenTelemetry foram pensados em
+  milissegundos (0, 5, 10, 25…) e jogam toda a latência no primeiro bucket: o p95 saía
+  4,75 s para chamadas de 0,25 s.
+- O dashboard `InvoiSys — Visão geral` (21 painéis: visão geral, IA, HTTP e runtime) é
+  provisionado a partir de `observabilidade/grafana/dashboards/invoisys.json`.
+
+**Consequências.**
+- ✅ Dashboard pronto assim que o compose sobe; nada para montar à mão.
+- ✅ A métrica de bloqueios mostra quanta chamada paga à IA a trava evitou.
+- ⚠️ Envio por push: se o Prometheus estiver fora, a amostra do intervalo se perde. Para
+  métrica isso é aceitável.
+- ⚠️ Trocar os buckets de um histograma mistura séries de `le` diferentes no mesmo
+  `histogram_quantile` até as antigas expirarem. Só afeta a troca de versão.
+- ⚠️ Sem regras de alerta e sem exporters de infraestrutura (cAdvisor, `postgres_exporter`)
+  por enquanto.
+
 ---
 
 ## Decisões em aberto

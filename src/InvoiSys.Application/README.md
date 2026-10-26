@@ -22,8 +22,10 @@ InvoiSys.Application/
 O caso de uso central. Recebe a chave de uma Release e devolve o agregado `Release` com
 a versão Cliente gerada e pronta para **revisão** (nunca publicada direto).
 
-**Dependências (construtor):** `IJiraClient`, `ILlmProvider`, `IReleaseRepository` e
-`string? modeloLlm` (rótulo do modelo para o log de execução).
+**Dependências (construtor):** `IJiraClient`, `ILlmProvider`, `IReleaseRepository`,
+`string? modeloLlm` (rótulo do modelo para o log de execução) e
+`IBloqueioProcessamento? bloqueio` (a trava por Release; `null` = sem trava, só nos testes
+unitários que não tratam concorrência).
 
 ### `ExecutarAsync(chaveRelease)`: o que acontece, em ordem
 
@@ -70,6 +72,21 @@ Por que cada passo é assim:
   do nada seria pior que não gerar. O caso inverso (chave real que o modelo esqueceu) é
   tratado no adapter, que a devolve como grupo próprio, então nenhuma história se perde.
 
+### Trava e telemetria
+
+`ExecutarAsync` é só a casca; o trabalho está em `ExecutarSemTravaAsync`.
+
+1. **Trava primeiro.** Antes de consultar o Jira ou chamar a IA, pede a trava por chave.
+   Ocupada: soma em `invoisys.pipeline.bloqueios` e lança
+   `ProcessamentoEmAndamentoException` (409 na API). É isso que impede a segunda chamada
+   paga à IA ([ADR-025](../../docs/decisoes-arquiteturais.md#adr-025--trava-por-release-antes-do-pipeline-advisory-lock-no-postgres)).
+2. **Trace.** Abre o span raiz `pipeline.gerar-release-note` com `Telemetria.IniciarRaiz`
+   e, ao fim, registra `invoisys.pipeline.execucoes` e `invoisys.pipeline.duracao` com o
+   rótulo `resultado` (`sucesso` ou `falha`). Os spans por chamada à IA nascem no
+   `OpenRouterProvider` e ficam sob esse span raiz
+   ([ADR-026](../../docs/decisoes-arquiteturais.md#adr-026--observabilidade-da-ia-langfuse-self-hosted-via-opentelemetry)).
+3. A trava é liberada no `await using`, inclusive quando o pipeline falha.
+
 ### Métodos auxiliares
 
 | Método | O que faz | Por que é assim |
@@ -85,7 +102,8 @@ usa são scoped; singleton capturaria um escopo encerrado) e lê `OpenRouter:Mod
 configuração em vez de `IOptions<OpenRouterOptions>`, porque essa classe vive na
 infraestrutura, que a Application não referencia. O modelo é só um rótulo para o log de
 execução, mas sem ele a coluna `modelo_llm` ficaria vazia, e é o dado mais útil para
-investigar um comunicado ruim.
+investigar um comunicado ruim. O `IBloqueioProcessamento` vem da DI (adapter Postgres,
+registrado na Infrastructure).
 
 `AddApplication` fica na Application, e não no composition root da Infrastructure,
 porque a Infrastructure não referencia a Application: quem conhece as duas é a API.

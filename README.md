@@ -24,6 +24,7 @@ percorre o sistema**. O que já está pronto e o que falta está em
 - [O que está pronto e o que falta](#o-que-está-pronto-e-o-que-falta)
 - [Rodando o projeto](#rodando-o-projeto)
 - [Configuração](#configuração)
+- [Observabilidade](#observabilidade)
 - [Documentação complementar](#documentação-complementar)
 - [Enunciado original do desafio](#enunciado-original-do-desafio)
 
@@ -533,10 +534,45 @@ de ambiente é `__` (dois underscores).**
 | `OpenRouter__ApiKey` | LLM | `/processar` responde **501** "Nenhum LLM provider configurado" |
 | `OpenRouter__Modelo` | modelo `provedor/modelo` (padrão `openai/gpt-4o-mini`) | usa o padrão |
 | `OpenRouter__ModelosFallback__0`, `__1`… | modelos alternativos, tentados pela própria OpenRouter em 5xx/429 | sem fallback |
+| `Observabilidade__Habilitada` e `Observabilidade__*` | OpenTelemetry (traces → Langfuse, métricas → Prometheus); ver [Observabilidade](#observabilidade) | desligado, a API roda sem coletor |
 | `Database__MigrarAoIniciar` | aplica migrations no startup (ligado no compose, desligado por padrão) | não migra |
 | `VITE_API_BASE_URL` (front) | base da API | `http://localhost:8080/api/v1` |
 
 Modelo completo em [.env.example](.env.example).
+
+---
+
+## Observabilidade
+
+Duas camadas, no mesmo OpenTelemetry. Sobem juntas num compose à parte:
+
+| Camada | Ferramenta | O que mostra | Onde |
+|---|---|---|---|
+| **IA** | Langfuse (self-hosted) | por execução do pipeline: cada chamada à IA com prompt, resposta, modelo, tokens, custo e latência | http://localhost:3000 |
+| **Sistema** | Prometheus + Grafana | HTTP, erros, latência, runtime .NET, execuções do pipeline, chamadas e tokens da IA, **execuções duplicadas barradas** | Grafana http://localhost:3001 · Prometheus http://localhost:9090 |
+
+```bash
+sh observabilidade/gerar-segredos.sh >> .env      # uma vez: senhas e chaves aleatórias
+docker compose -f docker-compose.yml -f docker-compose.observabilidade.yml up -d --build
+```
+
+- **Langfuse:** entre com `LANGFUSE_ADMIN_EMAIL` / `LANGFUSE_ADMIN_PASSWORD` do `.env`. O
+  projeto "Release Notes" e as chaves já vêm criados. Dispare
+  `POST /api/v1/releases/{chave}/processar` e abra *Tracing*. A primeira subida leva cerca
+  de um minuto (migrações do Langfuse).
+- **Grafana:** `admin` / `GRAFANA_ADMIN_PASSWORD`. O dashboard *InvoiSys — Visão geral* já
+  vem na pasta *InvoiSys*.
+- Tudo escuta só em `127.0.0.1`. O compose recusa subir sem os segredos.
+- Sem o compose da observabilidade, nada disso é ligado e a API funciona igual.
+
+**Trava contra processamento duplicado.** `POST /processar` da mesma Release enquanto
+outra execução está em andamento responde **409** na hora, sem chamar o Jira nem a IA
+([ADR-025](docs/decisoes-arquiteturais.md#adr-025--trava-por-release-antes-do-pipeline-advisory-lock-no-postgres)).
+O índice único em `ChaveJira` continua como segunda defesa.
+
+Decisões: [ADR-026](docs/decisoes-arquiteturais.md#adr-026--observabilidade-da-ia-langfuse-self-hosted-via-opentelemetry)
+(Langfuse) e [ADR-027](docs/decisoes-arquiteturais.md#adr-027--métricas-do-sistema-opentelemetry--prometheus-otlp--grafana)
+(Prometheus e Grafana).
 
 ---
 
