@@ -37,6 +37,19 @@ public class UsuarioRepositoryTests(PostgresContainerFixture fixture)
     }
 
     [Fact]
+    public async Task BuscarPorEmailAsync_ignora_caixa_e_espacos()
+    {
+        var usuario = UmUsuario($"Caixa-{Guid.NewGuid():N}@InvoiSys.com");
+        await Salvar(usuario);
+
+        await using var contexto = fixture.CriarContexto();
+        var encontrado = await new UsuarioRepository(contexto)
+            .BuscarPorEmailAsync($"  {usuario.Email.ToUpperInvariant()} ");
+
+        encontrado!.Id.Should().Be(usuario.Id);
+    }
+
+    [Fact]
     public async Task Buscas_devolvem_null_quando_nao_existe()
     {
         await using var contexto = fixture.CriarContexto();

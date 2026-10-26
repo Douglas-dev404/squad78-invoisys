@@ -40,7 +40,9 @@ histórico também é documentação.
 | [021](#adr-021--item-de-versão-aprovada-não-é-editado-sem-reabrir) | Item de versão aprovada não é editado sem reabrir | Aceita | 2026-09-30 |
 | [022](#adr-022--endpoint-só-chama-caso-de-uso-erros-de-revisão-padronizados) | Endpoint só chama caso de uso; erros de revisão padronizados | Aceita | 2026-10-03 |
 | [023](#adr-023--o-porquê-mora-na-documentação-não-em-comentário) | O porquê mora na documentação, não em comentário | Aceita | 2026-10-03 |
-| [P-02](#p-02--desenho-da-autenticação) | Desenho da autenticação | **Proposta** | — |
+| [024](#adr-024--autenticação-jwt-stateless-argon2id-e-admin-inicial) | Autenticação: JWT stateless, Argon2id e admin inicial | Aceita | 2026-10-11 |
+| [025](#adr-025--recuperação-de-senha-token-opaco-de-uso-único-e-resposta-uniforme) | Recuperação de senha: token opaco de uso único e resposta uniforme | Aceita | 2026-10-26 |
+| [P-02](#p-02--desenho-da-autenticação) | Desenho da autenticação | **Resolvida** → ADR-024 | 2026-10-11 |
 | [P-03](#p-03--onde-mora-o-render-da-exportação) | Onde mora o render da exportação | **Proposta** | — |
 
 ---
@@ -638,15 +640,112 @@ revisa: o código muda e o texto acima dele continua dizendo outra coisa. O
 
 ---
 
+## ADR-024 — Autenticação: JWT stateless, Argon2id e admin inicial
+
+**Contexto.** Resolve a P-02. Qualquer um chama as rotas de revisão e "aprovado por" é
+texto livre. A fase 3 (épico #47) introduz login real. Estavam em aberto: sessão ×
+JWT, bcrypt × Argon2id, normalização de e-mail, recuperação de senha, papéis e como
+nasce o primeiro usuário.
+
+**Opções consideradas.**
+1. Sessão em tabela × JWT stateless.
+2. bcrypt × Argon2id.
+3. Cadastro aberto × primeiro admin vindo da configuração.
+
+**Decisão.**
+
+- **Sessão:** JWT Bearer assinado com HMAC-SHA256, validade padrão de 8 horas
+  (`Auth__Jwt__ExpiracaoHoras`), sem refresh token e sem tabela de sessão. Logout é o
+  frontend descartar o token. Claims: `sub` (id do usuário), `email`, `name`, `role`.
+- **Hash de senha:** Argon2id (recomendação atual da OWASP), em string PHC
+  (`$argon2id$v=19$m=19456,t=2,p=1$<salt>$<hash>`), com memória 19 MiB, 2 iterações,
+  paralelismo 1, salt de 16 bytes e hash de 32 bytes. Os parâmetros ficam na própria
+  string, então podem subir depois sem invalidar hashes antigos.
+- **Portas:** `IHashSenha` e `IEmissorToken` no domínio, sem pacote de criptografia ou
+  JWT. Adapters `Argon2idHashSenha` e `JwtEmissorToken` na Infrastructure, registrados só
+  no composition root.
+- **Chave JWT obrigatória:** diferente de Jira/LLM ([ADR-014](#adr-014--adapters-pendente-quando-falta-credencial-501-honesto)),
+  não existe modo "pendente". Sem `Auth__Jwt__Chave` a API não sobe, com mensagem
+  explicando a variável: uma API que aceita ou emite token com chave vazia é pior que uma
+  API fora do ar.
+- **E-mail normalizado no domínio:** trim + minúsculas em `Usuario`, no cadastro e na
+  busca do login.
+- **Papéis:** `Usuario.Papel` segue texto livre até o RBAC existir; só `admin` ganha
+  significado (constante `Usuario.PapelAdmin`).
+- **Primeiro usuário:** no startup, se não existe nenhum usuário e
+  `Auth__AdminInicial__Email`, `__Senha` e `__Nome` estão definidos, cria-se um `admin`.
+  Idempotente: com qualquer usuário no banco não faz nada. A senha nunca é logada. Os
+  demais usuários entram por endpoint exclusivo de admin (#51).
+- **Recuperação de senha:** token com expiração de 30 minutos e porta `IEnvioEmail` com
+  adapter pendente que escreve o link no log (#52). Fora desta fatia.
+
+**Consequências.**
+- ✅ Sem estado de sessão no servidor; a API escala sem tabela nova.
+- ✅ Domínio e Application seguem sem dependência de criptografia.
+- ⚠️ Token emitido vale até expirar: desativar usuário só bloqueia novos logins até lá
+  (a checagem de `Ativo` por requisição fica para o #50).
+- ⚠️ Trocar a chave JWT invalida todos os tokens emitidos.
+- ⚠️ Argon2id consome ~19 MiB por verificação; o login concorrente em massa pesa na
+  memória do container.
+
+---
+
+## ADR-025 — Recuperação de senha: token opaco de uso único e resposta uniforme
+
+**Contexto.** O épico #47 prevê "esqueci a senha". O front espera `{ mensagem,
+expiraEmMinutos }`. Faltava decidir como guardar o token, como garantir uso único, o que
+a API revela e como limitar abuso.
+
+**Decisão.**
+
+- **Token opaco, não JWT:** 32 bytes aleatórios em base64url. No banco vai só o hash
+  SHA-256 em hex (`tokens_redefinicao_senha.token_hash`, único). SHA-256 e não Argon2id
+  porque o token tem 256 bits de entropia (não há dicionário a atacar) e a busca é por
+  igualdade no índice.
+- **Validade de 30 minutos** (`TokenRedefinicaoSenha.ValidadeMinutos`). `usado_em` serve
+  para "consumido" e para "invalidado" (reenvio ou troca de senha); a tabela não distingue
+  os dois.
+- **Uso único atômico:** `ConsumirAsync` faz `UPDATE ... WHERE usado_em IS NULL AND
+  expira_em > agora` e só quem afeta uma linha segue. Trocar a senha invalida todos os
+  outros tokens pendentes do usuário. A troca não é uma transação única: se salvar a
+  senha falhar depois de consumir o token, o usuário pede outro link.
+- **Resposta uniforme:** `forgot-password` e `resend-forgot-password` devolvem o mesmo 200
+  e o mesmo corpo para e-mail existente, inexistente ou de usuário desativado. `resend` é
+  a mesma regra de `forgot` (emitir já invalida o anterior). Token inválido, expirado e já
+  usado são o mesmo 422 com a mesma mensagem.
+- **Rate limit** (nenhum existia): `RateLimiter` nativo do ASP.NET, uma política
+  (`esqueci-senha`) compartilhada pelos dois endpoints de envio, janela fixa por IP
+  (`Auth__RecuperacaoSenha__LimiteRequisicoes`, `__JanelaMinutos`; padrão 5 por 15 min),
+  resposta 429 com `Retry-After`. Mais um **cooldown por usuário** no caso de uso
+  (`__CooldownSegundos`, padrão 60): dentro dele não se emite nem se envia outro e-mail,
+  e a resposta continua igual. Isso impede mail-bomb contra um e-mail alheio.
+- **E-mail:** porta `IEnvioEmail` no domínio. O adapter `EnvioEmailPendente` **não lança**
+  (diferente de [ADR-014](#adr-014--adapters-pendente-quando-falta-credencial-501-honesto)):
+  escreve o link no log em `Warning`, porque sem ele o fluxo ficaria inutilizável até o
+  SMTP existir. SMTP real é issue futura.
+- **Link:** `{Auth__RecuperacaoSenha__UrlBase}#token=<token>`. O fragmento não vai ao
+  servidor nem a logs de proxy ou `Referer`. `UrlBase` é obrigatória: sem ela a API não sobe.
+- **Política de senha nova:** 8 a 128 caracteres (`Usuario.ValidarSenhaNova`); o teto evita
+  custo abusivo no Argon2id.
+
+**Consequências.**
+- ✅ Vazamento do banco não entrega tokens utilizáveis.
+- ✅ Não dá para descobrir cadastros pelas respostas.
+- ⚠️ Com o adapter pendente, o link (um segredo) fica no log: só serve para desenvolvimento.
+- ⚠️ O limite é em memória, por instância e por IP; atrás de proxy é preciso configurar
+  `ForwardedHeaders`, senão todos caem no IP do proxy. Redis só quando houver réplicas.
+- ⚠️ A resposta para e-mail inexistente é um pouco mais rápida. Com SMTP real, o envio deve
+  sair da requisição (fila) para fechar esse canal de tempo.
+- ⚠️ Trocar a senha não derruba JWTs já emitidos (até 8 h), conforme a
+  [ADR-024](#adr-024--autenticação-jwt-stateless-argon2id-e-admin-inicial).
+
+---
+
 ## Decisões em aberto
 
 ### P-02 — Desenho da autenticação
 
-A decidir: JWT stateless (sem tabela de refresh tokens: decisão já registrada na
-modelagem) × sessão; algoritmo de hash (bcrypt × argon2id); normalização de e-mail
-(hoje comparado exato); fluxo de recuperação de senha (o front espera
-`{ message, expiresInMinutes }`, o que implica um token de reset com expiração, ainda
-não modelado); papéis (`Usuario.Papel` é texto livre de propósito até o RBAC existir).
+**Resolvida** pela [ADR-024](#adr-024--autenticação-jwt-stateless-argon2id-e-admin-inicial).
 
 ### P-03 — Onde mora o render da exportação
 

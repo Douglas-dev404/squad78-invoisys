@@ -7,6 +7,7 @@ e o resultado em DTO. **Nenhuma regra de negócio mora aqui.**
 InvoiSys.Api/
 ├── Program.cs              # bootstrap: DI, migração opt-in, /health, modo --healthcheck
 ├── Endpoints/
+│   ├── AuthEndpoints.cs           # rotas /api/v1/auth (esqueci a senha, redefinir)
 │   ├── ReleaseEndpoints.cs        # rotas /api/v1/releases (listar, detalhe, historias, processar)
 │   ├── RevisaoEndpoints.cs        # revisão humana por público (aprovar, reprovar, reabrir)
 │   └── ItemComunicadoEndpoints.cs # revisão de item (editar, excluir, reincluir)
@@ -24,6 +25,9 @@ InvoiSys.Api/
 | Método | Rota | Handler | Resposta | Erros |
 |---|---|---|---|---|
 | `GET` | `/health` | inline em `Program.cs` | `{ "status": "ok" }` | — |
+| `POST` | `/api/v1/auth/forgot-password` | `EsqueciSenhaAsync` → `RecuperacaoSenha` | `{ mensagem, expiraEmMinutos: 30 }` · corpo `{ "email" }` · mesma resposta para e-mail existente ou não | 422, 429 |
+| `POST` | `/api/v1/auth/resend-forgot-password` | `ReenviarEsqueciSenhaAsync` → `RecuperacaoSenha` | igual ao `forgot-password`; invalida o token anterior | 422, 429 |
+| `POST` | `/api/v1/auth/reset-password` | `RedefinirSenhaAsync` → `RecuperacaoSenha` | 204 · corpo `{ "token", "novaSenha" }` | 422 (token inválido, expirado ou já usado; senha fora da política) |
 | `GET` | `/api/v1/releases?status=` | `ListarReleasesAsync` → `ConsultaReleases` | `ReleaseResumoOut[]` (mais recente primeiro) | 422 (status desconhecido) |
 | `GET` | `/api/v1/releases/{chaveRelease}` | `BuscarReleaseAsync` → `ConsultaReleases` | `ReleaseDetalheOut` (todas as versões por público; itens como `ItemRevisaoOut`, com `id`) | 404 |
 | `GET` | `/api/v1/releases/{chaveRelease}/historias` | `BuscarHistoriasAsync` → `IJiraClient` | `ReleaseOut` | 501, 502 |
@@ -54,6 +58,15 @@ InvoiSys.Api/
   ]
 }
 ```
+
+## Rate limit
+
+`/auth/forgot-password` e `/auth/resend-forgot-password` dividem a política `esqueci-senha`
+(`AddRateLimiter`, janela fixa por IP, padrão 5 por 15 min, 429 com `Retry-After`). Contador
+em memória por instância; atrás de proxy, configurar `ForwardedHeaders` para enxergar o IP
+real ([ADR-025](../../docs/decisoes-arquiteturais.md#adr-025--recuperação-de-senha-token-opaco-de-uso-único-e-resposta-uniforme)).
+
+---
 
 ## Tradução de erro → HTTP
 
@@ -139,7 +152,7 @@ Respostas de erro seguem `ProblemDetails` (`Results.Problem`).
 |---|---|
 | Paginação de `GET /api/v1/releases` (hoje lista tudo) | quando o volume pedir |
 | Exportar Markdown (mapear `ReleaseNaoAprovadaException` para 409) | #24 |
-| `/auth/login`, `/auth/me`, `/auth/logout`, `/auth/forgot-password` + JWT + `[Authorize]` nas rotas de revisão | Fase 3 |
+| `/auth/login`, `/auth/me`, `/auth/logout` + JWT + `[Authorize]` nas rotas de revisão | Fase 3 |
 | `GET /api/v1/branding/highlights` (repository já existe) | Fase 3 |
 | **CORS** para o frontend (hoje não configurado) | Fase 3 |
 | Endpoint de histórico de execuções (`IExecucaoPipelineRepository`) e de exportações | Fase 4 |

@@ -72,7 +72,8 @@ classDiagram
 | Entidade | Papel |
 |---|---|
 | [`ComunicadoExportado`](Entities/ComunicadoExportado.cs) | Registro de publicação (append-only). **O construtor lança `ReleaseNaoAprovadaException` se a versão não estiver `ProntaParaExportar`** |
-| [`Usuario`](Entities/Usuario.cs) | Quem faz login, revisa e aprova. `Papel` é texto livre até o RBAC existir. Desligar = `Desativar()`, nunca DELETE |
+| [`TokenRedefinicaoSenha`](Entities/TokenRedefinicaoSenha.cs) | Token de "esqueci a senha": guarda só o hash, vale 30 minutos e é de uso único (`MarcarComoUsado`) |
+| [`Usuario`](Entities/Usuario.cs) | Quem faz login, revisa e aprova. `Papel` é texto livre até o RBAC existir (`PapelAdmin` é a única constante). O e-mail é normalizado (trim + minúsculas) no construtor e por `NormalizarEmail`. Desligar = `Desativar()`, nunca DELETE |
 | [`DestaqueHero`](Entities/DestaqueHero.cs) | Conteúdo institucional da tela de login (`GET /branding/highlights`). Sem relação com o pipeline |
 
 ### Exceções de regra de negócio
@@ -126,7 +127,11 @@ errado em silêncio).
 | [`IHistoriaJiraRepository`](Ports/IHistoriaJiraRepository.cs) | **somente leitura** | `HistoriaJiraRepository` | consultar histórias sem carregar o agregado |
 | [`IExecucaoPipelineRepository`](Ports/IExecucaoPipelineRepository.cs) | **somente leitura** | `ExecucaoPipelineRepository` | histórico de execuções (mais recente primeiro) |
 | [`IComunicadoExportadoRepository`](Ports/IComunicadoExportadoRepository.cs) | **append-only** | `ComunicadoExportadoRepository` | `AdicionarAsync`, `BuscarPorIdAsync`, `ListarPorReleaseAsync` |
-| [`IUsuarioRepository`](Ports/IUsuarioRepository.cs) | persistência (agregado) | `UsuarioRepository` | `BuscarPorIdAsync`, `BuscarPorEmailAsync`, `SalvarAsync` (sem delete) |
+| [`IUsuarioRepository`](Ports/IUsuarioRepository.cs) | persistência (agregado) | `UsuarioRepository` | `BuscarPorIdAsync`, `BuscarPorEmailAsync` (normaliza o argumento), `ExisteAlgumAsync`, `SalvarAsync` (sem delete) |
+| [`IHashSenha`](Ports/IHashSenha.cs) | saída (criptografia) | `Argon2idHashSenha` | `Gerar`, `Verificar` |
+| [`IEmissorToken`](Ports/IEmissorToken.cs) | saída (criptografia) | `JwtEmissorToken` | `Emitir(usuario)` → `TokenEmitido(Token, ExpiraEm)` |
+| [`IEnvioEmail`](Ports/IEnvioEmail.cs) | saída (e-mail) | `EnvioEmailPendente` | `EnviarRedefinicaoSenhaAsync` |
+| [`ITokenRedefinicaoSenhaRepository`](Ports/ITokenRedefinicaoSenhaRepository.cs) | persistência | `TokenRedefinicaoSenhaRepository` | `AdicionarAsync`, `BuscarPorHashAsync`, `BuscarUltimoDoUsuarioAsync`, `ConsumirAsync` (atômico), `InvalidarPendentesDoUsuarioAsync` |
 | [`IDestaqueHeroRepository`](Ports/IDestaqueHeroRepository.cs) | somente leitura | `DestaqueHeroRepository` | `ListarAtivosAsync` (ordenado) |
 
 **Não existe** porta para `VersaoComunicado` nem `ItemComunicado`, e isso é proposital:
@@ -229,7 +234,7 @@ ProviderNaoConfiguradoException ─► 501
   histórico completo. `Publico` é redundante de propósito, para facilitar consulta.
   `Conteudo` guarda Markdown/HTML; `CaminhoArquivo`, o binário (PDF). `GeradoPor` é texto
   livre até existir autenticação.
-- `Usuario.SenhaHash` guarda só hash (bcrypt/argon2), nunca a senha.
+- `Usuario.SenhaHash` guarda só hash (Argon2id), nunca a senha.
 - `DestaqueHero` é persistido porque o frontend consome os destaques de um endpoint,
   esperando conteúdo dinâmico.
 
@@ -256,8 +261,6 @@ ProviderNaoConfiguradoException ─► 501
 
 ## O que ainda falta neste módulo
 
-- Mapear o fluxo de recuperação de senha (token de reset com expiração), se entrar no
-  escopo ([P-02](../../docs/decisoes-arquiteturais.md#p-02--desenho-da-autenticação)).
 - Porta de renderização da exportação, se a opção escolhida em
   [P-03](../../docs/decisoes-arquiteturais.md#p-03--onde-mora-o-render-da-exportação)
   for essa.
