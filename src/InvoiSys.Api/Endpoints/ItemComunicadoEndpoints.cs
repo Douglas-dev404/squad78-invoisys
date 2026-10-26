@@ -12,7 +12,9 @@ public static class ItemComunicadoEndpoints
     public static IEndpointRouteBuilder MapItemComunicadoEndpoints(this IEndpointRouteBuilder rotas)
     {
         var grupo = rotas.MapGroup("/api/v1/releases/{chaveRelease}/itens/{itemId:guid}")
-            .WithTags("itens");
+            .WithTags("itens")
+            .RequireAuthorization()
+            .ProducesProblem(StatusCodes.Status401Unauthorized);
 
         grupo.MapPatch("", EditarItemAsync)
             .ComValidacao<EditarItemIn>()

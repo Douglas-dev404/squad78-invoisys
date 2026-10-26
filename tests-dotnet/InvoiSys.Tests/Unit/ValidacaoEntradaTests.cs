@@ -15,9 +15,9 @@ public class ValidacaoEntradaTests
     [InlineData("0")]
     public void Revisao_recusa_publico_ausente_ou_desconhecido(string? publico)
     {
-        new AprovarInValidator().Validate(new AprovarIn(publico, "Revisora"))
+        new AprovarInValidator().Validate(new AprovarIn(publico))
             .Errors.Should().ContainSingle(erro => erro.PropertyName == "Publico");
-        new ReprovarInValidator().Validate(new ReprovarIn(publico, "Revisar texto", "Revisora"))
+        new ReprovarInValidator().Validate(new ReprovarIn(publico, "Revisar texto"))
             .Errors.Should().ContainSingle(erro => erro.PropertyName == "Publico");
         new ReabrirInValidator().Validate(new ReabrirIn(publico))
             .Errors.Should().ContainSingle(erro => erro.PropertyName == "Publico");
@@ -31,8 +31,8 @@ public class ValidacaoEntradaTests
     [InlineData(" CLIENTE ")]
     public void Revisao_aceita_os_publicos_do_dominio(string publico)
     {
-        new AprovarInValidator().Validate(new AprovarIn(publico, "Revisora")).IsValid.Should().BeTrue();
-        new ReprovarInValidator().Validate(new ReprovarIn(publico, "Revisar texto", "Revisora"))
+        new AprovarInValidator().Validate(new AprovarIn(publico)).IsValid.Should().BeTrue();
+        new ReprovarInValidator().Validate(new ReprovarIn(publico, "Revisar texto"))
             .IsValid.Should().BeTrue();
         new ReabrirInValidator().Validate(new ReabrirIn(publico)).IsValid.Should().BeTrue();
     }
@@ -43,7 +43,7 @@ public class ValidacaoEntradaTests
     [InlineData(" \t ")]
     public void Reprovar_exige_motivo_e_editar_exige_texto(string? valor)
     {
-        new ReprovarInValidator().Validate(new ReprovarIn("cliente", valor, "Revisora"))
+        new ReprovarInValidator().Validate(new ReprovarIn("cliente", valor))
             .Errors.Should().ContainSingle(erro => erro.PropertyName == "Motivo");
         new EditarItemInValidator().Validate(new EditarItemIn(valor))
             .Errors.Should().ContainSingle(erro => erro.PropertyName == "Texto");

@@ -1,4 +1,5 @@
 using FluentAssertions;
+using static InvoiSys.Tests.Fakes.AutenticacaoDeTeste;
 using InvoiSys.Application.Pipeline;
 using InvoiSys.Domain.Entities;
 using InvoiSys.Domain.Enums;
@@ -45,7 +46,7 @@ public class PipelineGeracaoReleaseNoteTests
             new FakeJiraClient { Historias = [Historia("INV-1")] },
             new FakeLlmProvider(),
             repositorio).ExecutarAsync("REL-1");
-        release.Aprovar("revisora@invoisys.com", DateTimeOffset.UtcNow);
+        release.Aprovar(UmRevisor("revisora@invoisys.com"), DateTimeOffset.UtcNow);
 
         var jira = new FakeJiraClient { Historias = [Historia("INV-9")] };
         var llm = new FakeLlmProvider { FalhaAoChamar = new InvalidOperationException("não chamar o LLM") };
@@ -168,7 +169,7 @@ public class PipelineGeracaoReleaseNoteTests
         release.Itens.Should().BeEmpty();
         release.Status.Should().Be(StatusPipeline.AguardandoRevisao);
 
-        var acao = () => release.Aprovar("darth.code", DateTimeOffset.UtcNow);
+        var acao = () => release.Aprovar(UmRevisor("darth.code"), DateTimeOffset.UtcNow);
         acao.Should().Throw<ReleaseSemItensProcessadosException>();
     }
 }

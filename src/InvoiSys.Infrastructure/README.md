@@ -126,6 +126,7 @@ substitui `{{chave}}` literalmente ([ADR-005](../../docs/decisoes-arquiteturais.
 | `InitialCreate` | 8 tabelas, FKs, índices, CHECKs |
 | `TriggersAtualizadoEm` | função `set_atualizado_em()` + trigger em `releases`, `versoes_comunicado`, `itens_comunicado` |
 | `ChavesGeradasNoDominio` | só snapshot (`ValueGeneratedNever`), sem SQL |
+| `RevisorEGeradorComoFk` | colunas `revisado_por_id` e `gerado_por_id` (anuláveis), índices e FKs `RESTRICT`; sem `DROP` no `Up` |
 | `TokensRedefinicaoSenha` | tabela `tokens_redefinicao_senha` (FK `RESTRICT`, índice único em `token_hash`) |
 
 Modelo completo, tabela por tabela: [docs/modelagem-de-dominio.md](../../docs/modelagem-de-dominio.md).
@@ -215,7 +216,9 @@ o índice único de e-mail faz a perdedora ignorar. A senha não vai para log.
 - FK `RESTRICT` de `comunicados_exportados` para a versão: apagar uma versão que já foi
   publicada reescreveria a auditoria. Exportação não tem unique por combinação, porque
   reexportar é evento novo.
-- `revisado_por` é texto livre até existir autenticação; depois vira `revisado_por_id`.
+- `versoes_comunicado.revisado_por_id` e `comunicados_exportados.gerado_por_id` são FK anuláveis
+  para `usuarios` com `RESTRICT`; `revisado_por` e `gerado_por` (texto) guardam o nome exibido.
+  Registros anteriores à autenticação ficam com o id nulo, sem backfill.
 - `ArrayConversionHelper.ListaStringComparer`: sem ele o EF compara `text[]` por
   referência e marca a lista como alterada em todo `SaveChanges`.
 - A FK de `HistoriaJira` para a Release é shadow property, então o filtro por Release no

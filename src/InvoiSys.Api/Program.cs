@@ -2,6 +2,7 @@ using InvoiSys.Api.Endpoints;
 using InvoiSys.Api.Validacao;
 using InvoiSys.Application;
 using System.Text;
+using InvoiSys.Domain.Ports;
 using InvoiSys.Infrastructure;
 using InvoiSys.Infrastructure.Auth;
 using InvoiSys.Infrastructure.Configuration;
@@ -39,6 +40,20 @@ builder.Services
             ClockSkew = TimeSpan.FromSeconds(30),
             NameClaimType = "name",
             RoleClaimType = "role",
+        };
+        opcoes.Events = new JwtBearerEvents
+        {
+            OnTokenValidated = async contexto =>
+            {
+                var usuarios = contexto.HttpContext.RequestServices.GetRequiredService<IUsuarioRepository>();
+                var ativo = Guid.TryParse(contexto.Principal?.FindFirst("sub")?.Value, out var id)
+                    && await usuarios.BuscarPorIdAsync(id, contexto.HttpContext.RequestAborted) is { Ativo: true };
+
+                if (!ativo)
+                {
+                    contexto.Fail("Usuário inexistente ou desativado.");
+                }
+            },
         };
     });
 builder.Services.AddAuthorization();

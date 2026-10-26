@@ -52,6 +52,10 @@ namespace InvoiSys.Infrastructure.Database.Migrations
                         .HasColumnType("character varying(200)")
                         .HasColumnName("gerado_por");
 
+                    b.Property<Guid?>("GeradoPorId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("gerado_por_id");
+
                     b.Property<string>("Publico")
                         .IsRequired()
                         .HasMaxLength(30)
@@ -68,6 +72,9 @@ namespace InvoiSys.Infrastructure.Database.Migrations
 
                     b.HasKey("Id")
                         .HasName("pk_comunicados_exportados");
+
+                    b.HasIndex("GeradoPorId")
+                        .HasDatabaseName("ix_comunicados_exportados_gerado_por_id");
 
                     b.HasIndex("ReleaseId")
                         .HasDatabaseName("ix_comunicados_exportados_release_id");
@@ -502,6 +509,10 @@ namespace InvoiSys.Infrastructure.Database.Migrations
                         .HasColumnType("character varying(200)")
                         .HasColumnName("revisado_por");
 
+                    b.Property<Guid?>("RevisadoPorId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("revisado_por_id");
+
                     b.Property<string>("Status")
                         .IsRequired()
                         .HasMaxLength(30)
@@ -514,6 +525,9 @@ namespace InvoiSys.Infrastructure.Database.Migrations
 
                     b.HasKey("Id")
                         .HasName("pk_versoes_comunicado");
+
+                    b.HasIndex("RevisadoPorId")
+                        .HasDatabaseName("ix_versoes_comunicado_revisado_por_id");
 
                     b.HasIndex("Status")
                         .HasDatabaseName("ix_versoes_comunicado_status");
@@ -534,6 +548,12 @@ namespace InvoiSys.Infrastructure.Database.Migrations
 
             modelBuilder.Entity("InvoiSys.Domain.Entities.ComunicadoExportado", b =>
                 {
+                    b.HasOne("InvoiSys.Domain.Entities.Usuario", null)
+                        .WithMany()
+                        .HasForeignKey("GeradoPorId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_comunicados_exportados_usuarios_gerado_por_id");
+
                     b.HasOne("InvoiSys.Domain.Entities.Release", null)
                         .WithMany()
                         .HasForeignKey("ReleaseId")
@@ -597,6 +617,12 @@ namespace InvoiSys.Infrastructure.Database.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
                         .HasConstraintName("fk_versoes_comunicado_releases_release_id");
+
+                    b.HasOne("InvoiSys.Domain.Entities.Usuario", null)
+                        .WithMany()
+                        .HasForeignKey("RevisadoPorId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_versoes_comunicado_usuarios_revisado_por_id");
                 });
 
             modelBuilder.Entity("InvoiSys.Domain.Entities.Release", b =>

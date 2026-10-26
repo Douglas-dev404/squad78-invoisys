@@ -83,6 +83,7 @@ public class PersistenciaAgregadoReleaseTests(PostgresContainerFixture fixture)
     [Fact]
     public async Task Revisao_humana_persiste_edicao_exclusao_e_aprovacao_por_publico()
     {
+        var revisor = await fixture.SalvarRevisorAsync();
         var release = await CriarReleasePersistida();
         await Etapa(release.Id, r =>
         {
@@ -95,7 +96,7 @@ public class PersistenciaAgregadoReleaseTests(PostgresContainerFixture fixture)
             var itens = r.VersaoCliente!.Itens;
             r.EditarItem(itens.Single(i => i.Texto == "Texto da IA").Id, "Texto revisado");
             r.ExcluirItem(itens.Single(i => i.Texto == "Item interno").Id, "Não interessa ao cliente");
-            r.Aprovar("revisora@invoisys.com", Agora);
+            r.Aprovar(revisor, Agora);
         });
 
         var recarregada = await Recarregar(release.Id);
@@ -135,10 +136,11 @@ public class PersistenciaAgregadoReleaseTests(PostgresContainerFixture fixture)
     [Fact]
     public async Task Reprovacao_persiste_motivo()
     {
+        var revisor = await fixture.SalvarRevisorAsync();
         var release = await CriarReleasePersistida();
         await Etapa(release.Id, r => r.ConcluirProcessamento(ItensGerados("Texto"), "Título", "Resumo"));
 
-        await Etapa(release.Id, r => r.Reprovar("revisora@invoisys.com", "Tom técnico demais", Agora));
+        await Etapa(release.Id, r => r.Reprovar(revisor, "Tom técnico demais", Agora));
 
         var cliente = (await Recarregar(release.Id)).VersaoCliente!;
         cliente.Status.Should().Be(StatusRevisao.Reprovado);

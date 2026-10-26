@@ -34,6 +34,7 @@ public sealed record VersaoComunicadoOut(
     string? TituloExecutivo,
     string? ResumoExecutivo,
     IReadOnlyList<ItemRevisaoOut> Itens,
+    Guid? RevisadoPorId,
     string? RevisadoPor,
     DateTimeOffset? RevisadoEm,
     string? MotivoReprovacao);
