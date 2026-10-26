@@ -1,7 +1,9 @@
+using System.Diagnostics;
 using System.Net.Http.Json;
 using System.Text.Json;
 using System.Text.RegularExpressions;
 using InvoiSys.Domain.Enums;
+using InvoiSys.Domain.Observabilidade;
 using InvoiSys.Domain.Ports;
 using InvoiSys.Infrastructure.Configuration;
 using Microsoft.Extensions.Logging;
@@ -24,7 +26,7 @@ public sealed partial class OpenRouterProvider(
         CancellationToken cancellationToken = default)
     {
         var prompt = prompts.Montar("02_categorizar.md", ("texto_fonte", textoFonte));
-        var resposta = await ChamarAsync(prompt, jsonMode: false, cancellationToken);
+        var resposta = await ChamarAsync(prompt, "categorizar", jsonMode: false, cancellationToken);
 
         var valor = resposta.Trim().Trim('"');
 
@@ -49,7 +51,7 @@ public sealed partial class OpenRouterProvider(
             "03_agrupar_semelhantes.md",
             ("lista_chave_texto", listaChaveTexto));
 
-        var resposta = await ChamarAsync(prompt, jsonMode: true, cancellationToken);
+        var resposta = await ChamarAsync(prompt, "agrupar", jsonMode: true, cancellationToken);
         using var documento = ParseJson(resposta, contexto: "agrupar_semelhantes");
         var grupos = ValidarGrupos(documento.RootElement);
 
@@ -84,7 +86,7 @@ public sealed partial class OpenRouterProvider(
             ("categoria", categoria.ParaValor()),
             ("textos_fonte", string.Join("\n", textosFonte.Select(t => $"- {t}"))));
 
-        var resposta = await ChamarAsync(prompt, jsonMode: false, cancellationToken);
+        var resposta = await ChamarAsync(prompt, "reescrever", jsonMode: false, cancellationToken);
         return resposta.Trim();
     }
 
@@ -96,7 +98,7 @@ public sealed partial class OpenRouterProvider(
             "05_gerar_titulo_resumo.md",
             ("itens_texto", string.Join("\n", itensTexto.Select(t => $"- {t}"))));
 
-        var resposta = await ChamarAsync(prompt, jsonMode: true, cancellationToken);
+        var resposta = await ChamarAsync(prompt, "titulo_resumo", jsonMode: true, cancellationToken);
         using var documento = ParseJson(resposta, contexto: "gerar_titulo_e_resumo");
         var raiz = documento.RootElement;
 
@@ -178,6 +180,7 @@ public sealed partial class OpenRouterProvider(
 
     private async Task<string> ChamarAsync(
         string prompt,
+        string estagio,
         bool jsonMode,
         CancellationToken cancellationToken)
     {
@@ -193,20 +196,94 @@ public sealed partial class OpenRouterProvider(
             ResponseFormat = jsonMode ? new ResponseFormat { Type = "json_object" } : null,
         };
 
-        var data = await PostAsync(payload, cancellationToken);
+        using var atividade = Telemetria.Atividades.StartActivity($"llm.{estagio}", ActivityKind.Client);
+        atividade?.SetTag("langfuse.observation.type", "generation");
+        atividade?.SetTag("langfuse.observation.input", prompt);
+        atividade?.SetTag("gen_ai.system", "openrouter");
+        atividade?.SetTag("gen_ai.request.model", _opcoes.Modelo);
+        atividade?.SetTag("gen_ai.request.temperature", payload.Temperature);
+        atividade?.SetTag("invoisys.llm.estagio", estagio);
 
-        if (!data.TryGetProperty("choices", out var choices)
-            || choices.ValueKind != JsonValueKind.Array
-            || choices.GetArrayLength() == 0
-            || !choices[0].TryGetProperty("message", out var message)
-            || !message.TryGetProperty("content", out var content)
-            || content.ValueKind != JsonValueKind.String)
+        var inicio = Stopwatch.GetTimestamp();
+        var modelo = _opcoes.Modelo;
+        var resultado = "sucesso";
+
+        try
         {
-            throw new LlmRespostaInvalidaException(
-                $"Resposta da OpenRouter sem choices[0].message.content: {data}");
+            var data = await PostAsync(payload, cancellationToken);
+
+            if (data.TryGetProperty("model", out var modeloUsado) && modeloUsado.ValueKind == JsonValueKind.String)
+            {
+                modelo = modeloUsado.GetString()!;
+            }
+
+            RegistrarUso(data, modelo, atividade);
+
+            if (!data.TryGetProperty("choices", out var choices)
+                || choices.ValueKind != JsonValueKind.Array
+                || choices.GetArrayLength() == 0
+                || !choices[0].TryGetProperty("message", out var message)
+                || !message.TryGetProperty("content", out var content)
+                || content.ValueKind != JsonValueKind.String)
+            {
+                throw new LlmRespostaInvalidaException(
+                    $"Resposta da OpenRouter sem choices[0].message.content: {data}");
+            }
+
+            var texto = content.GetString()!;
+            atividade?.SetTag("langfuse.observation.output", texto);
+            return texto;
+        }
+        catch (Exception exc)
+        {
+            resultado = "falha";
+            atividade?.SetStatus(ActivityStatusCode.Error, exc.GetType().Name);
+            throw;
+        }
+        finally
+        {
+            atividade?.SetTag("gen_ai.response.model", modelo);
+
+            var tags = new TagList
+            {
+                { "estagio", estagio },
+                { "modelo", modelo },
+                { "resultado", resultado },
+            };
+            Telemetria.LlmChamadas.Add(1, tags);
+            Telemetria.LlmDuracao.Record(Stopwatch.GetElapsedTime(inicio).TotalSeconds, tags);
+        }
+    }
+
+    private static void RegistrarUso(JsonElement data, string modelo, Activity? atividade)
+    {
+        if (!data.TryGetProperty("usage", out var uso) || uso.ValueKind != JsonValueKind.Object)
+        {
+            return;
         }
 
-        return content.GetString()!;
+        if (uso.TryGetProperty("prompt_tokens", out var entrada) && entrada.TryGetInt64(out var tokensEntrada))
+        {
+            atividade?.SetTag("gen_ai.usage.input_tokens", tokensEntrada);
+            Telemetria.LlmTokens.Add(
+                tokensEntrada,
+                new KeyValuePair<string, object?>("tipo", "entrada"),
+                new KeyValuePair<string, object?>("modelo", modelo));
+        }
+
+        if (uso.TryGetProperty("completion_tokens", out var saida) && saida.TryGetInt64(out var tokensSaida))
+        {
+            atividade?.SetTag("gen_ai.usage.output_tokens", tokensSaida);
+            Telemetria.LlmTokens.Add(
+                tokensSaida,
+                new KeyValuePair<string, object?>("tipo", "saida"),
+                new KeyValuePair<string, object?>("modelo", modelo));
+        }
+
+        if (uso.TryGetProperty("cost", out var custo) && custo.TryGetDouble(out var valorCusto))
+        {
+            atividade?.SetTag("gen_ai.usage.cost", valorCusto);
+        }
     }
 
     private async Task<JsonElement> PostAsync(

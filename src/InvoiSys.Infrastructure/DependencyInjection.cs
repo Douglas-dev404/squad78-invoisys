@@ -10,6 +10,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
+using Npgsql;
 
 namespace InvoiSys.Infrastructure;
 
@@ -42,6 +43,9 @@ public static class DependencyInjection
         services.AddDbContext<InvoiSysDbContext>(options => options
             .UseNpgsql(connectionString)
             .UseSnakeCaseNamingConvention());
+
+        services.AddSingleton(_ => NpgsqlDataSource.Create(connectionString));
+        services.AddScoped<IBloqueioProcessamento, PostgresBloqueioProcessamento>();
 
         services.AddScoped<IReleaseRepository, ReleaseRepository>();
         services.AddScoped<IHistoriaJiraRepository, HistoriaJiraRepository>();

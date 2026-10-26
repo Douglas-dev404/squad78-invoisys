@@ -1,4 +1,5 @@
 using InvoiSys.Api.Endpoints;
+using InvoiSys.Api.Observabilidade;
 using InvoiSys.Application;
 using InvoiSys.Infrastructure;
 using InvoiSys.Infrastructure.Database;
@@ -12,6 +13,7 @@ if (args.Contains("--healthcheck"))
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddOpenApi();
+builder.Services.AddObservabilidade(builder.Configuration);
 builder.Services.AddInfrastructure(builder.Configuration);
 builder.Services.AddApplication(builder.Configuration);
 

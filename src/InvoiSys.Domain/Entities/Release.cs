@@ -6,6 +6,9 @@ public sealed class RevisaoHumanaObrigatoriaException(string mensagem) : Excepti
 
 public sealed class ReleaseSemItensProcessadosException(string mensagem) : Exception(mensagem);
 
+public sealed class ProcessamentoEmAndamentoException(string chaveRelease)
+    : Exception($"A Release {chaveRelease} já está sendo processada. Aguarde a execução atual terminar.");
+
 public sealed class ItemNaoEncontradoException(string mensagem) : Exception(mensagem);
 
 public sealed class ReleaseNaoEncontradaException(string chaveJira)

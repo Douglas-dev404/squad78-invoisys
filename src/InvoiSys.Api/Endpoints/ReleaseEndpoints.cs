@@ -159,7 +159,7 @@ public static class ReleaseEndpoints
                     i.Texto,
                     i.Origens))]));
         }
-        catch (RevisaoHumanaObrigatoriaException exc)
+        catch (Exception exc) when (exc is RevisaoHumanaObrigatoriaException or ProcessamentoEmAndamentoException)
         {
             return Results.Problem(detail: exc.Message, statusCode: StatusCodes.Status409Conflict);
         }

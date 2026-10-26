@@ -1,4 +1,6 @@
+using System.Diagnostics;
 using InvoiSys.Domain.Entities;
+using InvoiSys.Domain.Observabilidade;
 using InvoiSys.Domain.Ports;
 
 namespace InvoiSys.Application.Pipeline;
@@ -7,17 +9,60 @@ public sealed class PipelineGeracaoReleaseNote(
     IJiraClient jiraClient,
     ILlmProvider llmProvider,
     IReleaseRepository releaseRepository,
-    string? modeloLlm = null)
+    string? modeloLlm = null,
+    IBloqueioProcessamento? bloqueio = null)
 {
     private readonly IJiraClient _jira = jiraClient;
     private readonly ILlmProvider _llm = llmProvider;
     private readonly IReleaseRepository _releaseRepository = releaseRepository;
 
     private readonly string? _modeloLlm = modeloLlm;
+    private readonly IBloqueioProcessamento? _bloqueio = bloqueio;
 
     public async Task<Release> ExecutarAsync(
         string chaveRelease,
         CancellationToken cancellationToken = default)
+    {
+        // A trava vem antes de Jira e LLM: é ela que impede a segunda chamada paga à IA.
+        await using var trava = _bloqueio is null
+            ? null
+            : await _bloqueio.TentarAdquirirAsync(chaveRelease, cancellationToken);
+
+        if (_bloqueio is not null && trava is null)
+        {
+            Telemetria.PipelineBloqueios.Add(1);
+            throw new ProcessamentoEmAndamentoException(chaveRelease);
+        }
+
+        using var atividade = Telemetria.IniciarRaiz("pipeline.gerar-release-note");
+        atividade?.SetTag("langfuse.trace.name", "gerar-release-note");
+        atividade?.SetTag("invoisys.release.chave", chaveRelease);
+
+        var inicio = Stopwatch.GetTimestamp();
+        var resultado = "sucesso";
+
+        try
+        {
+            return await ExecutarSemTravaAsync(chaveRelease, cancellationToken);
+        }
+        catch (Exception exc)
+        {
+            resultado = "falha";
+            atividade?.SetStatus(ActivityStatusCode.Error, exc.GetType().Name);
+            throw;
+        }
+        finally
+        {
+            Telemetria.PipelineExecucoes.Add(1, new KeyValuePair<string, object?>("resultado", resultado));
+            Telemetria.PipelineDuracao.Record(
+                Stopwatch.GetElapsedTime(inicio).TotalSeconds,
+                new KeyValuePair<string, object?>("resultado", resultado));
+        }
+    }
+
+    private async Task<Release> ExecutarSemTravaAsync(
+        string chaveRelease,
+        CancellationToken cancellationToken)
     {
         // Reusar a instância carregada: SalvarAsync decide INSERT/UPDATE pelo rastreamento do EF.
         var release = await _releaseRepository.BuscarPorChaveJiraAsync(chaveRelease, cancellationToken);
