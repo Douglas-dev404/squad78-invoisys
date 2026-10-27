@@ -3,14 +3,8 @@ using InvoiSys.Domain.Ports;
 
 namespace InvoiSys.Tests.Fakes;
 
-/// <summary>
-/// Fake de <see cref="ILlmProvider"/> com comportamento determinístico e configurável.
-/// É a prova prática de que o pipeline depende só da porta: nenhum teste desta suíte
-/// precisa de chave de API ou de rede.
-/// </summary>
 public sealed class FakeLlmProvider : ILlmProvider
 {
-    /// <summary>Grupos que AgruparSemelhantes devolve. Null = cada chave no seu grupo.</summary>
     public IReadOnlyList<IReadOnlyList<string>>? GruposFixos { get; set; }
 
     public CategoriaAlteracao CategoriaFixa { get; set; } = CategoriaAlteracao.Melhoria;
@@ -20,7 +14,6 @@ public sealed class FakeLlmProvider : ILlmProvider
     public (string Titulo, string Resumo) TituloEResumo { get; set; } =
         ("Título executivo", "Resumo executivo");
 
-    /// <summary>Quando definido, todo método da porta lança esta exceção.</summary>
     public Exception? FalhaAoChamar { get; set; }
 
     public List<string> TextosCategorizados { get; } = [];

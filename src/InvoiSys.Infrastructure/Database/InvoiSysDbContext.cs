@@ -3,12 +3,6 @@ using Microsoft.EntityFrameworkCore;
 
 namespace InvoiSys.Infrastructure.Database;
 
-/// <summary>
-/// DbContext único do projeto — a fronteira de persistência entre o domínio
-/// (InvoiSys.Domain) e o PostgreSQL. Cada entidade tem sua própria
-/// <c>IEntityTypeConfiguration</c> em <see cref="Configurations"/>; nenhum mapeamento
-/// vive aqui além do registro delas, para manter esta classe fina.
-/// </summary>
 public sealed class InvoiSysDbContext(DbContextOptions<InvoiSysDbContext> options)
     : DbContext(options)
 {

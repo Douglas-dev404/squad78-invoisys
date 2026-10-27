@@ -25,7 +25,6 @@ namespace InvoiSys.Infrastructure.Database.Migrations
             modelBuilder.Entity("InvoiSys.Domain.Entities.ComunicadoExportado", b =>
                 {
                     b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
                         .HasColumnType("uuid")
                         .HasColumnName("id")
                         .HasDefaultValueSql("gen_random_uuid()");
@@ -87,7 +86,6 @@ namespace InvoiSys.Infrastructure.Database.Migrations
             modelBuilder.Entity("InvoiSys.Domain.Entities.DestaqueHero", b =>
                 {
                     b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
                         .HasColumnType("uuid")
                         .HasColumnName("id")
                         .HasDefaultValueSql("gen_random_uuid()");
@@ -139,7 +137,6 @@ namespace InvoiSys.Infrastructure.Database.Migrations
             modelBuilder.Entity("InvoiSys.Domain.Entities.ExecucaoPipeline", b =>
                 {
                     b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
                         .HasColumnType("uuid")
                         .HasColumnName("id")
                         .HasDefaultValueSql("gen_random_uuid()");
@@ -186,7 +183,6 @@ namespace InvoiSys.Infrastructure.Database.Migrations
             modelBuilder.Entity("InvoiSys.Domain.Entities.HistoriaJira", b =>
                 {
                     b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
                         .HasColumnType("uuid")
                         .HasColumnName("id")
                         .HasDefaultValueSql("gen_random_uuid()");
@@ -245,7 +241,6 @@ namespace InvoiSys.Infrastructure.Database.Migrations
             modelBuilder.Entity("InvoiSys.Domain.Entities.ItemComunicado", b =>
                 {
                     b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
                         .HasColumnType("uuid")
                         .HasColumnName("id")
                         .HasDefaultValueSql("gen_random_uuid()");
@@ -316,7 +311,6 @@ namespace InvoiSys.Infrastructure.Database.Migrations
             modelBuilder.Entity("InvoiSys.Domain.Entities.Release", b =>
                 {
                     b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
                         .HasColumnType("uuid")
                         .HasColumnName("id")
                         .HasDefaultValueSql("gen_random_uuid()");
@@ -364,7 +358,6 @@ namespace InvoiSys.Infrastructure.Database.Migrations
             modelBuilder.Entity("InvoiSys.Domain.Entities.Usuario", b =>
                 {
                     b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
                         .HasColumnType("uuid")
                         .HasColumnName("id")
                         .HasDefaultValueSql("gen_random_uuid()");
@@ -424,7 +417,6 @@ namespace InvoiSys.Infrastructure.Database.Migrations
             modelBuilder.Entity("InvoiSys.Domain.Entities.VersaoComunicado", b =>
                 {
                     b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
                         .HasColumnType("uuid")
                         .HasColumnName("id")
                         .HasDefaultValueSql("gen_random_uuid()");

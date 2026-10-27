@@ -3,10 +3,6 @@ using InvoiSys.Domain.Entities;
 
 namespace InvoiSys.Tests.Unit;
 
-/// <summary>
-/// A regra de precedência da fonte de texto: Release Note dedicada ganha da descrição
-/// técnica. É o que decide o que alimenta o pipeline de IA.
-/// </summary>
 public class HistoriaJiraTests
 {
     private static HistoriaJira Historia(string? releaseNote) => new()

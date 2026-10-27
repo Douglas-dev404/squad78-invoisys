@@ -6,18 +6,10 @@ using Microsoft.AspNetCore.Mvc.Testing;
 
 namespace InvoiSys.Tests.Integration;
 
-/// <summary>
-/// A documentação da API é entregável do projeto, então é testada como código.
-///
-/// O modo de falhar aqui é silencioso: um handler que devolve IResult sem declarar
-/// .Produces&lt;T&gt;() continua funcionando perfeitamente, mas o spec sai com "200 OK"
-/// e nenhum schema — e ninguém percebe até alguém tentar consumir a API.
-/// </summary>
 public class OpenApiTests
 {
     private static WebApplicationFactory<Program> CriarApp() =>
         new WebApplicationFactory<Program>().WithWebHostBuilder(builder =>
-            // O spec só é publicado em Development (ver Program.cs).
             builder.UseEnvironment("Development"));
 
     private static async Task<JsonDocument> BuscarSpecAsync()
@@ -32,6 +24,30 @@ public class OpenApiTests
     }
 
     [Fact]
+    public async Task Swagger_UI_e_servido_em_development_lendo_o_spec_gerado()
+    {
+        using var app = CriarApp();
+        using var client = app.CreateClient();
+
+        var pagina = await client.GetAsync("/swagger/index.html");
+        pagina.StatusCode.Should().Be(HttpStatusCode.OK);
+
+        var configuracao = await client.GetStringAsync("/swagger/index.js");
+        configuracao.Should().Contain("/openapi/v1.json");
+    }
+
+    [Fact]
+    public async Task Swagger_UI_e_spec_nao_ficam_expostos_fora_de_development()
+    {
+        using var app = new WebApplicationFactory<Program>().WithWebHostBuilder(builder =>
+            builder.UseEnvironment("Production"));
+        using var client = app.CreateClient();
+
+        (await client.GetAsync("/swagger/index.html")).StatusCode.Should().Be(HttpStatusCode.NotFound);
+        (await client.GetAsync("/openapi/v1.json")).StatusCode.Should().Be(HttpStatusCode.NotFound);
+    }
+
+    [Fact]
     public async Task Spec_publica_todas_as_rotas_da_API()
     {
         using var spec = await BuscarSpecAsync();
@@ -41,10 +57,20 @@ public class OpenApiTests
             .Select(p => p.Name)
             .ToList();
 
-        caminhos.Should().BeEquivalentTo(
+        caminhos.Should().BeEquivalentTo([
             "/health",
+            "/api/v1/releases",
+            "/api/v1/releases/{chaveRelease}",
+            "/api/v1/releases/{chaveRelease}/aprovar",
+            "/api/v1/releases/{chaveRelease}/reprovar",
+            "/api/v1/releases/{chaveRelease}/reabrir",
             "/api/v1/releases/{chaveRelease}/historias",
-            "/api/v1/releases/{chaveRelease}/processar");
+            "/api/v1/releases/{chaveRelease}/processar",
+            "/api/v1/releases/{chaveRelease}/itens/{itemId}",
+            "/api/v1/releases/{chaveRelease}/itens/{itemId}/excluir",
+            "/api/v1/releases/{chaveRelease}/itens/{itemId}/reincluir",
+            "/api/v1/releases/{chaveRelease}/exportar"
+        ]);
     }
 
     [Fact]
@@ -59,7 +85,6 @@ public class OpenApiTests
 
         var ok = processar.GetProperty("responses").GetProperty("200");
 
-        // Um "200 OK" sem content é exatamente o sintoma da regressão.
         ok.TryGetProperty("content", out var content).Should().BeTrue(
             "a resposta de sucesso precisa declarar o corpo que devolve");
 
@@ -100,9 +125,9 @@ public class OpenApiTests
             .GetProperty("post")
             .GetProperty("responses");
 
-        // 501 (falta configurar Jira/LLM) e 502 (dependência externa falhou) são
-        // respostas previsíveis desta API, não imprevistos: quem consome precisa vê-las.
         respostas.TryGetProperty("501", out _).Should().BeTrue();
         respostas.TryGetProperty("502", out _).Should().BeTrue();
+
+        respostas.TryGetProperty("409", out _).Should().BeTrue();
     }
 }

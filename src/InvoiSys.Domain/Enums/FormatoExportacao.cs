@@ -1,6 +1,5 @@
 namespace InvoiSys.Domain.Enums;
 
-/// <summary>Formatos de exportação do comunicado — Markdown é o único obrigatório do MVP.</summary>
 public enum FormatoExportacao
 {
     Markdown,
@@ -17,5 +16,19 @@ public static class FormatoExportacaoExtensions
         [FormatoExportacao.Pdf] = "pdf",
     };
 
+    private static readonly Dictionary<string, FormatoExportacao> PorValor =
+        PorEnum.ToDictionary(par => par.Value, par => par.Key);
+
     public static string ParaValor(this FormatoExportacao formato) => PorEnum[formato];
+
+    public static bool TentarConverter(string? valor, out FormatoExportacao formato)
+    {
+        if (string.IsNullOrWhiteSpace(valor))
+        {
+            formato = default;
+            return false;
+        }
+
+        return PorValor.TryGetValue(valor.Trim().ToLowerInvariant(), out formato);
+    }
 }

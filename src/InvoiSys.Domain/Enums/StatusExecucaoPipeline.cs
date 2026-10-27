@@ -1,12 +1,5 @@
 namespace InvoiSys.Domain.Enums;
 
-/// <summary>
-/// Status de uma execução individual do pipeline de IA sobre uma Release —
-/// registro de rastreabilidade, não o status da Release em si
-/// (ver <see cref="StatusPipeline"/>). Uma Release pode ter várias execuções ao
-/// longo do tempo (reprocessamento manual, falha seguida de nova tentativa); cada
-/// uma vira uma linha aqui, preservando histórico completo para auditoria.
-/// </summary>
 public enum StatusExecucaoPipeline
 {
     Iniciada,

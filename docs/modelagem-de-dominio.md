@@ -45,8 +45,9 @@ em torno de garanti-lo estruturalmente, não por convenção.
 
 ![Diagrama entidade-relacionamento do InvoiSys](erd.png)
 
-> Gerado por [`docs/scripts/gerar_erd.py`](scripts/gerar_erd.py) a partir do schema real
-> aplicado pela migration. Versão vetorial: [`erd.svg`](erd.svg).
+> Gerado a partir do schema real aplicado pela migration (o script Python que o gerava
+> foi removido na migração para .NET, e está no histórico do git). Versão vetorial:
+> [`erd.svg`](erd.svg).
 
 ---
 
@@ -496,8 +497,11 @@ evento (`execucoes_pipeline`, `comunicados_exportados`) ou de cadastro simples
 2. **Recuperação de senha sem entidade** — o frontend já chama
    `POST /auth/forgot-password` e espera `{ message, expiresInMinutes }`, o que implica um
    token de reset com expiração. Não modelado.
-3. **Camada de Repository não existe** — o pipeline roda em memória; o schema está pronto,
-   falta ligar os dois.
+3. **Repositories prontos, API de revisão ainda não os usa** — o pipeline já persiste
+   via `IReleaseRepository` (issue #20; `PipelineGeracaoReleaseNotePersistenciaTests`).
+   `IUsuarioRepository`, `IComunicadoExportadoRepository` e as portas somente leitura de
+   `HistoriaJira`/`ExecucaoPipeline` existem e são testados contra Postgres real, mas
+   ainda não há endpoints de revisão/exportação que os usem (#21–#24).
 4. **Pipeline gera só o público Cliente** — `ConcluirProcessamento` já aceita
    `PublicoAlvo`, mas o orquestrador chama uma vez só. Gerar os demais é trabalho de
    aplicação, não de modelagem.

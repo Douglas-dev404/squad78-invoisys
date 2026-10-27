@@ -2,6 +2,7 @@ using System.Net;
 using System.Text.Json;
 using FluentAssertions;
 using InvoiSys.Domain.Enums;
+using InvoiSys.Domain.Ports;
 using InvoiSys.Infrastructure.Configuration;
 using InvoiSys.Infrastructure.Llm;
 using InvoiSys.Tests.Fakes;
@@ -10,11 +11,6 @@ using Microsoft.Extensions.Options;
 
 namespace InvoiSys.Tests.Unit;
 
-/// <summary>
-/// O adapter da OpenRouter, com o HTTP mockado. O foco aqui é o parsing defensivo: um
-/// LLM devolve texto, não estrutura garantida, e o que quebra em produção é justamente
-/// a resposta fora do formato combinado.
-/// </summary>
 public class OpenRouterProviderTests
 {
     private static (OpenRouterProvider Provider, FakeHttpMessageHandler Handler) Criar(
@@ -72,7 +68,6 @@ public class OpenRouterProviderTests
     [Fact]
     public async Task Agrupar_aceita_JSON_embrulhado_em_code_fence()
     {
-        // Alguns modelos atrás do gateway ignoram response_format e devolvem markdown.
         var (provider, _) = Criar(h => h.ResponderConteudoLlm(
             "```json\n[[\"INV-1\", \"INV-2\"], [\"INV-3\"]]\n```"));
 
@@ -86,8 +81,6 @@ public class OpenRouterProviderTests
     [Fact]
     public async Task Agrupar_isola_chave_omitida_pelo_modelo_em_vez_de_perder_a_historia()
     {
-        // Invariante: toda chave de entrada sai em exatamente um grupo. Perder uma
-        // história do comunicado é pior que ela aparecer sem agrupamento.
         var (provider, _) = Criar(h => h.ResponderConteudoLlm("""[["INV-1"]]"""));
 
         var grupos = await provider.AgruparSemelhantesAsync([("INV-1", "a"), ("INV-2", "b")]);
@@ -97,9 +90,31 @@ public class OpenRouterProviderTests
     }
 
     [Fact]
+    public async Task Agrupar_aceita_o_objeto_com_grupos_que_o_json_mode_exige()
+    {
+        var (provider, _) = Criar(h => h.ResponderConteudoLlm(
+            """{"grupos": [["INV-1", "INV-2"], ["INV-3"]]}"""));
+
+        var grupos = await provider.AgruparSemelhantesAsync(
+            [("INV-1", "a"), ("INV-2", "b"), ("INV-3", "c")]);
+
+        grupos.Should().HaveCount(2);
+        grupos[0].Should().Equal("INV-1", "INV-2");
+    }
+
+    [Fact]
+    public async Task Agrupar_com_objeto_sem_grupos_e_resposta_invalida()
+    {
+        var (provider, _) = Criar(h => h.ResponderConteudoLlm("""{"[[": null}"""));
+
+        var acao = async () => await provider.AgruparSemelhantesAsync([("INV-1", "a")]);
+
+        await acao.Should().ThrowAsync<LlmRespostaInvalidaException>();
+    }
+
+    [Fact]
     public async Task Agrupar_rejeita_elemento_nao_string_dentro_do_grupo()
     {
-        // Validação rasa ("é array?") deixaria isto passar e sujaria Origens.
         var (provider, _) = Criar(h => h.ResponderConteudoLlm("""[["INV-1", 42]]"""));
 
         var acao = async () => await provider.AgruparSemelhantesAsync([("INV-1", "a")]);
@@ -140,15 +155,16 @@ public class OpenRouterProviderTests
     }
 
     [Fact]
-    public async Task Erro_HTTP_da_OpenRouter_vira_excecao_de_dominio_do_adapter()
+    public async Task Erro_HTTP_da_OpenRouter_vira_excecao_da_porta_sem_o_corpo_da_resposta()
     {
         var (provider, _) = Criar(h =>
-            h.ResponderJson("""{"error": {"message": "rate limited"}}""",
+            h.ResponderJson("""{"error": {"message": "rate limited", "conta": "segredo"}}""",
                 HttpStatusCode.TooManyRequests));
 
         var acao = async () => await provider.CategorizarAsync("qualquer coisa");
 
-        await acao.Should().ThrowAsync<OpenRouterApiException>();
+        (await acao.Should().ThrowAsync<LlmApiException>())
+            .Which.Message.Should().Be("OpenRouter retornou 429.");
     }
 
     [Fact]
@@ -164,8 +180,6 @@ public class OpenRouterProviderTests
     [Fact]
     public async Task Corpo_enviado_contem_a_mensagem_completa_e_nao_objeto_vazio()
     {
-        // Prova direta da serialização: o array messages precisa carregar role e
-        // content de verdade.
         var (provider, handler) = Criar(h => h.ResponderConteudoLlm("melhoria"));
 
         await provider.CategorizarAsync("texto de teste");
@@ -187,10 +201,8 @@ public class OpenRouterProviderTests
 
         await provider.CategorizarAsync("Emissão de notas ficou mais rápida.");
 
-        // Desserializa em vez de casar no texto cru: o System.Text.Json escapa
-        // caracteres não-ASCII no corpo enviado, então procurar acento na string
-        // serializada falharia mesmo com o prompt correto.
         var corpo = handler.CorposEnviados.Should().ContainSingle().Subject;
+        // Desserializa: o System.Text.Json escapa não-ASCII, casar acento no texto cru falharia.
         using var documento = JsonDocument.Parse(corpo);
         var promptEnviado = documento.RootElement
             .GetProperty("messages")[0]

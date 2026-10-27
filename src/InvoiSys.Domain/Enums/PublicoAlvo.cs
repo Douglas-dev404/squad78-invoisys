@@ -1,12 +1,5 @@
 namespace InvoiSys.Domain.Enums;
 
-/// <summary>
-/// Públicos possíveis para uma exportação de comunicado — diferencial documentado
-/// no enunciado do desafio (geração de versões distintas do mesmo comunicado por
-/// audiência). Fixo por decisão de negócio, mesmo espírito de
-/// <see cref="CategoriaAlteracao"/>: não adicionar público novo sem necessidade
-/// real validada.
-/// </summary>
 public enum PublicoAlvo
 {
     Cliente,
@@ -25,5 +18,19 @@ public static class PublicoAlvoExtensions
         [PublicoAlvo.Interno] = "interno",
     };
 
+    private static readonly Dictionary<string, PublicoAlvo> PorValor =
+        PorEnum.ToDictionary(par => par.Value, par => par.Key);
+
     public static string ParaValor(this PublicoAlvo publico) => PorEnum[publico];
+
+    public static bool TentarConverter(string? valor, out PublicoAlvo publico)
+    {
+        if (string.IsNullOrWhiteSpace(valor))
+        {
+            publico = default;
+            return false;
+        }
+
+        return PorValor.TryGetValue(valor.Trim().ToLowerInvariant(), out publico);
+    }
 }

@@ -1,0 +1,252 @@
+using FluentAssertions;
+using InvoiSys.Domain.Entities;
+using InvoiSys.Domain.Enums;
+using InvoiSys.Infrastructure.Database;
+using Microsoft.EntityFrameworkCore;
+
+namespace InvoiSys.Tests.Integration;
+
+[Collection("Postgres")]
+public class ReleaseRepositoryTests(PostgresContainerFixture fixture)
+{
+    private static HistoriaJira UmaHistoria(
+        string chave = "INV-1",
+        string? textoReleaseNote = null,
+        IReadOnlyList<string>? labels = null)
+    {
+        return new HistoriaJira
+        {
+            Chave = chave,
+            Titulo = "Título",
+            DescricaoTecnica = "Descrição técnica",
+            TipoIssue = "Story",
+            TextoReleaseNote = textoReleaseNote,
+            Labels = labels ?? [],
+        };
+    }
+
+    private static string ChaveJiraUnica() => $"RELEASE-TESTE-{Guid.NewGuid():N}";
+
+    [Fact]
+    public async Task SalvarAsync_persiste_release_com_historias_e_a_releitura_traz_tudo_de_volta()
+    {
+        var historias = new List<HistoriaJira>
+        {
+            UmaHistoria("INV-1", textoReleaseNote: "Release note dedicada", labels: ["backend", "urgente"]),
+            UmaHistoria("INV-2"),
+        };
+        var release = new Release(ChaveJiraUnica(), historias);
+
+        await using (var escrita = fixture.CriarContexto())
+        {
+            await new ReleaseRepository(escrita).SalvarAsync(release);
+        }
+
+        await using var leitura = fixture.CriarContexto();
+        var recarregada = await new ReleaseRepository(leitura).BuscarPorIdAsync(release.Id);
+
+        recarregada.Should().NotBeNull();
+        recarregada!.ChaveJira.Should().Be(release.ChaveJira);
+        recarregada.Historias.Should().HaveCount(2);
+
+        var comLabels = recarregada.Historias.Single(h => h.Chave == "INV-1");
+        comLabels.Titulo.Should().Be("Título");
+        comLabels.DescricaoTecnica.Should().Be("Descrição técnica");
+        comLabels.TipoIssue.Should().Be("Story");
+        comLabels.TextoReleaseNote.Should().Be("Release note dedicada");
+        comLabels.Labels.Should().Equal("backend", "urgente");
+
+        var semLabels = recarregada.Historias.Single(h => h.Chave == "INV-2");
+        semLabels.TextoReleaseNote.Should().BeNull();
+        semLabels.Labels.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task BuscarPorChaveJiraAsync_encontra_pela_chave_de_negocio_e_carrega_as_historias()
+    {
+        var release = new Release(ChaveJiraUnica(), [UmaHistoria("INV-1"), UmaHistoria("INV-2")]);
+
+        await using (var escrita = fixture.CriarContexto())
+        {
+            await new ReleaseRepository(escrita).SalvarAsync(release);
+        }
+
+        await using var leitura = fixture.CriarContexto();
+        var recarregada = await new ReleaseRepository(leitura).BuscarPorChaveJiraAsync(release.ChaveJira);
+
+        recarregada.Should().NotBeNull();
+        recarregada!.Id.Should().Be(release.Id);
+        recarregada.Historias.Select(h => h.Chave).Should().BeEquivalentTo(new[] { "INV-1", "INV-2" });
+    }
+
+    [Fact]
+    public async Task BuscarPorIdAsync_e_BuscarPorChaveJiraAsync_devolvem_null_quando_nao_existe()
+    {
+        await using var contexto = fixture.CriarContexto();
+        var repositorio = new ReleaseRepository(contexto);
+
+        var porId = await repositorio.BuscarPorIdAsync(Guid.NewGuid());
+        var porChave = await repositorio.BuscarPorChaveJiraAsync(ChaveJiraUnica());
+
+        porId.Should().BeNull();
+        porChave.Should().BeNull();
+    }
+
+    [Fact]
+    public async Task SalvarAsync_com_chave_de_historia_duplicada_na_mesma_release_lanca_DbUpdateException()
+    {
+        var release = new Release(ChaveJiraUnica(), [UmaHistoria("INV-1"), UmaHistoria("INV-1")]);
+        await using var contexto = fixture.CriarContexto();
+        var repositorio = new ReleaseRepository(contexto);
+
+        var acao = async () => await repositorio.SalvarAsync(release);
+
+        await acao.Should().ThrowAsync<DbUpdateException>();
+    }
+
+    [Fact]
+    public async Task SalvarAsync_permite_a_mesma_chave_de_historia_em_releases_diferentes()
+    {
+        var primeira = new Release(ChaveJiraUnica(), [UmaHistoria("INV-1")]);
+        var segunda = new Release(ChaveJiraUnica(), [UmaHistoria("INV-1")]);
+
+        await using (var escrita = fixture.CriarContexto())
+        {
+            var repositorio = new ReleaseRepository(escrita);
+            await repositorio.SalvarAsync(primeira);
+            await repositorio.SalvarAsync(segunda);
+        }
+
+        await using var leitura = fixture.CriarContexto();
+        var repositorioDeLeitura = new ReleaseRepository(leitura);
+        var primeiraRecarregada = await repositorioDeLeitura.BuscarPorIdAsync(primeira.Id);
+        var segundaRecarregada = await repositorioDeLeitura.BuscarPorIdAsync(segunda.Id);
+
+        primeiraRecarregada!.Historias.Should().ContainSingle(h => h.Chave == "INV-1");
+        segundaRecarregada!.Historias.Should().ContainSingle(h => h.Chave == "INV-1");
+    }
+
+    [Fact]
+    public async Task Remover_release_apaga_as_historias_filhas_em_cascata()
+    {
+        var release = new Release(ChaveJiraUnica(), [UmaHistoria("INV-1"), UmaHistoria("INV-2")]);
+        var idsDasHistorias = release.Historias.Select(h => h.Id).ToList();
+
+        await using (var escrita = fixture.CriarContexto())
+        {
+            await new ReleaseRepository(escrita).SalvarAsync(release);
+        }
+
+        await using (var remocao = fixture.CriarContexto())
+        {
+            var persistida = await new ReleaseRepository(remocao).BuscarPorIdAsync(release.Id);
+            persistida!.Historias.Should().HaveCount(2, "sem isso o teste passaria de forma vazia");
+
+            // Remove direto no DbContext de propósito: o alvo é o OnDelete(Cascade), não o repository (que não tem delete).
+            remocao.Releases.Remove(persistida);
+            await remocao.SaveChangesAsync();
+        }
+
+        await using var leitura = fixture.CriarContexto();
+        var sobraram = await leitura.HistoriasJira.AnyAsync(h => idsDasHistorias.Contains(h.Id));
+
+        sobraram.Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task SalvarAsync_sobre_release_existente_nao_duplica_as_historias_ja_persistidas()
+    {
+        var release = new Release(ChaveJiraUnica(), [UmaHistoria("INV-1"), UmaHistoria("INV-2")]);
+
+        await using (var criacao = fixture.CriarContexto())
+        {
+            await new ReleaseRepository(criacao).SalvarAsync(release);
+        }
+
+        await using (var atualizacao = fixture.CriarContexto())
+        {
+            var repositorio = new ReleaseRepository(atualizacao);
+            var persistida = await repositorio.BuscarPorIdAsync(release.Id);
+            persistida!.MarcarProcessando();
+            await repositorio.SalvarAsync(persistida);
+        }
+
+        await using var leitura = fixture.CriarContexto();
+        var recarregada = await new ReleaseRepository(leitura).BuscarPorIdAsync(release.Id);
+
+        recarregada!.Status.Should().Be(StatusPipeline.Processando);
+        recarregada.Historias.Should().HaveCount(2);
+    }
+
+    [Fact]
+    public async Task ListarResumos_sem_filtro_devolve_todas_as_releases_criadas_pelo_teste()
+    {
+        var pendente = new Release(ChaveJiraUnica(), [UmaHistoria("INV-1")]);
+        var processando = new Release(ChaveJiraUnica(), [UmaHistoria("INV-1")]);
+        processando.MarcarProcessando();
+
+        await using var contexto = fixture.CriarContexto();
+        var repositorio = new ReleaseRepository(contexto);
+        await repositorio.SalvarAsync(pendente);
+        await repositorio.SalvarAsync(processando);
+
+        var listadas = await repositorio.ListarResumosAsync(status: null);
+
+        listadas.Select(r => r.ChaveJira).Should().Contain([pendente.ChaveJira, processando.ChaveJira]);
+        listadas.Single(r => r.ChaveJira == processando.ChaveJira).Status
+            .Should().Be(StatusPipeline.Processando);
+    }
+
+    [Fact]
+    public async Task ListarResumos_com_filtro_de_status_so_devolve_releases_daquele_status()
+    {
+        var aguardandoRevisao = new Release(ChaveJiraUnica(), [UmaHistoria("INV-1")]);
+        aguardandoRevisao.ConcluirProcessamento(
+            [new ItemComunicado(CategoriaAlteracao.Melhoria, "Texto", ["INV-1"])],
+            "Título",
+            "Resumo");
+        var pendente = new Release(ChaveJiraUnica(), [UmaHistoria("INV-1")]);
+
+        await using var contexto = fixture.CriarContexto();
+        var repositorio = new ReleaseRepository(contexto);
+        await repositorio.SalvarAsync(aguardandoRevisao);
+        await repositorio.SalvarAsync(pendente);
+
+        var listadas = await repositorio.ListarResumosAsync(StatusPipeline.AguardandoRevisao);
+
+        listadas.Select(r => r.ChaveJira).Should().Contain(aguardandoRevisao.ChaveJira);
+        listadas.Select(r => r.ChaveJira).Should().NotContain(pendente.ChaveJira);
+        listadas.Should().OnlyContain(r => r.Status == StatusPipeline.AguardandoRevisao);
+    }
+
+    [Fact]
+    public async Task ListarResumos_com_status_sem_nenhuma_release_devolve_lista_vazia()
+    {
+        await using var contexto = fixture.CriarContexto();
+        var repositorio = new ReleaseRepository(contexto);
+        await repositorio.SalvarAsync(new Release(ChaveJiraUnica(), [UmaHistoria("INV-1")]));
+
+        var listadas = await repositorio.ListarResumosAsync(StatusPipeline.Falhou);
+
+        listadas.Where(r => r.ChaveJira.StartsWith("RELEASE-TESTE-")).Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task ListarResumos_ordena_da_mais_recente_e_traz_a_data_de_criacao_do_banco()
+    {
+        var antiga = new Release(ChaveJiraUnica(), [UmaHistoria("INV-1")]);
+        var recente = new Release(ChaveJiraUnica(), [UmaHistoria("INV-1")]);
+
+        await using var contexto = fixture.CriarContexto();
+        var repositorio = new ReleaseRepository(contexto);
+        await repositorio.SalvarAsync(antiga);
+        await repositorio.SalvarAsync(recente);
+
+        var listadas = (await repositorio.ListarResumosAsync(status: null))
+            .Where(r => r.ChaveJira == antiga.ChaveJira || r.ChaveJira == recente.ChaveJira)
+            .ToList();
+
+        listadas.Select(r => r.ChaveJira).Should().Equal(recente.ChaveJira, antiga.ChaveJira);
+        listadas[0].CriadoEm.Should().BeAfter(listadas[1].CriadoEm);
+    }
+}

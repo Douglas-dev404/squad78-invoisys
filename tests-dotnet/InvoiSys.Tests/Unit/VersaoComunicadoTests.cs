@@ -4,11 +4,6 @@ using InvoiSys.Domain.Enums;
 
 namespace InvoiSys.Tests.Unit;
 
-/// <summary>
-/// Invariantes da revisão por público. O ponto central: cada
-/// <see cref="VersaoComunicado"/> é revisada de forma independente — aprovar a versão
-/// do Cliente não libera a exportação do Suporte, e vice-versa.
-/// </summary>
 public class VersaoComunicadoTests
 {
     private static HistoriaJira UmaHistoria(string chave = "INV-1") => new()
@@ -141,6 +136,41 @@ public class VersaoComunicadoTests
         release.VersaoCliente!.Status.Should().Be(StatusRevisao.AguardandoRevisao);
     }
 
+    [Theory]
+    [InlineData("")]
+    [InlineData("   ")]
+    [InlineData(null)]
+    public void Aprovar_ou_reprovar_sem_revisor_falha(string? revisor)
+    {
+        var release = UmaReleaseProcessada();
+
+        var aprovar = () => release.Aprovar(revisor!, DateTimeOffset.UtcNow);
+        var reprovar = () => release.Reprovar(revisor!, "Precisa refazer", DateTimeOffset.UtcNow);
+
+        aprovar.Should().Throw<ArgumentException>();
+        reprovar.Should().Throw<ArgumentException>();
+        release.VersaoCliente!.Status.Should().Be(StatusRevisao.AguardandoRevisao);
+        release.VersaoCliente.RevisadoPor.Should().BeNull();
+    }
+
+    [Theory]
+    [InlineData("cliente", PublicoAlvo.Cliente)]
+    [InlineData(" Suporte ", PublicoAlvo.Suporte)]
+    public void Publico_converte_do_valor_textual(string valor, PublicoAlvo esperado)
+    {
+        PublicoAlvoExtensions.TentarConverter(valor, out var publico).Should().BeTrue();
+        publico.Should().Be(esperado);
+    }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData("financeiro")]
+    public void Publico_ausente_ou_desconhecido_nao_converte(string? valor)
+    {
+        PublicoAlvoExtensions.TentarConverter(valor, out _).Should().BeFalse();
+    }
+
     [Fact]
     public void Versao_reprovada_nao_pode_ser_aprovada_sem_reprocessar()
     {
@@ -193,6 +223,48 @@ public class VersaoComunicadoTests
         release.VersaoPara(PublicoAlvo.Cliente)!.Status.Should().Be(StatusRevisao.Aprovado);
         release.VersaoPara(PublicoAlvo.Suporte)!.TituloExecutivo.Should().Be("Novo título");
         release.Versoes.Should().HaveCount(2, "reprocessar substitui a versão, não duplica");
+    }
+
+    [Fact]
+    public void Reprocessar_versao_aprovada_sem_reabrir_falha_e_preserva_o_conteudo_aprovado()
+    {
+        var release = UmaReleaseProcessada();
+        release.Aprovar("revisora@invoisys.com", DateTimeOffset.UtcNow);
+        var textosAprovados = release.VersaoCliente!.Itens.Select(i => i.Texto).ToList();
+
+        var acao = () => release.ConcluirProcessamento(
+            [UmItem("Texto refeito pela IA")],
+            "Outro título",
+            "Outro resumo");
+
+        acao.Should().Throw<RevisaoHumanaObrigatoriaException>();
+        release.VersaoCliente!.Status.Should().Be(StatusRevisao.Aprovado);
+        release.VersaoCliente.TituloExecutivo.Should().Be("Título cliente");
+        release.VersaoCliente.Itens.Select(i => i.Texto).Should().Equal(textosAprovados);
+    }
+
+    [Fact]
+    public void Reprocessar_depois_de_reabrir_substitui_o_conteudo()
+    {
+        var release = UmaReleaseProcessada();
+        release.Aprovar("revisora@invoisys.com", DateTimeOffset.UtcNow);
+        release.Reabrir();
+
+        release.ConcluirProcessamento([UmItem("Texto refeito")], "Novo título", "Novo resumo");
+
+        release.VersaoCliente!.Status.Should().Be(StatusRevisao.AguardandoRevisao);
+        release.VersaoCliente.TituloExecutivo.Should().Be("Novo título");
+    }
+
+    [Fact]
+    public void Versao_aprovada_recusa_conteudo_novo_mesmo_chamada_direto()
+    {
+        var release = UmaReleaseProcessada();
+        release.Aprovar("revisora@invoisys.com", DateTimeOffset.UtcNow);
+
+        var acao = () => release.VersaoCliente!.PreencherConteudo([UmItem()], "T", "R");
+
+        acao.Should().Throw<TransicaoDeStatusInvalidaException>();
     }
 
     [Fact]

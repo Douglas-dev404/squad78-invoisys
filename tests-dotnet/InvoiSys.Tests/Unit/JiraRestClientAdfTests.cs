@@ -4,11 +4,6 @@ using InvoiSys.Infrastructure.Jira;
 
 namespace InvoiSys.Tests.Unit;
 
-/// <summary>
-/// O campo description da Jira API v3 vem em Atlassian Document Format, não texto puro.
-/// Se essa extração falhar, o pipeline de IA recebe string vazia e o comunicado sai oco
-/// — sem erro nenhum. Por isso ela é testada isoladamente.
-/// </summary>
 public class JiraRestClientAdfTests
 {
     private static JsonElement Json(string texto) => JsonDocument.Parse(texto).RootElement;
@@ -41,7 +36,6 @@ public class JiraRestClientAdfTests
     [Fact]
     public void Aceita_description_em_string_pura()
     {
-        // Instância antiga ou config diferente pode devolver string direto.
         var fields = Json("""{ "description": "Texto simples" }""");
 
         JiraRestClient.ExtrairTextoDescription(fields).Should().Be("Texto simples");
