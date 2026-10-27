@@ -65,7 +65,7 @@ flowchart LR
 | **Pipeline de IA** | Limpa → agrupa semelhantes → categoriza → reescreve em linguagem de negócio → gera título e resumo | ✅ implementado (testado com fakes; falta validar com LLM real) |
 | **Persistência** | Grava Release, histórias, comunicado e log da execução | ✅ implementado (reprocessar reaproveita a Release; versão aprovada exige reabrir) |
 | **Revisão** | Humano vê, edita, exclui itens, aprova ou reprova, **por público-alvo** | 🔶 domínio pronto, falta API (#21–#23) e tela |
-| **Exportação** | Gera Markdown (HTML/PDF como diferencial) só de versão aprovada | 🔶 domínio + schema prontos, falta render (#24) |
+| **Exportação** | Gera Markdown (HTML/PDF como diferencial) só de versão aprovada | ✅ Markdown implementado (`POST /releases/{chave}/exportar`); HTML/PDF pendentes |
 | **Autenticação** | Login JWT de quem revisa e aprova | ❌ só a entidade `Usuario` e o repository |
 
 ---
@@ -271,7 +271,7 @@ Toda mutação passa pela `Release` carregada via `IReleaseRepository`, porque
 `VersaoComunicado` e `ItemComunicado` **não têm repository próprio** (ver
 [ADR-009](docs/decisoes-arquiteturais.md#adr-009--repository-por-agregado-portas-de-leitura-isoladas)).
 
-### 4. Exportação *(domínio pronto, render pendente: #24)*
+### 4. Exportação *(Markdown implementado em #24; HTML/PDF pendentes)*
 
 `new ComunicadoExportado(versao, formato, conteudo, caminhoArquivo, geradoPor)` **lança
 `ReleaseNaoAprovadaException`** se a versão não estiver `ProntaParaExportar`. Não existe
@@ -297,7 +297,7 @@ Cada fronteira troca a representação do dado, e cada troca tem um dono.
 | 7 | Domínio | itens + título + resumo → **`VersaoComunicado`** (uma por público; hoje só Cliente) | `Release.ConcluirProcessamento` |
 | 8 | EF Core | agregado `Release` → 5 tabelas (`releases`, `historias_jira`, `versoes_comunicado`, `itens_comunicado`, `execucoes_pipeline`); enums viram texto `snake_case`; listas viram `text[]` | configurations em `Infrastructure/Database/Configurations` |
 | 9 | API | entidade → **DTO** (`ReleaseProcessadaOut`); enums saem como `"nova_funcionalidade"`, `"aguardando_revisao"` | `ReleaseEndpoints` |
-| 10 | Exportação *(futuro)* | `VersaoComunicado` aprovada → Markdown → `ComunicadoExportado` (append-only) | a implementar em #24 |
+| 10 | Exportação *(futuro)* | `VersaoComunicado` aprovada → Markdown → `ComunicadoExportado` (append-only) | `ExportacaoComunicado` + `RenderizadorMarkdown` (#24) |
 
 **Erros também percorrem as camadas de forma controlada:**
 
