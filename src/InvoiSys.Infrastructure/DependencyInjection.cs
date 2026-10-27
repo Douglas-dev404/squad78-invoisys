@@ -2,6 +2,7 @@ using System.Net;
 using System.Net.Http.Headers;
 using System.Text;
 using InvoiSys.Domain.Ports;
+using InvoiSys.Infrastructure.Auth;
 using InvoiSys.Infrastructure.Configuration;
 using InvoiSys.Infrastructure.Database;
 using InvoiSys.Infrastructure.Jira;
@@ -25,11 +26,25 @@ public static class DependencyInjection
 
         services.AddSingleton<PromptLoader>();
 
+        AddAuth(services, configuration);
+
         AddJiraClient(services);
         AddLlmProvider(services);
         AddDatabase(services, configuration);
 
         return services;
+    }
+
+    private static void AddAuth(IServiceCollection services, IConfiguration configuration)
+    {
+        var auth = configuration.GetSection(AuthOptions.SecaoConfig).Get<AuthOptions>() ?? new AuthOptions();
+        auth.Validar();
+
+        services.Configure<AuthOptions>(configuration.GetSection(AuthOptions.SecaoConfig));
+        services.AddSingleton(TimeProvider.System);
+        services.AddSingleton<IHashSenha, Argon2idHashSenha>();
+        services.AddSingleton<IEmissorToken, JwtEmissorToken>();
+        services.AddScoped<AdminInicialSemeador>();
     }
 
     private static void AddDatabase(IServiceCollection services, IConfiguration configuration)

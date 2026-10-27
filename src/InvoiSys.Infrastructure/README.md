@@ -8,7 +8,8 @@ camada instancia estas classes direto; elas chegam via DI, amarradas no
 ```
 InvoiSys.Infrastructure/
 ├── DependencyInjection.cs      # composition root: porta → adapter, HttpClient, resiliência
-├── Configuration/              # JiraOptions, OpenRouterOptions (ligadas ao appsettings/env)
+├── Configuration/              # JiraOptions, OpenRouterOptions, AuthOptions (ligadas ao appsettings/env)
+├── Auth/                       # Argon2idHashSenha, JwtEmissorToken, AdminInicialSemeador
 ├── Jira/                       # JiraRestClient, JiraClientPendente
 ├── Llm/                        # OpenRouterProvider, PromptLoader, ProviderPendente, ChatCompletionRequest
 └── Database/                   # InvoiSysDbContext, repositories, Configurations/, Migrations/
@@ -26,6 +27,8 @@ InvoiSys.Infrastructure/
 | `IJiraClient` | `JiraClientPendente` | qualquer um vazio → **501** com instrução |
 | `ILlmProvider` | `OpenRouterProvider` | `OpenRouter:ApiKey` preenchida |
 | `ILlmProvider` | `ProviderPendente` | chave vazia → **501** com instrução |
+| `IHashSenha` | `Argon2idHashSenha` | sempre (Singleton) |
+| `IEmissorToken` | `JwtEmissorToken` | sempre (Singleton); sem `Auth:Jwt:Chave` a API **não sobe** |
 | `IReleaseRepository`, `IHistoriaJiraRepository`, `IExecucaoPipelineRepository`, `IComunicadoExportadoRepository`, `IUsuarioRepository`, `IDestaqueHeroRepository` | `*Repository` em `Database/` | sempre (Scoped) |
 
 Também é aqui que vivem as **políticas de transporte** (não no adapter):
@@ -124,6 +127,40 @@ Modelo completo, tabela por tabela: [docs/modelagem-de-dominio.md](../../docs/mo
 
 ---
 
+## Auth: Argon2id + JWT
+
+Decisão em [ADR-024](../../docs/decisoes-arquiteturais.md#adr-024--autenticação-jwt-stateless-argon2id-e-admin-inicial).
+
+**`Argon2idHashSenha`** (`IHashSenha`) grava string PHC
+`$argon2id$v=19$m=19456,t=2,p=1$<salt>$<hash>`:
+
+| Parâmetro | Valor | Por quê |
+|---|---|---|
+| Memória | 19 MiB (19456 KiB) | Configuração OWASP (m=19 MiB, t=2, p=1); dezenas de ms por verificação |
+| Iterações | 2 | idem |
+| Paralelismo | 1 | não disputa CPU com o pool de requisições |
+| Salt | 16 bytes aleatórios por senha | mínimo recomendado |
+| Hash | 32 bytes | padrão |
+
+`Verificar` lê os parâmetros da própria string (dá para subir o custo sem invalidar hashes
+antigos), compara em tempo constante e devolve `false` para hash malformado.
+
+**`JwtEmissorToken`** (`IEmissorToken`) assina com HMAC-SHA256 e devolve token + `ExpiraEm`.
+Claims: `sub` (id), `email`, `name`, `role`. A API valida emissor, audiência, assinatura e
+expiração (tolerância de 30 s) com `MapInboundClaims = false`, mantendo os nomes curtos.
+
+**`AuthOptions`** (`Auth__...`): `Jwt{Chave, Emissor, Audiencia, ExpiracaoHoras = 8}` e
+`AdminInicial{Email, Senha, Nome}`. `AddInfrastructure` valida na construção do container:
+chave ausente ou com menos de 32 caracteres derruba o startup com mensagem citando
+`Auth__Jwt__Chave`.
+
+**`AdminInicialSemeador`** roda no startup da API, depois da migração opt-in: se não há
+nenhum usuário e os três campos do admin estão preenchidos, cria um `admin`. Qualquer
+usuário existente (inclusive desativado) o torna no-op; se duas instâncias disputam,
+o índice único de e-mail faz a perdedora ignorar. A senha não vai para log.
+
+---
+
 ## Por que é assim
 
 **Configuração e transporte**
@@ -186,8 +223,9 @@ Modelo completo, tabela por tabela: [docs/modelagem-de-dominio.md](../../docs/mo
   rastreamento.
 - `ComunicadoExportadoRepository.AdicionarAsync` sempre faz INSERT: exportação nunca é
   atualizada.
-- `UsuarioRepository` compara o e-mail exatamente como gravado. Normalizar caixa é regra
-  da autenticação (e teria que valer também no cadastro).
+- `UsuarioRepository` normaliza o e-mail da busca com `Usuario.NormalizarEmail` (trim +
+  minúsculas), o mesmo critério aplicado no cadastro pelo construtor de `Usuario`.
+  E-mails gravados antes dessa regra com maiúsculas não são encontrados.
 - Padrão para agregado novo: porta em `Domain.Ports`, implementação aqui, registro no
   composition root.
 
@@ -215,5 +253,4 @@ Modelo completo, tabela por tabela: [docs/modelagem-de-dominio.md](../../docs/mo
 - Validar `JiraRestClient` e `OpenRouterProvider` contra as instâncias reais (Fase 5).
 - Adapter de renderização/exportação (Markdown; depois HTML/PDF), conforme
   [P-03](../../docs/decisoes-arquiteturais.md#p-03--onde-mora-o-render-da-exportação).
-- Hash de senha e emissão de JWT (Fase 3), provavelmente como porta
-  (`IHashSenha`, `IEmissorToken`) + adapter aqui.
+- Endpoints de login/`me` (#49), proteção das rotas (#50) e recuperação de senha (#52).
