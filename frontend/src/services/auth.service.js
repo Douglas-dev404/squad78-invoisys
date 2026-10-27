@@ -33,8 +33,13 @@ export async function login({ email, password }) {
     throw new Error('E-mail e senha são obrigatórios.');
   }
 
-  // Simulação de validação básica: se a senha for "erro", simula falha
-  if (password === 'erro') {
+  // Credenciais válidas para teste
+  const VALID_CREDENTIALS = {
+    'admin@invoisys.com': 'senha123',
+    'analista@invoisys.com': 'senha456',
+  };
+
+  if (!VALID_CREDENTIALS[email.toLowerCase()] || VALID_CREDENTIALS[email.toLowerCase()] !== password) {
     throw new Error('Credenciais inválidas. Verifique seu e-mail e senha.');
   }
 
