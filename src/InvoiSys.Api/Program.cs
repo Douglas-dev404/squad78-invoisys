@@ -43,6 +43,7 @@ app.MapGet("/health", () => Results.Ok(new StatusSaude("ok")))
 app.MapReleaseEndpoints();
 app.MapRevisaoEndpoints();
 app.MapItemComunicadoEndpoints();
+app.MapExportacaoEndpoints();
 
 app.Run();
 return 0;
