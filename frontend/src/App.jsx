@@ -7,10 +7,10 @@ import { ProfilePage } from './pages/ProfilePage/ProfilePage';
 import { UnderConstructionPage } from './pages/UnderConstructionPage/UnderConstructionPage';
 import { UserManagementPage } from './pages/UserManagementPage/UserManagementPage';
 import { CreateUserPage } from './pages/CreateUserPage/CreateUserPage';
+import { SentHistoryPage } from './pages/SentHistoryPage/SentHistoryPage';
 
 const UNDER_CONSTRUCTION_SCREENS = {
   'review-queue': 'Review Queue',
-  'sent-history': 'Sent History',
   'system-logs': 'System Logs',
   'technical-settings': 'Technical Settings',
 };
@@ -83,6 +83,16 @@ function App() {
         onProfileClick={navigateToProfile}
         onNavigate={handleSidebarNavigate}
         onCreateUser={() => setCurrentScreen('create-user')}
+      />
+    );
+  }
+
+  if (currentScreen === 'sent-history') {
+    return (
+      <SentHistoryPage
+        onLogout={() => setCurrentScreen('login')}
+        onProfileClick={navigateToProfile}
+        onNavigate={handleSidebarNavigate}
       />
     );
   }
