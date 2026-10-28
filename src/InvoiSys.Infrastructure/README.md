@@ -122,6 +122,7 @@ substitui `{{chave}}` literalmente ([ADR-005](../../docs/decisoes-arquiteturais.
 | `InitialCreate` | 8 tabelas, FKs, índices, CHECKs |
 | `TriggersAtualizadoEm` | função `set_atualizado_em()` + trigger em `releases`, `versoes_comunicado`, `itens_comunicado` |
 | `ChavesGeradasNoDominio` | só snapshot (`ValueGeneratedNever`), sem SQL |
+| `DestaquesIniciais` | três destaques do login, inseridos condicionalmente por id ou título; reaplicação não duplica nem altera dados existentes; rollback preserva os registros |
 
 Modelo completo, tabela por tabela: [docs/modelagem-de-dominio.md](../../docs/modelagem-de-dominio.md).
 

@@ -77,6 +77,7 @@ reprocessamento recusado → UPDATE ao reabrir → DELETE + INSERT ao reprocessa
 | `ComunicadoExportadoRepositoryTests` | Cada reexportação vira linha nova, filtro por público, apagar versão já exportada é barrado pelo banco (`RESTRICT`) |
 | `UsuarioRepositoryTests` | Busca por id/e-mail, salvar de novo atualiza sem duplicar, e-mail repetido viola o unique |
 | `DestaqueHeroRepositoryTests` | Só ativos, ordenados |
+| `ApiBrandingTests`, `DestaquesIniciaisTests` | Rota pública mesmo com autenticação por padrão, DTO, ativos e ordem com Postgres real; seed com os textos do frontend, reaplicação sem duplicar ou sobrescrever dados |
 | `ApiReleasesTests` | Endpoints via `WebApplicationFactory<Program>` com as portas trocadas por fakes; 200/501/502 |
 | `ApiRevisaoTests` | Contrato HTTP de aprovar/reprovar/reabrir: 204/404/409/422, ProblemDetails, efeito na Release (as transições em si são cobertas no domínio) |
 | `ApiItensTests` | Contrato HTTP de editar/excluir/reincluir item (a persistência real fica em `PersistenciaAgregadoReleaseTests`) |
