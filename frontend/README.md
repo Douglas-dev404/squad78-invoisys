@@ -93,3 +93,47 @@ O formato exato esperado está nos mocks de [`src/data/`](src/data/).
 - Textos de UI em `UI_STRINGS`, não literais espalhados.
 - Categorias e status chegam da API como `snake_case` (`nova_funcionalidade`,
   `aguardando_revisao`). Mapeie para rótulo de exibição num lugar só.
+
+## Como chamar a API
+
+Novos serviços usam `api` de `src/services/http.js`. Passe caminhos relativos à base
+`VITE_API_BASE_URL`, começando com `/` (não passe os valores absolutos de `ENDPOINTS`).
+Não chame `fetch` em telas: o cliente centraliza JSON, token, timeout e ProblemDetails.
+A integração dos serviços e telas que ainda usam mocks fica nas respectivas issues.
+
+```js
+import { api } from './services/http.js';
+
+const releases = await api.get('/releases');
+```
+
+```js
+import { api, ApiError } from './services/http.js';
+
+try {
+  const releases = await api.get('/releases?status=aguardando_revisao');
+  setReleases(releases);
+} catch (err) {
+  if (err instanceof ApiError) {
+    setErro(err.detail);
+    setErrosPorCampo(err.errors);
+  } else {
+    throw err;
+  }
+}
+```
+
+`api.post(path, body, opts)`, `api.patch(path, body, opts)` e
+`api.delete(path, opts)` seguem o mesmo tratamento. Resposta 204 retorna `null`.
+As opções são `{ auth: true, timeoutMs: API_TIMEOUT_MS, signal }` por padrão.
+Use `{ auth: false }` no login e na recuperação de senha. Cancelamento pelo `signal`
+propaga o motivo original; timeout e falha de rede geram `ApiError` com status 0.
+
+A sessão é gravada por `saveSession({ token, expiraEm, usuario })`, de
+`src/utils/session.js`, na chave `invoisys.session`. `expiraEm` é uma data ISO;
+`getSession()` descarta sessões expiradas e `clearSession()` remove a sessão.
+Falhas de acesso ao localStorage são toleradas. Em 401 autenticado o cliente limpa a
+sessão e emite `invoisys:unauthorized`; o roteamento trata a navegação para login.
+A aprovação humana continua obrigatória no backend antes de qualquer exportação.
+
+Testes do cliente e da sessão (sem dependências novas): `node --test tests/*.test.js`.

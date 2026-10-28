@@ -51,6 +51,9 @@ jobs:
       - name: Instalar dependências
         run: npm ci
 
+      - name: Testes do cliente HTTP
+        run: node --test tests/*.test.js
+
       - name: Lint
         run: npm run lint
 
