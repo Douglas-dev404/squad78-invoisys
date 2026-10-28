@@ -1,4 +1,5 @@
 using InvoiSys.Api.Endpoints;
+using InvoiSys.Api.Validacao;
 using InvoiSys.Application;
 using System.Text;
 using InvoiSys.Infrastructure;
@@ -19,6 +20,7 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddOpenApi();
 builder.Services.AddInfrastructure(builder.Configuration);
 builder.Services.AddApplication(builder.Configuration);
+builder.Services.AddValidacaoDeEntrada();
 
 var auth = builder.Configuration.GetSection(AuthOptions.SecaoConfig).Get<AuthOptions>()!;
 builder.Services

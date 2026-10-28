@@ -56,6 +56,12 @@ reprocessamento recusado → UPDATE ao reabrir → DELETE + INSERT ao reprocessa
 
 ### Unit
 
+`ValidacaoEntradaTests` cobre os quatro validators de revisão e a regra reutilizável
+de e-mail, incluindo campos ausentes, espaços, público desconhecido, normalização e
+o limite de 320 caracteres. `ApiValidacaoTests` verifica o 422 com mensagens por campo
+antes de procurar a Release. Os testes existentes continuam verificando as mutações
+válidas e os erros do domínio; `OpenApiTests` preserva o 422 nas quatro rotas.
+
 | Arquivo | Cobre |
 |---|---|
 | `RevisaoDeItensTests` | Editar/excluir/reincluir pela Release, item de versão aprovada bloqueado ([ADR-021](../docs/decisoes-arquiteturais.md#adr-021--item-de-versão-aprovada-não-é-editado-sem-reabrir)) |

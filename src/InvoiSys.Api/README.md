@@ -74,7 +74,7 @@ Nas rotas de revisão, `MapearFalhaDeRevisao` (em `RevisaoEndpoints`):
 | `ReleaseNaoEncontradaException` | **404** | não há Release persistida com essa chave |
 | `ReleaseSemItensProcessadosException`, `RevisaoHumanaObrigatoriaException`, `TransicaoDeStatusInvalidaException` | **409** | o estado atual impede a operação (sem comunicado, já aprovada, reabrir o que não foi aprovado) |
 | `ArgumentException` | **422** | revisor ou motivo vazio |
-| público ausente ou desconhecido | **422** | validado na conversão do DTO, sem default para Cliente |
+| público ausente ou desconhecido | **422** | validado pelo filtro de entrada, com `errors.publico`, sem default para Cliente |
 
 Nas rotas de item, `MapearFalhaDeRevisaoDeItem` (em `ItemComunicadoEndpoints`), mesmo
 contrato ([ADR-022](../../docs/decisoes-arquiteturais.md#adr-022--endpoint-só-chama-caso-de-uso-erros-de-revisão-padronizados)):
@@ -87,6 +87,47 @@ contrato ([ADR-022](../../docs/decisoes-arquiteturais.md#adr-022--endpoint-só-c
 
 Respostas de erro seguem `ProblemDetails` (`Results.Problem`).
 
+## Validação de entrada
+
+FluentValidation fica somente na API, com o pacote oficial
+`FluentValidation.DependencyInjectionExtensions` para descoberta automática dos
+validators. Não usamos `FluentValidation.AspNetCore`. A decisão está na
+[ADR-028](../../docs/decisoes-arquiteturais.md#adr-028--validação-de-formato-na-borda-com-fluentvalidation).
+
+`AprovarIn`, `ReprovarIn` e `ReabrirIn` exigem público válido; `ReprovarIn` também
+exige motivo. `EditarItemIn` exige texto que não seja vazio ou só espaços. O filtro
+executa antes do caso de uso, com validação assíncrona e cancelamento da requisição.
+Público mantém a normalização já aceita pelo domínio, sem default para Cliente.
+
+Exemplo: `POST /api/v1/releases/INV-1/aprovar` com `{ "publico": "xpto" }`:
+
+```json
+{
+  "title": "Dados inválidos",
+  "status": 422,
+  "detail": "Um ou mais campos são inválidos.",
+  "errors": { "publico": ["Use cliente, comercial, suporte ou interno."] }
+}
+```
+
+O corpo também inclui o `type` de ProblemDetails. Todos os campos inválidos são
+retornados juntos, com nomes em camelCase e mensagens em listas. Regras de negócio
+continuam no domínio; a validação de formato não aprova, edita ou publica nada.
+JSON malformado e corpo obrigatório ausente continuam sendo tratados pelo binder.
+
+### Como adicionar a validação de um DTO novo
+
+1. Criar `XxxValidator : AbstractValidator<Xxx>` público em `Validacao/`.
+2. Declarar regras de formato com `RuleFor`; invariantes de negócio ficam no domínio.
+   Para e-mail, usar `RuleFor(x => x.Email).EmailValido()` de `RegraEmail`: obrigatório,
+   até 320 caracteres e `.EmailAddress()` do FluentValidation, sem regex própria.
+3. Aplicar `.ComValidacao<Xxx>()` ao mapear o endpoint e manter
+   `.ProducesProblem(StatusCodes.Status422UnprocessableEntity)`.
+4. `Program.cs` já chama `AddValidacaoDeEntrada()`, que registra automaticamente os
+   validators do assembly. Não é necessário registrar cada validator à mão.
+5. Testar o validator isoladamente e a rota com 422, incluindo `errors` por campo;
+   conferir também sucesso, regras de negócio e OpenAPI.
+
 ## Contratos: por que são assim
 
 - DTO sempre, nunca entidade de domínio na resposta: o contrato HTTP fica estável mesmo
@@ -94,8 +135,9 @@ Respostas de erro seguem `ProblemDetails` (`Results.Problem`).
   (`nova_funcionalidade`, `aguardando_revisao`), e quem consome a API não precisa saber
   que o backend trocou de linguagem.
 - Os campos dos DTOs de entrada da revisão são **anuláveis** porque é isso que o binder
-  JSON entrega quando o campo falta. A obrigatoriedade (revisor, motivo, texto) é
-  validada no domínio, não pela anotação do tipo.
+  JSON entrega quando o campo falta. O filtro valida público, motivo e texto antes
+  do caso de uso; o domínio preserva suas próprias verificações de invariantes,
+  incluindo a obrigatoriedade do revisor, não substituídas por anotações do DTO.
 - `aprovadoPor`/`revisadoPor` são texto livre enquanto não há autenticação. Quando houver,
   saem do corpo e passam a vir do usuário autenticado.
 - `ItemRevisaoOut` traz o `id` (alvo das rotas de item), o texto da IA e a edição humana
