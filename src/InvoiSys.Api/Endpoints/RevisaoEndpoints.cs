@@ -1,4 +1,5 @@
 using InvoiSys.Api.Contracts;
+using InvoiSys.Api.Validacao;
 using InvoiSys.Application.Revisao;
 using InvoiSys.Domain.Entities;
 using InvoiSys.Domain.Enums;
@@ -13,6 +14,7 @@ public static class RevisaoEndpoints
         var grupo = rotas.MapGroup("/api/v1/releases").WithTags("revisao");
 
         grupo.MapPost("/{chaveRelease}/aprovar", AprovarAsync)
+            .ComValidacao<AprovarIn>()
             .WithName("AprovarRelease")
             .WithSummary("Aprova o comunicado de uma Release para um público.")
             .Produces(StatusCodes.Status204NoContent)
@@ -21,6 +23,7 @@ public static class RevisaoEndpoints
             .ProducesProblem(StatusCodes.Status422UnprocessableEntity);
 
         grupo.MapPost("/{chaveRelease}/reprovar", ReprovarAsync)
+            .ComValidacao<ReprovarIn>()
             .WithName("ReprovarRelease")
             .WithSummary("Reprova o comunicado de uma Release para um público.")
             .Produces(StatusCodes.Status204NoContent)
@@ -29,6 +32,7 @@ public static class RevisaoEndpoints
             .ProducesProblem(StatusCodes.Status422UnprocessableEntity);
 
         grupo.MapPost("/{chaveRelease}/reabrir", ReabrirAsync)
+            .ComValidacao<ReabrirIn>()
             .WithName("ReabrirRelease")
             .WithSummary("Reabre a revisão de uma Release para um público.")
             .Produces(StatusCodes.Status204NoContent)
@@ -79,13 +83,7 @@ public static class RevisaoEndpoints
         string? publicoInformado,
         Func<PublicoAlvo, Task> revisao)
     {
-        if (!PublicoAlvoExtensions.TentarConverter(publicoInformado, out var publico))
-        {
-            return Results.Problem(
-                detail: $"Público inválido ou ausente: '{publicoInformado}'. "
-                    + "Use cliente, comercial, suporte ou interno.",
-                statusCode: StatusCodes.Status422UnprocessableEntity);
-        }
+        PublicoAlvoExtensions.TentarConverter(publicoInformado, out var publico);
 
         try
         {
