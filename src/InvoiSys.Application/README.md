@@ -101,6 +101,14 @@ Só leitura. `ListarAsync(status?)` devolve `ReleaseResumo` (chave, status, cria
 
 ---
 
+## `ConsultaDestaques`
+
+`ListarAsync()` consulta `IDestaqueHeroRepository.ListarAtivosAsync` para obter os
+destaques públicos ativos, ordenados por `Ordem`. A API converte o resultado em
+`DestaqueOut`, sem expor a entidade diretamente. Registrado como **Scoped**.
+
+---
+
 ## `RevisaoComunicado`
 
 Revisão humana: `AprovarAsync`, `ReprovarAsync`, `ReabrirAsync` (por público) e

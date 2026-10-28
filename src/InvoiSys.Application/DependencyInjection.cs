@@ -23,6 +23,7 @@ public static class DependencyInjection
 
         services.AddScoped<RevisaoComunicado>();
         services.AddScoped<ConsultaReleases>();
+        services.AddScoped<ConsultaDestaques>();
         services.AddScoped<ExportacaoComunicado>();
 
         return services;

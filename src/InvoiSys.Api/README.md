@@ -24,6 +24,7 @@ InvoiSys.Api/
 | Método | Rota | Handler | Resposta | Erros |
 |---|---|---|---|---|
 | `GET` | `/health` | inline em `Program.cs` | `{ "status": "ok" }` | — |
+| `GET` | `/api/v1/branding/highlights` | `ListarDestaquesAsync` → `ConsultaDestaques` | `DestaqueOut[]` (ativos, por ordem de exibição; público) | — |
 | `GET` | `/api/v1/releases?status=` | `ListarReleasesAsync` → `ConsultaReleases` | `ReleaseResumoOut[]` (mais recente primeiro) | 422 (status desconhecido) |
 | `GET` | `/api/v1/releases/{chaveRelease}` | `BuscarReleaseAsync` → `ConsultaReleases` | `ReleaseDetalheOut` (todas as versões por público; itens como `ItemRevisaoOut`, com `id`) | 404 |
 | `GET` | `/api/v1/releases/{chaveRelease}/historias` | `BuscarHistoriasAsync` → `IJiraClient` | `ReleaseOut` | 501, 502 |
@@ -36,6 +37,26 @@ InvoiSys.Api/
 | `POST` | `/api/v1/releases/{chaveRelease}/itens/{itemId}/reincluir` | `ReincluirItemAsync` → `RevisaoComunicado` | `ItemRevisaoOut` | 404, 409 |
 | `GET` | `/openapi/v1.json` | gerado (só em Development) | spec OpenAPI 3.1 | — |
 | `GET` | `/swagger` | Swagger UI (só em Development) | tela para explorar e testar as rotas | — |
+
+### Destaques públicos da tela de login
+
+`GET /api/v1/branding/highlights` não exige token, inclusive quando houver política
+de autenticação por padrão. Retorna apenas `id`, `titulo`, `descricao` e `icone`;
+sem destaques ativos, retorna `200` com `[]`. O endpoint chama `ConsultaDestaques`,
+que consulta a porta `IDestaqueHeroRepository`; a implementação lê o PostgreSQL
+sem tracking, filtra os ativos e ordena por `ordem`.
+
+A migration `DestaquesIniciais` insere os três textos de
+`frontend/src/data/branding.mock.js` com `WHERE NOT EXISTS` por id ou título.
+Não atualiza nem remove registros existentes. Reaplicar o SQL não duplica os
+destaques nem restaura títulos editados ou itens desativados. O rollback preserva
+os dados inseridos. A integração da tela com esta rota pertence à F-05 (#68).
+
+Com a API configurada e as migrations aplicadas:
+
+```sh
+curl http://localhost:8080/api/v1/branding/highlights
+```
 
 ### Exemplo de resposta de `/processar`
 
@@ -140,6 +161,5 @@ Respostas de erro seguem `ProblemDetails` (`Results.Problem`).
 | Paginação de `GET /api/v1/releases` (hoje lista tudo) | quando o volume pedir |
 | ~~Exportar Markdown~~ feito: `POST /{chaveRelease}/exportar` (201; `ReleaseNaoAprovadaException` → 409; público/formato inválido ou html/pdf → 422) | #24 |
 | `/auth/login`, `/auth/me`, `/auth/logout`, `/auth/forgot-password` + JWT + `[Authorize]` nas rotas de revisão | Fase 3 |
-| `GET /api/v1/branding/highlights` (repository já existe) | Fase 3 |
 | **CORS** para o frontend (hoje não configurado) | Fase 3 |
 | Endpoint de histórico de execuções (`IExecucaoPipelineRepository`) e de exportações | Fase 4 |
