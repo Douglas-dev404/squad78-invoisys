@@ -69,8 +69,20 @@ public class OpenApiTests
             "/api/v1/releases/{chaveRelease}/itens/{itemId}",
             "/api/v1/releases/{chaveRelease}/itens/{itemId}/excluir",
             "/api/v1/releases/{chaveRelease}/itens/{itemId}/reincluir",
-            "/api/v1/releases/{chaveRelease}/exportar"
+            "/api/v1/releases/{chaveRelease}/exportar",
+            "/api/v1/auth/login",
+            "/api/v1/auth/me",
+            "/api/v1/auth/logout",
         ]);
+    }
+
+    [Fact]
+    public async Task Spec_declara_o_esquema_Bearer_para_o_botao_Authorize()
+    {
+        using var spec = await BuscarSpecAsync();
+
+        spec.RootElement.GetProperty("components").GetProperty("securitySchemes")
+            .GetProperty("Bearer").GetProperty("scheme").GetString().Should().Be("bearer");
     }
 
     [Fact]

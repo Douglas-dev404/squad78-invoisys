@@ -145,6 +145,8 @@ em [docs/decisoes-arquiteturais.md](docs/decisoes-arquiteturais.md) (ADRs). Deci
   `text[]` de `HistoriaJira.Labels` via value converter customizado
   (`ArrayConversionHelper`) não seria validado fielmente por um provider fake. Ver
   `tests-dotnet/InvoiSys.Tests/Integration/PostgresContainerFixture.cs`.
+- O contrato HTTP é definido pelo backend (campos em português, vocabulário do domínio);
+  o front se adapta. Mock do front não é referência de contrato.
 
 ## Padrões de código
 

@@ -6,6 +6,8 @@ concretos chegam por injeção de dependência.
 
 ```
 InvoiSys.Application/
+├── Acesso/
+│   └── Autenticacao.cs                 # login (com hash fictício) e busca do usuário ativo
 ├── Consulta/
 │   └── ConsultaReleases.cs             # listagem (resumo) e detalhe (agregado completo)
 ├── Pipeline/
@@ -121,6 +123,37 @@ via `Release.PublicoDoItem`), o bastante para a API montar a resposta sem refaze
 Nenhuma decisão de negócio aqui: o público chega já convertido e obrigatório (sem
 default para Cliente); revisor, motivo e texto de edição são validados pelo domínio.
 Registrado como **Scoped** (depende do repository, que é scoped).
+
+---
+
+## `Autenticacao`
+
+Casos de uso de sessão. **Dependências (construtor):** `IUsuarioRepository`, `IHashSenha`
+e `IEmissorToken`. Registrado como **Scoped**.
+
+- `AutenticarAsync(email, senha)` devolve a `SessaoAutenticada` (usuário + token emitido)
+  ou `null`. O `null` cobre três casos que a API trata igual (401): e-mail inexistente,
+  senha errada e usuário desativado.
+- `BuscarAtivoAsync(id)` devolve o usuário só se ele existe e está ativo (base do
+  `/auth/me`).
+
+Por que é assim:
+
+- `IHashSenha.Verificar` roda **uma única vez em todos os caminhos**. Quando o e-mail não
+  existe, a verificação é feita contra `HashFicticio`, um hash Argon2id válido com os
+  mesmos parâmetros do hash real. Sem isso, o e-mail inexistente responderia em
+  milissegundos e o cadastrado em dezenas deles, e o tempo revelaria quais e-mails
+  existem.
+- Se os parâmetros do Argon2id mudarem em `Argon2idHashSenha`, o `HashFicticio` precisa
+  acompanhar. O teste de parâmetros em `AutenticacaoTests` quebra se isso for esquecido.
+- O e-mail é normalizado pelo repository (`Usuario.NormalizarEmail`: trim + minúsculas),
+  então a busca ignora caixa e espaços.
+- Quem emite o token é o caso de uso (via `IEmissorToken`), para o endpoint só chamar o
+  caso de uso e traduzir o resultado em HTTP (ADR-022).
+
+`tests-dotnet/InvoiSys.Tests/Unit/AutenticacaoTests.cs` cobre a contagem de verificações
+de hash por caminho, a igualdade de parâmetros do hash fictício e a diferença de tempo
+entre e-mail existente e inexistente.
 
 ---
 

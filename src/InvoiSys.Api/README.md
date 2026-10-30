@@ -6,14 +6,22 @@ e o resultado em DTO. **Nenhuma regra de negócio mora aqui.**
 ```
 InvoiSys.Api/
 ├── Program.cs              # bootstrap: DI, migração opt-in, /health, modo --healthcheck
+├── Auth/
+│   ├── ConfiguracaoHttp.cs                 # CORS configurável e rate limit do login (por IP)
+│   └── BearerSecuritySchemeTransformer.cs  # esquema Bearer no OpenAPI (botão Authorize)
 ├── Endpoints/
+│   ├── AuthEndpoints.cs           # sessão: login, me, logout
 │   ├── ReleaseEndpoints.cs        # rotas /api/v1/releases (listar, detalhe, historias, processar)
 │   ├── RevisaoEndpoints.cs        # revisão humana por público (aprovar, reprovar, reabrir)
 │   └── ItemComunicadoEndpoints.cs # revisão de item (editar, excluir, reincluir)
 ├── Contracts/
+│   ├── AuthContracts.cs           # DTOs de sessão (LoginIn, LoginOut, UsuarioOut)
 │   ├── ReleaseContracts.cs        # DTOs (records) — nunca expor entidade de domínio
 │   ├── RevisaoContracts.cs        # DTOs de entrada da revisão
 │   └── ItemComunicadoContracts.cs # DTOs de item (ItemRevisaoOut: detalhe e rotas de item)
+├── Validation/
+│   ├── LoginInValidator.cs        # regras de entrada do login (FluentValidation)
+│   └── ValidacaoFiltro.cs         # filtro de endpoint: valida o corpo e devolve 422
 └── appsettings*.json
 ```
 
@@ -24,6 +32,9 @@ InvoiSys.Api/
 | Método | Rota | Handler | Resposta | Erros |
 |---|---|---|---|---|
 | `GET` | `/health` | inline em `Program.cs` | `{ "status": "ok" }` | — |
+| `POST` | `/api/v1/auth/login` | `LoginAsync` → `Autenticacao` | `LoginOut` · corpo `{ "email": "...", "senha": "..." }` | 401, 422, 429 |
+| `GET` | `/api/v1/auth/me` | `MeAsync` → `Autenticacao` | `UsuarioOut` (exige Bearer) | 401 |
+| `POST` | `/api/v1/auth/logout` | inline | 204 (não há o que revogar no servidor) | — |
 | `GET` | `/api/v1/releases?status=` | `ListarReleasesAsync` → `ConsultaReleases` | `ReleaseResumoOut[]` (mais recente primeiro) | 422 (status desconhecido) |
 | `GET` | `/api/v1/releases/{chaveRelease}` | `BuscarReleaseAsync` → `ConsultaReleases` | `ReleaseDetalheOut` (todas as versões por público; itens como `ItemRevisaoOut`, com `id`) | 404 |
 | `GET` | `/api/v1/releases/{chaveRelease}/historias` | `BuscarHistoriasAsync` → `IJiraClient` | `ReleaseOut` | 501, 502 |
@@ -87,6 +98,52 @@ contrato ([ADR-022](../../docs/decisoes-arquiteturais.md#adr-022--endpoint-só-c
 
 Respostas de erro seguem `ProblemDetails` (`Results.Problem`).
 
+## Autenticação (sessão)
+
+Decisão em [ADR-024](../../docs/decisoes-arquiteturais.md#adr-024--autenticação-jwt-stateless-argon2id-e-admin-inicial).
+
+### Exemplo de resposta de `/auth/login`
+
+```json
+{
+  "usuario": {
+    "id": "0b6a8d3e-4c1f-4a52-9d8e-7f3b2a1c9e10",
+    "nome": "Ana Revisora",
+    "email": "ana@invoisys.com",
+    "papel": "release_manager",
+    "avatarUrl": null,
+    "criadoEm": "2026-10-11T12:00:00+00:00"
+  },
+  "token": "eyJhbGciOi...",
+  "expiraEm": "2026-10-11T20:00:00+00:00"
+}
+```
+
+O token vai no cabeçalho `Authorization: Bearer <token>`. Logout é o cliente descartar o
+token, e por isso `POST /auth/logout` não faz nada no servidor (e fica anônimo, para
+funcionar até com o token expirado).
+
+| Situação | Status |
+|---|---|
+| e-mail inexistente, senha errada **ou** usuário desativado | **401**, sempre a mesma mensagem |
+| e-mail ou senha ausentes, ou longos demais | **422**, com `errors` por campo (FluentValidation) |
+| mais de N tentativas de login por minuto, por IP | **429**, com `Retry-After` |
+| `/auth/me` sem token, com token inválido ou expirado, ou de usuário desativado | **401** |
+
+### Configuração
+
+| Variável | Padrão | Para quê |
+|---|---|---|
+| `Cors__Origens__0..N` | nenhuma | origens que podem chamar a API pelo navegador (front: `http://localhost:5173`) |
+| `RateLimit__Login__Tentativas` | 5 | tentativas por janela, por IP |
+| `RateLimit__Login__JanelaSegundos` | 60 | tamanho da janela |
+
+Sem nenhuma origem configurada o CORS **não libera ninguém**. No Docker o ambiente é
+Production, então `Cors__Origens__0` precisa estar no `.env`.
+
+O rate limit conta por IP. Atrás de proxy ou Docker, o IP visto pode ser o do proxy;
+`ForwardedHeaders` fica para quando houver proxy reverso na frente.
+
 ## Contratos: por que são assim
 
 - DTO sempre, nunca entidade de domínio na resposta: o contrato HTTP fica estável mesmo
@@ -105,10 +162,23 @@ Respostas de erro seguem `ProblemDetails` (`Results.Problem`).
   dona do item. Item de outra Release dá 404.
 - `GET .../historias` só consulta o Jira, nunca roda o pipeline, então o `status` da
   resposta é sempre `pendente`.
+- **O contrato HTTP é definido pelo backend**: campos em português, vocabulário do
+  domínio. O front se adapta; o mock do front (`name`, `role`, `password`, `user`) não é
+  referência de contrato. As rotas técnicas genéricas (`login`, `me`, `logout`) seguem em
+  inglês.
+- O login responde **o mesmo 401** para e-mail inexistente, senha errada e usuário
+  desativado, e roda `IHashSenha.Verificar` **uma vez em todos os casos**: quando o e-mail
+  não existe, verifica contra um hash fictício com os mesmos parâmetros do hash real.
+  Assim o tempo de resposta não revela quais e-mails estão cadastrados.
 
 ## Detalhes do `Program.cs`
 
-- **Ordem de registro:** `AddOpenApi` → `AddInfrastructure` → `AddApplication`.
+- **Ordem de registro:** `AddOpenApi` → `AddInfrastructure` → `AddApplication` →
+  autenticação JWT → `AddProblemDetails` → validadores → CORS → rate limit.
+- **Ordem do pipeline:** `UseStatusCodePages` → `UseCors` → `UseRateLimiter` →
+  `UseAuthentication` → `UseAuthorization`. O CORS vem antes do rate limit para o 429
+  também sair com os cabeçalhos CORS, e `UseStatusCodePages` faz o 401 sem corpo virar
+  `ProblemDetails`.
 - **Swagger UI** (`Swashbuckle.AspNetCore.SwaggerUI`): só a interface. Lê o mesmo
   `/openapi/v1.json` gerado pelo `Microsoft.AspNetCore.OpenApi`, então nunca diverge do
   contrato. Em Development apenas; `OpenApiTests` garante que não aparece em produção.
@@ -132,6 +202,8 @@ Respostas de erro seguem `ProblemDetails` (`Results.Problem`).
   revisão passa por `RevisaoComunicado`; nunca setar status direto.
 - Um arquivo de endpoints por recurso (`ReleaseEndpoints`, `RevisaoEndpoints`...), não
   todas as rotas num arquivo só.
+- Validação de **formato** do corpo (campo vazio, tamanho) fica em `Validation/`, com
+  FluentValidation e `ValidacaoFiltro<T>` no endpoint. Regra de negócio continua no domínio.
 
 ## O que ainda falta neste módulo
 
@@ -139,7 +211,6 @@ Respostas de erro seguem `ProblemDetails` (`Results.Problem`).
 |---|---|
 | Paginação de `GET /api/v1/releases` (hoje lista tudo) | quando o volume pedir |
 | ~~Exportar Markdown~~ feito: `POST /{chaveRelease}/exportar` (201; `ReleaseNaoAprovadaException` → 409; público/formato inválido ou html/pdf → 422) | #24 |
-| `/auth/login`, `/auth/me`, `/auth/logout`, `/auth/forgot-password` + JWT + `[Authorize]` nas rotas de revisão | Fase 3 |
+| ~~`/auth/login`, `/auth/me`, `/auth/logout`~~ feito (CORS e rate limit do login incluídos). Falta `/auth/forgot-password` e `[Authorize]` nas rotas de revisão | #49 feito; #52 e #50 |
 | `GET /api/v1/branding/highlights` (repository já existe) | Fase 3 |
-| **CORS** para o frontend (hoje não configurado) | Fase 3 |
 | Endpoint de histórico de execuções (`IExecucaoPipelineRepository`) e de exportações | Fase 4 |

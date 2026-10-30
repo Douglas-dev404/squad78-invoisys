@@ -8,6 +8,10 @@ using InvoiSys.Infrastructure.Database;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
+using InvoiSys.Api.Auth;
+using InvoiSys.Api.Validation;
+using FluentValidation;
+
 
 if (args.Contains("--healthcheck"))
 {
@@ -16,7 +20,7 @@ if (args.Contains("--healthcheck"))
 
 var builder = WebApplication.CreateBuilder(args);
 
-builder.Services.AddOpenApi();
+builder.Services.AddOpenApi(o => o.AddDocumentTransformer<BearerSecuritySchemeTransformer>());
 builder.Services.AddInfrastructure(builder.Configuration);
 builder.Services.AddApplication(builder.Configuration);
 
@@ -38,6 +42,10 @@ builder.Services
         };
     });
 builder.Services.AddAuthorization();
+builder.Services.AddProblemDetails();
+builder.Services.AddValidatorsFromAssemblyContaining<LoginInValidator>();
+builder.Services.AddCorsConfiguravel();
+builder.Services.AddLimiteDeLogin();
 
 var app = builder.Build();
 
@@ -64,7 +72,9 @@ await using (var escopoAuth = app.Services.CreateAsyncScope())
 {
     await escopoAuth.ServiceProvider.GetRequiredService<AdminInicialSemeador>().SemearAsync();
 }
-
+app.UseStatusCodePages();
+app.UseCors();
+app.UseRateLimiter();
 app.UseAuthentication();
 app.UseAuthorization();
 
@@ -76,6 +86,7 @@ app.MapReleaseEndpoints();
 app.MapRevisaoEndpoints();
 app.MapItemComunicadoEndpoints();
 app.MapExportacaoEndpoints();
+app.MapAuthEndpoints();
 
 app.Run();
 return 0;
