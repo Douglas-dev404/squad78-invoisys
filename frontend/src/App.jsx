@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { Navigate, Route, Routes, useLocation, useNavigate } from 'react-router-dom';
 import { LoginPage } from './pages/LoginPage/LoginPage';
 import { ForgotPasswordPage } from './pages/ForgotPasswordPage/ForgotPasswordPage';
 import { EmailConfirmationPage } from './pages/EmailConfirmationPage/EmailConfirmationPage';
@@ -8,48 +9,82 @@ import { UnderConstructionPage } from './pages/UnderConstructionPage/UnderConstr
 import { UserManagementPage } from './pages/UserManagementPage/UserManagementPage';
 import { CreateUserPage } from './pages/CreateUserPage/CreateUserPage';
 import { SentHistoryPage } from './pages/SentHistoryPage/SentHistoryPage';
+import { ReleasesPage } from './pages/ReleasesPage/ReleasesPage';
 
 const UNDER_CONSTRUCTION_SCREENS = {
-  'review-queue': 'Review Queue',
   'system-logs': 'System Logs',
   'technical-settings': 'Technical Settings',
 };
 
 /**
  * Componente raiz da aplicação.
- * Gerencia a navegação entre as telas do fluxo de autenticação:
- * Login → Recuperação de Senha → Confirmação de Envio → Login
+ * Telas de Releases (/releases) usam react-router; as demais seguem o
+ * controle por estado local até migrarem para rotas.
  */
 function App() {
   const [currentScreen, setCurrentScreen] = useState('login');
   const [previousScreen, setPreviousScreen] = useState('dashboard');
   const [recoveryEmail, setRecoveryEmail] = useState('');
+  const navigate = useNavigate();
+  const { pathname } = useLocation();
 
-  const navigateToProfile = () => {
-    setPreviousScreen(currentScreen);
-    setCurrentScreen('profile');
-  };
+  const isReleasesRoute = pathname.startsWith('/releases');
+  const activeScreen = isReleasesRoute ? 'releases' : currentScreen;
 
-  const handleSidebarNavigate = (screenKey) => {
+  const goTo = (screenKey) => {
+    if (screenKey === 'releases') {
+      navigate('/releases');
+      return;
+    }
+    if (isReleasesRoute) navigate('/');
     setCurrentScreen(screenKey);
   };
 
-  // TODO: Substituir controle de estado local por roteamento definitivo via react-router-dom:
-  // <Routes>
-  //   <Route path="/login" element={<LoginPage />} />
-  //   <Route path="/dashboard" element={<DashboardPage />} />
-  //   <Route path="/perfil" element={<ProfilePage />} />
-  //   <Route path="/recuperar-senha" element={<ForgotPasswordPage />} />
-  //   <Route path="/email-confirmacao" element={<EmailConfirmationPage />} />
-  // </Routes>
+  const handleLogout = () => goTo('login');
+
+  const navigateToProfile = () => {
+    setPreviousScreen(activeScreen);
+    goTo('profile');
+  };
+
+  if (isReleasesRoute) {
+    return (
+      <Routes>
+        <Route
+          path="/releases"
+          element={
+            <ReleasesPage
+              onLogout={handleLogout}
+              onProfileClick={navigateToProfile}
+              onNavigate={goTo}
+            />
+          }
+        />
+        {/* Provisório: a tela de detalhe é a F-06 */}
+        <Route
+          path="/releases/:chave"
+          element={
+            <UnderConstructionPage
+              title="Detalhe da Release"
+              activeScreen="releases"
+              onNavigate={goTo}
+              onLogout={handleLogout}
+              onProfileClick={navigateToProfile}
+            />
+          }
+        />
+        <Route path="*" element={<Navigate to="/releases" replace />} />
+      </Routes>
+    );
+  }
 
   if (currentScreen === 'profile') {
     return (
       <ProfilePage
-        onLogout={() => setCurrentScreen('login')}
+        onLogout={handleLogout}
         onProfileClick={navigateToProfile}
-        onNavigate={handleSidebarNavigate}
-        onBack={() => setCurrentScreen(previousScreen)}
+        onNavigate={goTo}
+        onBack={() => goTo(previousScreen)}
       />
     );
   }
@@ -57,9 +92,9 @@ function App() {
   if (currentScreen === 'dashboard') {
     return (
       <DashboardPage
-        onLogout={() => setCurrentScreen('login')}
+        onLogout={handleLogout}
         onProfileClick={navigateToProfile}
-        onNavigate={handleSidebarNavigate}
+        onNavigate={goTo}
       />
     );
   }
@@ -67,9 +102,9 @@ function App() {
   if (currentScreen === 'create-user') {
     return (
       <CreateUserPage
-        onLogout={() => setCurrentScreen('login')}
+        onLogout={handleLogout}
         onProfileClick={navigateToProfile}
-        onNavigate={handleSidebarNavigate}
+        onNavigate={goTo}
         onCancel={() => setCurrentScreen('user-management')}
         onCreated={() => setCurrentScreen('user-management')}
       />
@@ -79,9 +114,9 @@ function App() {
   if (currentScreen === 'user-management') {
     return (
       <UserManagementPage
-        onLogout={() => setCurrentScreen('login')}
+        onLogout={handleLogout}
         onProfileClick={navigateToProfile}
-        onNavigate={handleSidebarNavigate}
+        onNavigate={goTo}
         onCreateUser={() => setCurrentScreen('create-user')}
       />
     );
@@ -90,9 +125,9 @@ function App() {
   if (currentScreen === 'sent-history') {
     return (
       <SentHistoryPage
-        onLogout={() => setCurrentScreen('login')}
+        onLogout={handleLogout}
         onProfileClick={navigateToProfile}
-        onNavigate={handleSidebarNavigate}
+        onNavigate={goTo}
       />
     );
   }
@@ -102,8 +137,8 @@ function App() {
       <UnderConstructionPage
         title={UNDER_CONSTRUCTION_SCREENS[currentScreen]}
         activeScreen={currentScreen}
-        onNavigate={handleSidebarNavigate}
-        onLogout={() => setCurrentScreen('login')}
+        onNavigate={goTo}
+        onLogout={handleLogout}
         onProfileClick={navigateToProfile}
       />
     );

@@ -6,7 +6,7 @@ export function SideNavBar({
 }) {
   const navItems = [
     { icon: 'dashboard', label: 'Dashboard', screenKey: 'dashboard' },
-    { icon: 'rate_review', label: 'Review Queue', screenKey: 'review-queue' },
+    { icon: 'rocket_launch', label: 'Releases', screenKey: 'releases' },,
     { icon: 'history', label: 'Sent History', screenKey: 'sent-history' },
     { icon: 'receipt_long', label: 'System Logs', screenKey: 'system-logs' },
     { icon: 'group', label: 'User Management', screenKey: 'user-management' },

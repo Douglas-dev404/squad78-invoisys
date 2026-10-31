@@ -63,6 +63,7 @@ export function LoginForm({
           required
           autoComplete="current-password"
           disabled={isLoading}
+          showPasswordToggle
         />
       </div>
 
