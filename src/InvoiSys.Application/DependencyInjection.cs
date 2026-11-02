@@ -5,6 +5,7 @@ using InvoiSys.Application.Consulta;
 using InvoiSys.Application.Exportacao;
 using InvoiSys.Application.Pipeline;
 using InvoiSys.Application.Revisao;
+using InvoiSys.Application.Usuarios;
 using InvoiSys.Domain.Ports;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -51,6 +52,7 @@ public static class DependencyInjection
         services.AddScoped<ConsultaDestaques>();
         services.AddScoped<ExportacaoComunicado>();
         services.AddScoped<Acesso.Autenticacao>();
+        services.AddScoped<AdministracaoUsuarios>();
 
         return services;
     }
