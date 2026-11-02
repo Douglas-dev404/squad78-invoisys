@@ -2,6 +2,7 @@ using System.Security.Claims;
 using InvoiSys.Api.Contracts;
 using InvoiSys.Application.Usuarios;
 using InvoiSys.Domain.Entities;
+using InvoiSys.Api.Validacao;
 using Microsoft.AspNetCore.Mvc;
 
 namespace InvoiSys.Api.Endpoints;
@@ -11,7 +12,7 @@ public static class UsuarioEndpoints
     public static IEndpointRouteBuilder MapUsuarioEndpoints(this IEndpointRouteBuilder rotas)
     {
         var grupo = rotas.MapGroup("/api/v1/usuarios").WithTags("usuarios").RequireAuthorization("Admin");
-        grupo.MapPost("/", CadastrarAsync).Produces<UsuarioOut>(StatusCodes.Status201Created)
+        grupo.MapPost("/", CadastrarAsync).ComValidacao<CadastrarUsuarioIn>().Produces<UsuarioOut>(StatusCodes.Status201Created)
             .ProducesProblem(StatusCodes.Status409Conflict).ProducesProblem(StatusCodes.Status422UnprocessableEntity);
         grupo.MapGet("/", ListarAsync).Produces<IReadOnlyList<UsuarioOut>>();
         grupo.MapPost("/{id:guid}/desativar", DesativarAsync).Produces(StatusCodes.Status204NoContent)
@@ -24,9 +25,6 @@ public static class UsuarioEndpoints
         [FromServices] AdministracaoUsuarios administracao,
         CancellationToken cancellationToken)
     {
-        if (string.IsNullOrWhiteSpace(entrada.Nome) || string.IsNullOrWhiteSpace(entrada.Email)
-            || string.IsNullOrWhiteSpace(entrada.Papel) || entrada.SenhaInicial is null)
-            return Results.Problem(detail: "Nome, e-mail, papel e senha inicial são obrigatórios.", statusCode: 422);
         try
         {
             var usuario = await administracao.CadastrarAsync(entrada.Nome, entrada.Email, entrada.Papel,
