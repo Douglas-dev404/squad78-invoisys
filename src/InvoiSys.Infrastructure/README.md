@@ -9,6 +9,7 @@ camada instancia estas classes direto; elas chegam via DI, amarradas no
 InvoiSys.Infrastructure/
 ├── DependencyInjection.cs      # composition root: porta → adapter, HttpClient, resiliência
 ├── Configuration/              # JiraOptions, OpenRouterOptions, AuthOptions (ligadas ao appsettings/env)
+├── Email/                      # EnvioEmailPendente (só loga o link)
 ├── Auth/                       # Argon2idHashSenha, JwtEmissorToken, AdminInicialSemeador
 ├── Jira/                       # JiraRestClient, JiraClientPendente
 ├── Llm/                        # OpenRouterProvider, PromptLoader, ProviderPendente, ChatCompletionRequest
@@ -27,6 +28,8 @@ InvoiSys.Infrastructure/
 | `IJiraClient` | `JiraClientPendente` | qualquer um vazio → **501** com instrução |
 | `ILlmProvider` | `OpenRouterProvider` | `OpenRouter:ApiKey` preenchida |
 | `ILlmProvider` | `ProviderPendente` | chave vazia → **501** com instrução |
+| `IEnvioEmail` | `EnvioEmailPendente` | sempre, até existir adapter SMTP; **não lança**: loga o link de redefinição em `Warning` |
+| `ITokenRedefinicaoSenhaRepository` | `TokenRedefinicaoSenhaRepository` | sempre (Scoped) |
 | `IHashSenha` | `Argon2idHashSenha` | sempre (Singleton) |
 | `IEmissorToken` | `JwtEmissorToken` | sempre (Singleton); sem `Auth:Jwt:Chave` a API **não sobe** |
 | `IReleaseRepository`, `IHistoriaJiraRepository`, `IExecucaoPipelineRepository`, `IComunicadoExportadoRepository`, `IUsuarioRepository`, `IDestaqueHeroRepository` | `*Repository` em `Database/` | sempre (Scoped) |
@@ -109,10 +112,12 @@ substitui `{{chave}}` literalmente ([ADR-005](../../docs/decisoes-arquiteturais.
 
 | Classe | Destaque |
 |---|---|
-| `ReleaseRepository` | `Include` de histórias, versões → itens e execuções (sem lazy loading: faltar Include = lista vazia silenciosa). `SalvarAsync` só faz `Add` se a entidade estiver `Detached`; senão deixa o ChangeTracker gerar UPDATE |
+| `ReleaseRepository` | `Include` de histórias, versões → itens e execuções (sem lazy loading: faltar Include = lista vazia silenciosa). `SalvarAsync` só faz `Add` se a entidade estiver `Detached`; senão deixa o ChangeTracker gerar UPDATE. Grava `Release.EventosPendentes` no mesmo `SaveChangesAsync` (mesma transação) e só depois limpa a fila |
+| `HistoricoRevisaoRepository` | leitura `AsNoTracking` de `eventos_revisao` com join em `usuarios` e `versoes_comunicado`, ordenada por `sequencia`; sem escrita |
 | `HistoriaJiraRepository`, `ExecucaoPipelineRepository` | leitura `AsNoTracking`, sem escrita |
 | `ComunicadoExportadoRepository` | append-only: `AdicionarAsync` + consultas |
 | `UsuarioRepository` | busca por id/e-mail + `SalvarAsync`, sem delete |
+| `TokenRedefinicaoSenhaRepository` | `ConsumirAsync` e `InvalidarPendentesDoUsuarioAsync` são `ExecuteUpdate` condicionais (`usado_em IS NULL`), o que garante uso único sob concorrência; leituras `AsNoTracking` |
 | `DestaqueHeroRepository` | ativos ordenados por `Ordem` |
 
 - **Migrations** (`Database/Migrations/`):
@@ -122,6 +127,9 @@ substitui `{{chave}}` literalmente ([ADR-005](../../docs/decisoes-arquiteturais.
 | `InitialCreate` | 8 tabelas, FKs, índices, CHECKs |
 | `TriggersAtualizadoEm` | função `set_atualizado_em()` + trigger em `releases`, `versoes_comunicado`, `itens_comunicado` |
 | `ChavesGeradasNoDominio` | só snapshot (`ValueGeneratedNever`), sem SQL |
+| `EventosRevisao` | tabela `eventos_revisao` (CHECK de `acao`, FKs `RESTRICT`, `detalhe` jsonb) + triggers que recusam UPDATE, DELETE e TRUNCATE |
+| `RevisorEGeradorComoFk` | colunas `revisado_por_id` e `gerado_por_id` (anuláveis), índices e FKs `RESTRICT`; sem `DROP` no `Up` |
+| `TokensRedefinicaoSenha` | tabela `tokens_redefinicao_senha` (FK `RESTRICT`, índice único em `token_hash`) |
 
 Modelo completo, tabela por tabela: [docs/modelagem-de-dominio.md](../../docs/modelagem-de-dominio.md).
 
@@ -150,9 +158,9 @@ Claims: `sub` (id), `email`, `name`, `role`. A API valida emissor, audiência, a
 expiração (tolerância de 30 s) com `MapInboundClaims = false`, mantendo os nomes curtos.
 
 **`AuthOptions`** (`Auth__...`): `Jwt{Chave, Emissor, Audiencia, ExpiracaoHoras = 8}` e
-`AdminInicial{Email, Senha, Nome}`. `AddInfrastructure` valida na construção do container:
+`AdminInicial{Email, Senha, Nome}` e `RecuperacaoSenha{UrlBase, CooldownSegundos = 60, LimiteRequisicoes = 5, JanelaMinutos = 15}`. `AddInfrastructure` valida na construção do container:
 chave ausente ou com menos de 32 caracteres derruba o startup com mensagem citando
-`Auth__Jwt__Chave`.
+`Auth__Jwt__Chave`; `UrlBase` ausente ou não absoluta derruba citando `Auth__RecuperacaoSenha__UrlBase`.
 
 **`AdminInicialSemeador`** roda no startup da API, depois da migração opt-in: se não há
 nenhum usuário e os três campos do admin estão preenchidos, cria um `admin`. Qualquer
@@ -210,7 +218,9 @@ o índice único de e-mail faz a perdedora ignorar. A senha não vai para log.
 - FK `RESTRICT` de `comunicados_exportados` para a versão: apagar uma versão que já foi
   publicada reescreveria a auditoria. Exportação não tem unique por combinação, porque
   reexportar é evento novo.
-- `revisado_por` é texto livre até existir autenticação; depois vira `revisado_por_id`.
+- `versoes_comunicado.revisado_por_id` e `comunicados_exportados.gerado_por_id` são FK anuláveis
+  para `usuarios` com `RESTRICT`; `revisado_por` e `gerado_por` (texto) guardam o nome exibido.
+  Registros anteriores à autenticação ficam com o id nulo, sem backfill.
 - `ArrayConversionHelper.ListaStringComparer`: sem ele o EF compara `text[]` por
   referência e marca a lista como alterada em todo `SaveChanges`.
 - A FK de `HistoriaJira` para a Release é shadow property, então o filtro por Release no
@@ -253,4 +263,4 @@ o índice único de e-mail faz a perdedora ignorar. A senha não vai para log.
 - Validar `JiraRestClient` e `OpenRouterProvider` contra as instâncias reais (Fase 5).
 - Adapter de renderização/exportação (Markdown; depois HTML/PDF), conforme
   [P-03](../../docs/decisoes-arquiteturais.md#p-03--onde-mora-o-render-da-exportação).
-- Endpoints de login/`me` (#49), proteção das rotas (#50) e recuperação de senha (#52).
+- Endpoints de login/`me` (#49), proteção das rotas (#50) e adapter SMTP real no lugar do `EnvioEmailPendente`.

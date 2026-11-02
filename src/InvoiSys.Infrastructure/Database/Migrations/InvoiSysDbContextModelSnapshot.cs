@@ -52,6 +52,10 @@ namespace InvoiSys.Infrastructure.Database.Migrations
                         .HasColumnType("character varying(200)")
                         .HasColumnName("gerado_por");
 
+                    b.Property<Guid?>("GeradoPorId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("gerado_por_id");
+
                     b.Property<string>("Publico")
                         .IsRequired()
                         .HasMaxLength(30)
@@ -68,6 +72,9 @@ namespace InvoiSys.Infrastructure.Database.Migrations
 
                     b.HasKey("Id")
                         .HasName("pk_comunicados_exportados");
+
+                    b.HasIndex("GeradoPorId")
+                        .HasDatabaseName("ix_comunicados_exportados_gerado_por_id");
 
                     b.HasIndex("ReleaseId")
                         .HasDatabaseName("ix_comunicados_exportados_release_id");
@@ -132,6 +139,68 @@ namespace InvoiSys.Infrastructure.Database.Migrations
                         .HasDatabaseName("ix_destaques_hero_ativo_ordem");
 
                     b.ToTable("destaques_hero", (string)null);
+                });
+
+            modelBuilder.Entity("InvoiSys.Domain.Entities.EventoRevisao", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id")
+                        .HasDefaultValueSql("gen_random_uuid()");
+
+                    b.Property<string>("Acao")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .HasColumnType("character varying(30)")
+                        .HasColumnName("acao");
+
+                    b.Property<string>("Detalhe")
+                        .HasColumnType("jsonb")
+                        .HasColumnName("detalhe");
+
+                    b.Property<Guid?>("ItemId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("item_id");
+
+                    b.Property<DateTimeOffset>("OcorridoEm")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("ocorrido_em");
+
+                    b.Property<Guid>("ReleaseId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("release_id");
+
+                    b.Property<long>("Sequencia")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint")
+                        .HasColumnName("sequencia");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityAlwaysColumn(b.Property<long>("Sequencia"));
+
+                    b.Property<Guid>("UsuarioId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("usuario_id");
+
+                    b.Property<Guid>("VersaoId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("versao_id");
+
+                    b.HasKey("Id")
+                        .HasName("pk_eventos_revisao");
+
+                    b.HasIndex("UsuarioId")
+                        .HasDatabaseName("ix_eventos_revisao_usuario_id");
+
+                    b.HasIndex("VersaoId")
+                        .HasDatabaseName("ix_eventos_revisao_versao_id");
+
+                    b.HasIndex("ReleaseId", "Sequencia")
+                        .HasDatabaseName("ix_eventos_revisao_release_id_sequencia");
+
+                    b.ToTable("eventos_revisao", null, t =>
+                        {
+                            t.HasCheckConstraint("ck_eventos_revisao_acao", "acao IN ('processar','aprovar','reprovar','reabrir','editar_item','excluir_item','reincluir_item')");
+                        });
                 });
 
             modelBuilder.Entity("InvoiSys.Domain.Entities.ExecucaoPipeline", b =>
@@ -355,6 +424,50 @@ namespace InvoiSys.Infrastructure.Database.Migrations
                         });
                 });
 
+            modelBuilder.Entity("InvoiSys.Domain.Entities.TokenRedefinicaoSenha", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id")
+                        .HasDefaultValueSql("gen_random_uuid()");
+
+                    b.Property<DateTimeOffset>("CriadoEm")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("criado_em")
+                        .HasDefaultValueSql("now()");
+
+                    b.Property<DateTimeOffset>("ExpiraEm")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("expira_em");
+
+                    b.Property<string>("TokenHash")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("token_hash");
+
+                    b.Property<DateTimeOffset?>("UsadoEm")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("usado_em");
+
+                    b.Property<Guid>("UsuarioId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("usuario_id");
+
+                    b.HasKey("Id")
+                        .HasName("pk_tokens_redefinicao_senha");
+
+                    b.HasIndex("TokenHash")
+                        .IsUnique()
+                        .HasDatabaseName("ix_tokens_redefinicao_senha_token_hash");
+
+                    b.HasIndex("UsuarioId")
+                        .HasDatabaseName("ix_tokens_redefinicao_senha_usuario_id");
+
+                    b.ToTable("tokens_redefinicao_senha", (string)null);
+                });
+
             modelBuilder.Entity("InvoiSys.Domain.Entities.Usuario", b =>
                 {
                     b.Property<Guid>("Id")
@@ -458,6 +571,10 @@ namespace InvoiSys.Infrastructure.Database.Migrations
                         .HasColumnType("character varying(200)")
                         .HasColumnName("revisado_por");
 
+                    b.Property<Guid?>("RevisadoPorId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("revisado_por_id");
+
                     b.Property<string>("Status")
                         .IsRequired()
                         .HasMaxLength(30)
@@ -470,6 +587,9 @@ namespace InvoiSys.Infrastructure.Database.Migrations
 
                     b.HasKey("Id")
                         .HasName("pk_versoes_comunicado");
+
+                    b.HasIndex("RevisadoPorId")
+                        .HasDatabaseName("ix_versoes_comunicado_revisado_por_id");
 
                     b.HasIndex("Status")
                         .HasDatabaseName("ix_versoes_comunicado_status");
@@ -490,6 +610,12 @@ namespace InvoiSys.Infrastructure.Database.Migrations
 
             modelBuilder.Entity("InvoiSys.Domain.Entities.ComunicadoExportado", b =>
                 {
+                    b.HasOne("InvoiSys.Domain.Entities.Usuario", null)
+                        .WithMany()
+                        .HasForeignKey("GeradoPorId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_comunicados_exportados_usuarios_gerado_por_id");
+
                     b.HasOne("InvoiSys.Domain.Entities.Release", null)
                         .WithMany()
                         .HasForeignKey("ReleaseId")
@@ -503,6 +629,30 @@ namespace InvoiSys.Infrastructure.Database.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
                         .HasConstraintName("fk_comunicados_exportados_versoes_comunicado_versao_comunicado");
+                });
+
+            modelBuilder.Entity("InvoiSys.Domain.Entities.EventoRevisao", b =>
+                {
+                    b.HasOne("InvoiSys.Domain.Entities.Release", null)
+                        .WithMany()
+                        .HasForeignKey("ReleaseId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_eventos_revisao_releases_release_id");
+
+                    b.HasOne("InvoiSys.Domain.Entities.Usuario", null)
+                        .WithMany()
+                        .HasForeignKey("UsuarioId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_eventos_revisao_usuarios_usuario_id");
+
+                    b.HasOne("InvoiSys.Domain.Entities.VersaoComunicado", null)
+                        .WithMany()
+                        .HasForeignKey("VersaoId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_eventos_revisao_versoes_comunicado_versao_id");
                 });
 
             modelBuilder.Entity("InvoiSys.Domain.Entities.ExecucaoPipeline", b =>
@@ -535,6 +685,16 @@ namespace InvoiSys.Infrastructure.Database.Migrations
                         .HasConstraintName("fk_itens_comunicado_versoes_comunicado_versao_comunicado_id");
                 });
 
+            modelBuilder.Entity("InvoiSys.Domain.Entities.TokenRedefinicaoSenha", b =>
+                {
+                    b.HasOne("InvoiSys.Domain.Entities.Usuario", null)
+                        .WithMany()
+                        .HasForeignKey("UsuarioId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_tokens_redefinicao_senha_usuarios_usuario_id");
+                });
+
             modelBuilder.Entity("InvoiSys.Domain.Entities.VersaoComunicado", b =>
                 {
                     b.HasOne("InvoiSys.Domain.Entities.Release", null)
@@ -543,6 +703,12 @@ namespace InvoiSys.Infrastructure.Database.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
                         .HasConstraintName("fk_versoes_comunicado_releases_release_id");
+
+                    b.HasOne("InvoiSys.Domain.Entities.Usuario", null)
+                        .WithMany()
+                        .HasForeignKey("RevisadoPorId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_versoes_comunicado_usuarios_revisado_por_id");
                 });
 
             modelBuilder.Entity("InvoiSys.Domain.Entities.Release", b =>

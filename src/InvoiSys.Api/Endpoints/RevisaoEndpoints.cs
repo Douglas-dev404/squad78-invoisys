@@ -1,3 +1,5 @@
+using System.Security.Claims;
+using InvoiSys.Api.Autenticacao;
 using InvoiSys.Api.Contracts;
 using InvoiSys.Application.Revisao;
 using InvoiSys.Domain.Entities;
@@ -10,7 +12,9 @@ public static class RevisaoEndpoints
 {
     public static IEndpointRouteBuilder MapRevisaoEndpoints(this IEndpointRouteBuilder rotas)
     {
-        var grupo = rotas.MapGroup("/api/v1/releases").WithTags("revisao");
+        var grupo = rotas.MapGroup("/api/v1/releases").WithTags("revisao")
+            .RequireAuthorization()
+            .ProducesProblem(StatusCodes.Status401Unauthorized);
 
         grupo.MapPost("/{chaveRelease}/aprovar", AprovarAsync)
             .WithName("AprovarRelease")
@@ -42,43 +46,59 @@ public static class RevisaoEndpoints
     private static Task<IResult> AprovarAsync(
         string chaveRelease,
         [FromBody] AprovarIn corpo,
+        ClaimsPrincipal usuario,
         [FromServices] RevisaoComunicado revisao,
         CancellationToken cancellationToken) =>
         RevisarAsync(
             corpo.Publico,
-            publico => revisao.AprovarAsync(
+            usuario,
+            (publico, revisorId) => revisao.AprovarAsync(
                 chaveRelease,
                 publico,
-                corpo.AprovadoPor ?? string.Empty,
+                revisorId,
                 cancellationToken));
 
     private static Task<IResult> ReprovarAsync(
         string chaveRelease,
         [FromBody] ReprovarIn corpo,
+        ClaimsPrincipal usuario,
         [FromServices] RevisaoComunicado revisao,
         CancellationToken cancellationToken) =>
         RevisarAsync(
             corpo.Publico,
-            publico => revisao.ReprovarAsync(
+            usuario,
+            (publico, revisorId) => revisao.ReprovarAsync(
                 chaveRelease,
                 publico,
-                corpo.RevisadoPor ?? string.Empty,
+                revisorId,
                 corpo.Motivo ?? string.Empty,
                 cancellationToken));
 
     private static Task<IResult> ReabrirAsync(
         string chaveRelease,
         [FromBody] ReabrirIn corpo,
+        ClaimsPrincipal usuario,
         [FromServices] RevisaoComunicado revisao,
         CancellationToken cancellationToken) =>
         RevisarAsync(
             corpo.Publico,
-            publico => revisao.ReabrirAsync(chaveRelease, publico, cancellationToken));
+            usuario,
+            (publico, revisorId) => revisao.ReabrirAsync(
+                chaveRelease,
+                publico,
+                revisorId,
+                cancellationToken));
 
     private static async Task<IResult> RevisarAsync(
         string? publicoInformado,
-        Func<PublicoAlvo, Task> revisao)
+        ClaimsPrincipal usuario,
+        Func<PublicoAlvo, Guid, Task> revisao)
     {
+        if (!UsuarioAutenticado.TentarObterId(usuario, out var revisorId))
+        {
+            return Results.Unauthorized();
+        }
+
         if (!PublicoAlvoExtensions.TentarConverter(publicoInformado, out var publico))
         {
             return Results.Problem(
@@ -89,7 +109,7 @@ public static class RevisaoEndpoints
 
         try
         {
-            await revisao(publico);
+            await revisao(publico, revisorId);
             return Results.NoContent();
         }
         catch (Exception exc) when (MapearFalhaDeRevisao(exc) is { } problema)
@@ -100,6 +120,7 @@ public static class RevisaoEndpoints
 
     private static IResult? MapearFalhaDeRevisao(Exception exc) => exc switch
     {
+        RevisorInvalidoException => Results.Unauthorized(),
         ReleaseNaoEncontradaException =>
             Results.Problem(detail: exc.Message, statusCode: StatusCodes.Status404NotFound),
         ReleaseSemItensProcessadosException

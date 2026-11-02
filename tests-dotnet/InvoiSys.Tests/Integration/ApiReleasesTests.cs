@@ -6,6 +6,7 @@ using InvoiSys.Domain.Entities;
 using InvoiSys.Domain.Ports;
 using InvoiSys.Infrastructure.Llm;
 using InvoiSys.Tests.Fakes;
+using InvoiSys.Tests.Unit;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
@@ -24,6 +25,7 @@ public class ApiReleasesTests
                 services.RemoveAll<IJiraClient>();
                 services.RemoveAll<ILlmProvider>();
                 services.RemoveAll<IReleaseRepository>();
+                services.ComUsuarios(AutenticacaoDeTeste.Revisor);
                 services.AddScoped(_ => jira ?? new FakeJiraClient());
                 services.AddScoped(_ => llm ?? new FakeLlmProvider());
                 // Sem Postgres aqui: o pipeline persistiria contra uma connection string que não existe neste host.
@@ -43,7 +45,7 @@ public class ApiReleasesTests
     public async Task Health_responde_ok()
     {
         using var app = CriarApp();
-        using var client = app.CreateClient();
+        using var client = app.CriarClienteAutenticado();
 
         var resposta = await client.GetAsync("/health");
 
@@ -62,7 +64,7 @@ public class ApiReleasesTests
         var llm = new FakeLlmProvider { FalhaAoChamar = new InvalidOperationException("não chamar") };
 
         using var app = CriarApp(jira, llm);
-        using var client = app.CreateClient();
+        using var client = app.CriarClienteAutenticado();
 
         var resposta = await client.GetAsync("/api/v1/releases/RELEASE-2026-08/historias");
 
@@ -90,7 +92,7 @@ public class ApiReleasesTests
         };
 
         using var app = CriarApp(jira, llm);
-        using var client = app.CreateClient();
+        using var client = app.CriarClienteAutenticado();
 
         var resposta = await client.PostAsync("/api/v1/releases/RELEASE-2026-08/processar", null);
 
@@ -120,12 +122,12 @@ public class ApiReleasesTests
             [new ItemComunicado(Domain.Enums.CategoriaAlteracao.Correcao, "Texto aprovado.", ["INV-1"])],
             "Título",
             "Resumo");
-        aprovada.Aprovar("revisora@invoisys.com", DateTimeOffset.UtcNow);
+        aprovada.Aprovar(AutenticacaoDeTeste.Revisor, DateTimeOffset.UtcNow);
         await repositorio.SalvarAsync(aprovada);
 
         var llm = new FakeLlmProvider { FalhaAoChamar = new InvalidOperationException("não chamar") };
         using var app = CriarApp(new FakeJiraClient { Historias = [Historia("INV-1")] }, llm, repositorio);
-        using var client = app.CreateClient();
+        using var client = app.CriarClienteAutenticado();
 
         var resposta = await client.PostAsync("/api/v1/releases/RELEASE-2026-08/processar", null);
 
@@ -143,7 +145,7 @@ public class ApiReleasesTests
         var jira = new FakeJiraClient { Historias = [Historia("INV-1")] };
 
         using var app = CriarApp(jira, new ProviderPendente());
-        using var client = app.CreateClient();
+        using var client = app.CriarClienteAutenticado();
 
         var resposta = await client.PostAsync("/api/v1/releases/RELEASE-2026-08/processar", null);
 
@@ -162,7 +164,7 @@ public class ApiReleasesTests
         };
 
         using var app = CriarApp(jira, llm);
-        using var client = app.CreateClient();
+        using var client = app.CriarClienteAutenticado();
 
         var resposta = await client.PostAsync("/api/v1/releases/RELEASE-2026-08/processar", null);
 
@@ -178,7 +180,7 @@ public class ApiReleasesTests
     public async Task Sem_credencial_de_Jira_configurada_a_API_responde_501_e_nao_500()
     {
         using var app = CriarApp(new Infrastructure.Jira.JiraClientPendente());
-        using var client = app.CreateClient();
+        using var client = app.CriarClienteAutenticado();
 
         var resposta = await client.GetAsync("/api/v1/releases/RELEASE-2026-08/historias");
 
@@ -195,7 +197,7 @@ public class ApiReleasesTests
         };
 
         using var app = CriarApp(jira);
-        using var client = app.CreateClient();
+        using var client = app.CriarClienteAutenticado();
 
         var resposta = await client.GetAsync("/api/v1/releases/RELEASE-2026-08/historias");
 
@@ -212,7 +214,7 @@ public class ApiReleasesTests
         await repositorio.SalvarAsync(processando);
 
         using var app = CriarApp(repositorio: repositorio);
-        using var client = app.CreateClient();
+        using var client = app.CriarClienteAutenticado();
 
         var resposta = await client.GetAsync("/api/v1/releases");
 
@@ -232,7 +234,7 @@ public class ApiReleasesTests
         await repositorio.SalvarAsync(processando);
 
         using var app = CriarApp(repositorio: repositorio);
-        using var client = app.CreateClient();
+        using var client = app.CriarClienteAutenticado();
 
         var resposta = await client.GetAsync("/api/v1/releases?status=processando");
 
@@ -247,7 +249,7 @@ public class ApiReleasesTests
     public async Task Listar_releases_com_status_invalido_responde_422()
     {
         using var app = CriarApp();
-        using var client = app.CreateClient();
+        using var client = app.CriarClienteAutenticado();
 
         var resposta = await client.GetAsync("/api/v1/releases?status=nao-existe");
 
@@ -274,7 +276,7 @@ public class ApiReleasesTests
         await repositorio.SalvarAsync(release);
 
         using var app = CriarApp(repositorio: repositorio);
-        using var client = app.CreateClient();
+        using var client = app.CriarClienteAutenticado();
 
         var resposta = await client.GetAsync("/api/v1/releases/RELEASE-2026-08");
 
@@ -309,7 +311,7 @@ public class ApiReleasesTests
         await repositorio.SalvarAsync(release);
 
         using var app = CriarApp(repositorio: repositorio);
-        using var client = app.CreateClient();
+        using var client = app.CriarClienteAutenticado();
 
         var detalhe = await client.GetFromJsonAsync<JsonElement>("/api/v1/releases/RELEASE-2026-08");
         var itemId = detalhe.GetProperty("versoes")[0].GetProperty("itens")[0].GetProperty("id").GetGuid();
@@ -330,7 +332,7 @@ public class ApiReleasesTests
     public async Task Buscar_release_inexistente_responde_404()
     {
         using var app = CriarApp();
-        using var client = app.CreateClient();
+        using var client = app.CriarClienteAutenticado();
 
         var resposta = await client.GetAsync("/api/v1/releases/RELEASE-INEXISTENTE");
 

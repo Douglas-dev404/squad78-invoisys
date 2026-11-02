@@ -16,6 +16,7 @@ public sealed class Release
     private readonly List<HistoriaJira> _historias;
     private readonly List<VersaoComunicado> _versoes = [];
     private readonly List<ExecucaoPipeline> _execucoes = [];
+    private readonly List<EventoRevisao> _eventosPendentes = [];
 
     private Release()
     {
@@ -42,6 +43,8 @@ public sealed class Release
 
     public IReadOnlyList<ExecucaoPipeline> Execucoes => _execucoes;
 
+    public IReadOnlyList<EventoRevisao> EventosPendentes => _eventosPendentes;
+
     public VersaoComunicado? VersaoCliente => VersaoPara(PublicoAlvo.Cliente);
 
     public string? TituloExecutivo => VersaoCliente?.TituloExecutivo;
@@ -58,6 +61,8 @@ public sealed class Release
 
     public VersaoComunicado? VersaoPara(PublicoAlvo publico) =>
         _versoes.FirstOrDefault(versao => versao.Publico == publico);
+
+    public void LimparEventosPendentes() => _eventosPendentes.Clear();
 
     public void MarcarProcessando() => Status = StatusPipeline.Processando;
 
@@ -90,8 +95,11 @@ public sealed class Release
         IEnumerable<ItemComunicado> itens,
         string tituloExecutivo,
         string resumoExecutivo,
+        Usuario usuario,
+        DateTimeOffset agora,
         PublicoAlvo publico = PublicoAlvo.Cliente)
     {
+        ExigirResponsavel(usuario);
         GarantirQuePodeReprocessar(publico);
 
         var versao = VersaoPara(publico);
@@ -105,13 +113,21 @@ public sealed class Release
         versao.PreencherConteudo(itens, tituloExecutivo, resumoExecutivo);
         Status = StatusPipeline.AguardandoRevisao;
 
+        RegistrarEvento(
+            AcaoRevisao.Processar,
+            versao,
+            null,
+            usuario,
+            agora,
+            new Dictionary<string, object?> { ["totalItens"] = versao.Itens.Count });
+
         return versao;
     }
 
     public void MarcarFalha() => Status = StatusPipeline.Falhou;
 
     public void Aprovar(
-        string aprovadoPor,
+        Usuario revisor,
         DateTimeOffset agora,
         PublicoAlvo publico = PublicoAlvo.Cliente)
     {
@@ -129,7 +145,7 @@ public sealed class Release
 
         try
         {
-            versao.Aprovar(aprovadoPor, agora);
+            versao.Aprovar(revisor, agora);
         }
         catch (VersaoSemItensException exc)
         {
@@ -144,10 +160,12 @@ public sealed class Release
         {
             Status = StatusPipeline.Aprovado;
         }
+
+        RegistrarEvento(AcaoRevisao.Aprovar, versao, null, revisor, agora, null);
     }
 
     public void Reprovar(
-        string revisadoPor,
+        Usuario revisor,
         string motivo,
         DateTimeOffset agora,
         PublicoAlvo publico = PublicoAlvo.Cliente)
@@ -157,28 +175,83 @@ public sealed class Release
                 $"Release {ChaveJira} não tem comunicado gerado para o público "
                 + $"{publico.ParaValor()}.");
 
-        versao.Reprovar(revisadoPor, motivo, agora);
+        versao.Reprovar(revisor, motivo, agora);
         Status = StatusPipeline.AguardandoRevisao;
+
+        RegistrarEvento(
+            AcaoRevisao.Reprovar,
+            versao,
+            null,
+            revisor,
+            agora,
+            new Dictionary<string, object?> { ["motivo"] = motivo });
     }
 
-    public ItemComunicado EditarItem(Guid itemId, string texto)
+    public ItemComunicado EditarItem(
+        Guid itemId,
+        string texto,
+        Usuario usuario,
+        DateTimeOffset agora)
     {
+        ExigirResponsavel(usuario);
         var (versao, item) = LocalizarItem(itemId);
+        var textoAnterior = item.TextoFinal;
+
         versao.EditarItem(item, texto);
+
+        RegistrarEvento(
+            AcaoRevisao.EditarItem,
+            versao,
+            item.Id,
+            usuario,
+            agora,
+            new Dictionary<string, object?>
+            {
+                ["textoAnterior"] = textoAnterior,
+                ["textoNovo"] = item.TextoFinal,
+            });
         return item;
     }
 
-    public ItemComunicado ExcluirItem(Guid itemId, string? motivo = null)
+    public ItemComunicado ExcluirItem(
+        Guid itemId,
+        Usuario usuario,
+        DateTimeOffset agora,
+        string? motivo = null)
     {
+        ExigirResponsavel(usuario);
         var (versao, item) = LocalizarItem(itemId);
+
         versao.ExcluirItem(item, motivo);
+
+        RegistrarEvento(
+            AcaoRevisao.ExcluirItem,
+            versao,
+            item.Id,
+            usuario,
+            agora,
+            new Dictionary<string, object?>
+            {
+                ["motivo"] = item.MotivoExclusao,
+                ["texto"] = item.TextoFinal,
+            });
         return item;
     }
 
-    public ItemComunicado ReincluirItem(Guid itemId)
+    public ItemComunicado ReincluirItem(Guid itemId, Usuario usuario, DateTimeOffset agora)
     {
+        ExigirResponsavel(usuario);
         var (versao, item) = LocalizarItem(itemId);
+
         versao.ReincluirItem(item);
+
+        RegistrarEvento(
+            AcaoRevisao.ReincluirItem,
+            versao,
+            item.Id,
+            usuario,
+            agora,
+            new Dictionary<string, object?> { ["texto"] = item.TextoFinal });
         return item;
     }
 
@@ -199,8 +272,13 @@ public sealed class Release
             $"Item {itemId} não encontrado na Release {ChaveJira}.");
     }
 
-    public void Reabrir(PublicoAlvo publico = PublicoAlvo.Cliente)
+    public void Reabrir(
+        Usuario usuario,
+        DateTimeOffset agora,
+        PublicoAlvo publico = PublicoAlvo.Cliente)
     {
+        ExigirResponsavel(usuario);
+
         var versao = VersaoPara(publico)
             ?? throw new ReleaseSemItensProcessadosException(
                 $"Release {ChaveJira} não tem comunicado gerado para o público "
@@ -208,5 +286,27 @@ public sealed class Release
 
         versao.Reabrir();
         Status = StatusPipeline.AguardandoRevisao;
+
+        RegistrarEvento(AcaoRevisao.Reabrir, versao, null, usuario, agora, null);
     }
+
+    private static void ExigirResponsavel(Usuario? usuario)
+    {
+        if (usuario is null || !usuario.Ativo)
+        {
+            throw new ArgumentException(
+                "A ação de revisão exige um usuário responsável identificado e ativo — "
+                + "é a trilha de auditoria.",
+                nameof(usuario));
+        }
+    }
+
+    private void RegistrarEvento(
+        AcaoRevisao acao,
+        VersaoComunicado versao,
+        Guid? itemId,
+        Usuario usuario,
+        DateTimeOffset agora,
+        IReadOnlyDictionary<string, object?>? detalhe) =>
+        _eventosPendentes.Add(new EventoRevisao(Id, versao.Id, itemId, acao, usuario.Id, agora, detalhe));
 }

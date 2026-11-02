@@ -1,3 +1,4 @@
+using InvoiSys.Application.Autenticacao;
 using InvoiSys.Application.Consulta;
 using InvoiSys.Application.Exportacao;
 using InvoiSys.Application.Pipeline;
@@ -19,7 +20,28 @@ public static class DependencyInjection
             provider.GetRequiredService<IJiraClient>(),
             provider.GetRequiredService<ILlmProvider>(),
             provider.GetRequiredService<IReleaseRepository>(),
+            provider.GetRequiredService<IUsuarioRepository>(),
+            provider.GetRequiredService<TimeProvider>(),
             configuration["OpenRouter:Modelo"]));
+
+        services.AddScoped(provider =>
+        {
+            var config = provider.GetRequiredService<IConfiguration>();
+            var cooldown = int.TryParse(config["Auth:RecuperacaoSenha:CooldownSegundos"], out var segundos)
+                ? segundos
+                : 60;
+            var opcoes = new OpcoesRecuperacaoSenha(
+                config["Auth:RecuperacaoSenha:UrlBase"] ?? string.Empty,
+                TimeSpan.FromSeconds(cooldown));
+
+            return new RecuperacaoSenha(
+                provider.GetRequiredService<IUsuarioRepository>(),
+                provider.GetRequiredService<ITokenRedefinicaoSenhaRepository>(),
+                provider.GetRequiredService<IHashSenha>(),
+                provider.GetRequiredService<IEnvioEmail>(),
+                opcoes,
+                provider.GetRequiredService<TimeProvider>());
+        });
 
         services.AddScoped<RevisaoComunicado>();
         services.AddScoped<ConsultaReleases>();

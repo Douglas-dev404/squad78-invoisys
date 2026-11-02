@@ -21,8 +21,12 @@ public sealed class FakeReleaseRepository : IReleaseRepository
 
     private readonly Dictionary<Guid, DateTimeOffset> _criadoEm = [];
 
+    public List<EventoRevisao> Eventos { get; } = [];
+
     public Task SalvarAsync(Release release, CancellationToken cancellationToken = default)
     {
+        Eventos.AddRange(release.EventosPendentes);
+        release.LimparEventosPendentes();
         _porId[release.Id] = release;
         _porChaveJira[release.ChaveJira] = release;
         _criadoEm.TryAdd(release.Id, DateTimeOffset.UtcNow);

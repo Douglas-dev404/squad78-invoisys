@@ -10,7 +10,7 @@ mapeamento em [`src/InvoiSys.Infrastructure/Database/`](../src/InvoiSys.Infrastr
 - **SGBD**: PostgreSQL 16
 - **ORM**: EF Core 10 (Code-First) + Npgsql + EFCore.NamingConventions
 - **Convenção**: `snake_case` no SQL, `PascalCase` em C# — a naming convention traduz
-- **8 tabelas · 66 colunas · 6 chaves estrangeiras · 20 índices**
+- **10 tabelas · 83 colunas · 12 chaves estrangeiras · 28 índices**
 
 ---
 
@@ -61,6 +61,12 @@ em torno de garanti-lo estruturalmente, não por convenção.
 | 4 | `itens_comunicado` → `versoes_comunicado` | `versao_comunicado_id` | 1:N | `CASCADE` | Itens pertencem à versão (público), não à Release direto. |
 | 5 | `comunicados_exportados` → `versoes_comunicado` | `versao_comunicado_id` | 1:N | **`RESTRICT`** | **Protege auditoria** — ver abaixo. |
 | 6 | `comunicados_exportados` → `releases` | `release_id` | 1:N | `CASCADE` | Conveniência de consulta ("tudo que já foi exportado desta Release"). |
+| 7 | `tokens_redefinicao_senha` → `usuarios` | `usuario_id` | 1:N | `RESTRICT` | Usuário nunca é apagado, só desativado. |
+| 8 | `versoes_comunicado` → `usuarios` | `revisado_por_id` | N:1 (anulável) | `RESTRICT` | Quem aprovou/reprovou: trilha de auditoria; apagar o usuário reescreveria a história ([ADR-026](decisoes-arquiteturais.md#adr-026--rotas-de-release-exigem-token-e-o-revisor-vem-dele)). |
+| 9 | `comunicados_exportados` → `usuarios` | `gerado_por_id` | N:1 (anulável) | `RESTRICT` | Quem gerou a exportação. |
+| 10 | `eventos_revisao` → `releases` | `release_id` | 1:N | **`RESTRICT`** | Auditoria não some com a Release ([ADR-027](decisoes-arquiteturais.md#adr-027--histórico-de-revisão-é-uma-trilha-só-de-inclusão-gerada-pelo-agregado)). |
+| 11 | `eventos_revisao` → `versoes_comunicado` | `versao_id` | 1:N | **`RESTRICT`** | Evento sempre aponta uma versão (público). |
+| 12 | `eventos_revisao` → `usuarios` | `usuario_id` | 1:N | **`RESTRICT`** | Quem executou a ação; usuário só é desativado. |
 
 ### Por que a FK #5 é `RESTRICT` e não `CASCADE`
 
@@ -74,9 +80,9 @@ preciso lidar com o histórico antes, conscientemente.
 A FK #6 para `releases` continua `CASCADE` porque apagar a Release inteira é uma operação
 deliberada de limpeza total, não uma correção de conteúdo.
 
-### `usuarios` e `destaques_hero` não têm FK
+### `usuarios` e `destaques_hero` no ERD
 
-Aparecem com borda tracejada no ERD. `usuarios` ainda não é referenciado porque
+O ERD (`erd.png`/`erd.svg`) está **desatualizado**: ainda desenha `usuarios` sem FK e não inclui `tokens_redefinicao_senha`, `eventos_revisao` nem as colunas `revisado_por_id`/`gerado_por_id`. `usuarios` hoje é referenciado por `tokens_redefinicao_senha`, `versoes_comunicado` e `comunicados_exportados` (FKs 7 a 9). Antes era isolado porque
 autenticação não está implementada no domínio — `revisado_por` e `gerado_por` são texto
 livre por enquanto (ver [Pendências](#pendências-conhecidas)). `destaques_hero` é
 conteúdo editorial independente, sem relação com o pipeline.
@@ -195,7 +201,8 @@ Release × público-alvo, cada uma com **seu próprio ciclo de revisão**.
 | `status` | `varchar(30)` | não | — | **Indexada**. `StatusRevisao`, com CHECK. |
 | `titulo_executivo` | `text` | **sim** | — | Pode diferir por audiência. |
 | `resumo_executivo` | `text` | **sim** | — | Pode diferir por audiência. |
-| `revisado_por` | `varchar(200)` | **sim** | — | Texto livre — ver pendência 1. |
+| `revisado_por_id` | `uuid` | **sim** | — | **FK** → `usuarios.id` `RESTRICT`. Indexada. Nulo nos registros anteriores à autenticação e enquanto a versão não foi decidida. |
+| `revisado_por` | `varchar(200)` | **sim** | — | Nome exibido de quem decidiu, gravado no momento da decisão. Texto livre nos registros antigos. |
 | `revisado_em` | `timestamptz` | **sim** | — | |
 | `motivo_reprovacao` | `text` | **sim** | — | **CHECK**: obrigatório se `status='reprovado'`. |
 | `criado_em` | `timestamptz` | não | — | |
@@ -302,7 +309,8 @@ cada público, em cada formato.
 | `formato` | `varchar(20)` | não | — | `FormatoExportacao`, com CHECK. |
 | `conteudo` | `text` | **sim** | — | Markdown / HTML. |
 | `caminho_arquivo` | `text` | **sim** | — | Caminho/URL quando binário (PDF). |
-| `gerado_por` | `varchar(200)` | **sim** | — | Texto livre — ver pendência 1. |
+| `gerado_por_id` | `uuid` | **sim** | — | **FK** → `usuarios.id` `RESTRICT`. Indexada. Preenchida pela exportação com o usuário do token (nulo nos registros antigos). |
+| `gerado_por` | `varchar(200)` | **sim** | — | Nome exibido de quem gerou. |
 | `gerado_em` | `timestamptz` | não | — | |
 
 **O gate estrutural**: o construtor em C# lança `ReleaseNaoAprovadaException` se a versão
@@ -345,6 +353,39 @@ CHECK agora seria antecipar regra de negócio que ninguém validou. É a exceç�
 ao padrão das outras colunas de vocabulário.
 
 **`ativo` em vez de DELETE**: usuário que aprovou Release não pode sumir do histórico.
+
+### `eventos_revisao` — histórico de revisão (só inclusão)
+
+Decisão em [ADR-027](decisoes-arquiteturais.md#adr-027--histórico-de-revisão-é-uma-trilha-só-de-inclusão-gerada-pelo-agregado).
+
+| Coluna | Tipo | Nulo | Default | Observação |
+|---|---|---|---|---|
+| `id` | `uuid` | não | `gen_random_uuid()` | **PK**, gerado no domínio. |
+| `sequencia` | `bigint` | não | identity | Ordem estável da linha do tempo (desempate quando o horário coincide). |
+| `release_id` | `uuid` | não | — | **FK** → `releases.id` `RESTRICT`. |
+| `versao_id` | `uuid` | não | — | **FK** → `versoes_comunicado.id` `RESTRICT`. Indexada. |
+| `item_id` | `uuid` | **sim** | — | **Sem FK**: itens são recriados no reprocessamento; o `detalhe` guarda o texto. |
+| `acao` | `varchar(30)` | não | — | CHECK: `processar`, `aprovar`, `reprovar`, `reabrir`, `editar_item`, `excluir_item`, `reincluir_item`. |
+| `usuario_id` | `uuid` | não | — | **FK** → `usuarios.id` `RESTRICT`. Indexada. |
+| `ocorrido_em` | `timestamptz` | não | — | Horário informado pelo domínio. |
+| `detalhe` | `jsonb` | **sim** | — | Motivo, texto anterior/novo, total de itens (por ação). |
+
+**Só inclusão:** triggers `BEFORE UPDATE OR DELETE` (por linha) e `BEFORE TRUNCATE` levantam
+exceção. `revisado_por`/`revisado_em` em `versoes_comunicado` seguem como retrato do estado
+atual; esta tabela é a história.
+
+### `tokens_redefinicao_senha` — recuperação de senha
+
+Decisão em [ADR-025](decisoes-arquiteturais.md#adr-025--recuperação-de-senha-token-opaco-de-uso-único-e-resposta-uniforme).
+
+| Coluna | Tipo | Nulo | Default | Observação |
+|---|---|---|---|---|
+| `id` | `uuid` | não | `gen_random_uuid()` | **PK**. |
+| `usuario_id` | `uuid` | não | — | **FK** → `usuarios.id`, `RESTRICT`. |
+| `token_hash` | `varchar(64)` | não | — | **UNIQUE**. SHA-256 em hex; o token cru nunca é gravado. |
+| `criado_em` | `timestamptz` | não | `now()` | Base do cooldown de reenvio. |
+| `expira_em` | `timestamptz` | não | — | `criado_em` + 30 minutos. |
+| `usado_em` | `timestamptz` | **sim** | — | Nulo até o uso; também marca token invalidado por reenvio ou troca de senha. |
 
 ---
 
@@ -394,8 +435,17 @@ pretendido.
 | `comunicados_exportados` | `pk_comunicados_exportados` | btree UNIQUE | `id` | PK |
 | `comunicados_exportados` | `ix_comunicados_exportados_versao_comunicado_id` | btree | `versao_comunicado_id` | Exports de uma versão |
 | `comunicados_exportados` | `ix_comunicados_exportados_release_id` | btree | `release_id` | Exports de uma Release |
+| `versoes_comunicado` | `ix_versoes_comunicado_revisado_por_id` | btree | `revisado_por_id` | Índice da FK do revisor |
+| `comunicados_exportados` | `ix_comunicados_exportados_gerado_por_id` | btree | `gerado_por_id` | Índice da FK de quem gerou |
 | `usuarios` | `pk_usuarios` | btree UNIQUE | `id` | PK |
 | `usuarios` | `ix_usuarios_email` | btree UNIQUE | `email` | Login; garante e-mail único |
+| `eventos_revisao` | `pk_eventos_revisao` | btree UNIQUE | `id` | PK |
+| `eventos_revisao` | `ix_eventos_revisao_release_id_sequencia` | btree | `release_id, sequencia` | Linha do tempo de uma Release; serve de índice da FK |
+| `eventos_revisao` | `ix_eventos_revisao_versao_id` | btree | `versao_id` | Índice da FK da versão |
+| `eventos_revisao` | `ix_eventos_revisao_usuario_id` | btree | `usuario_id` | Índice da FK do usuário |
+| `tokens_redefinicao_senha` | `pk_tokens_redefinicao_senha` | btree UNIQUE | `id` | PK |
+| `tokens_redefinicao_senha` | `ix_tokens_redefinicao_senha_token_hash` | btree UNIQUE | `token_hash` | Busca do token recebido; garante unicidade |
+| `tokens_redefinicao_senha` | `ix_tokens_redefinicao_senha_usuario_id` | btree | `usuario_id` | Tokens pendentes e último token do usuário |
 | `destaques_hero` | `pk_destaques_hero` | btree UNIQUE | `id` | PK |
 | `destaques_hero` | `ix_destaques_hero_ativo_ordem` | btree | `ativo, ordem` | `WHERE ativo ORDER BY ordem` |
 
@@ -484,6 +534,7 @@ evento (`execucoes_pipeline`, `comunicados_exportados`) ou de cadastro simples
 | Revisão: excluir item | ✅ | `itens_comunicado.incluido` |
 | Exportação Markdown | ✅ schema | `comunicados_exportados` — render pendente |
 | Autenticação | ✅ schema | `usuarios` — JWT pendente |
+| Recuperação de senha | ✅ | `tokens_redefinicao_senha` — e-mail real pendente (SMTP) |
 | Logs / rastreabilidade | ✅ | `execucoes_pipeline` |
 | **Múltiplos públicos** (diferencial) | ✅ | `versoes_comunicado` |
 | Exportação HTML/PDF (diferencial) | ✅ schema | `formato` |
@@ -492,11 +543,13 @@ evento (`execucoes_pipeline`, `comunicados_exportados`) ou de cadastro simples
 
 ## Pendências conhecidas
 
-1. **`revisado_por` / `gerado_por` são texto livre, não FK para `usuarios`** —
-   autenticação não está implementada no domínio ainda. Vira FK quando o JWT entrar.
-2. **Recuperação de senha sem entidade** — o frontend já chama
-   `POST /auth/forgot-password` e espera `{ message, expiresInMinutes }`, o que implica um
-   token de reset com expiração. Não modelado.
+1. ~~`revisado_por` / `gerado_por` são texto livre, não FK para `usuarios`~~ — **resolvida**
+   ([ADR-026](decisoes-arquiteturais.md#adr-026--rotas-de-release-exigem-token-e-o-revisor-vem-dele)):
+   `revisado_por_id` e `gerado_por_id` são FK `RESTRICT`. Resta que os registros anteriores
+   à autenticação ficam com o id nulo (o texto antigo foi preservado, sem backfill) e que o
+   ids nulos nos registros anteriores; a exportação já grava `gerado_por_id` do token.
+2. **Recuperação de senha sem e-mail real** — o token está modelado
+   (`tokens_redefinicao_senha`), mas o envio é o adapter pendente, que só loga o link.
 3. **Repositories prontos, API de revisão ainda não os usa** — o pipeline já persiste
    via `IReleaseRepository` (issue #20; `PipelineGeracaoReleaseNotePersistenciaTests`).
    `IUsuarioRepository`, `IComunicadoExportadoRepository` e as portas somente leitura de

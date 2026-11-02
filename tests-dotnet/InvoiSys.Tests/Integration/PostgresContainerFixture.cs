@@ -1,4 +1,6 @@
+using InvoiSys.Domain.Entities;
 using InvoiSys.Infrastructure.Database;
+using InvoiSys.Tests.Fakes;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Testcontainers.PostgreSql;
@@ -20,9 +22,19 @@ public sealed class PostgresContainerFixture : IAsyncLifetime
 
         await using var contexto = CriarContexto();
         await contexto.Database.MigrateAsync();
+
+        await new UsuarioRepository(contexto).SalvarAsync(AutenticacaoDeTeste.Revisor);
     }
 
     public async Task DisposeAsync() => await _container.DisposeAsync();
+
+    public async Task<Usuario> SalvarRevisorAsync(string nome = "Revisora")
+    {
+        var usuario = AutenticacaoDeTeste.UmRevisor(nome);
+        await using var contexto = CriarContexto();
+        await new UsuarioRepository(contexto).SalvarAsync(usuario);
+        return usuario;
+    }
 
     public InvoiSysDbContext CriarContexto(ITestOutputHelper? saida = null)
     {

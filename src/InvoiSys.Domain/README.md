@@ -65,6 +65,7 @@ classDiagram
 | [`HistoriaJira`](Entities/HistoriaJira.cs) | Dado bruto do Jira. `record` **imutável**: o pipeline gera cópias limpas com `with`, nunca muta | `TextoFonte` (Release Note dedicada **ou** descrição técnica), `PossuiReleaseNoteDedicada` |
 | [`VersaoComunicado`](Entities/VersaoComunicado.cs) | O comunicado **para um público**, com revisão própria (`StatusRevisao`). Responde "pode exportar?" | `Aprovar`, `Reprovar(motivo)`, `Reabrir`, `PreencherConteudo`, `EditarItem`/`ExcluirItem`/`ReincluirItem` (recusam versão aprovada, [ADR-021](../../docs/decisoes-arquiteturais.md#adr-021--item-de-versão-aprovada-não-é-editado-sem-reabrir)), `ItensPublicaveis`, `ProntaParaExportar` |
 | [`ItemComunicado`](Entities/ItemComunicado.cs) | Um parágrafo do comunicado, originado de 1+ histórias | `TextoFinal` (edição humana vence), `Origens`. `EditarManualmente`, `Excluir(motivo)` e `Reincluir` são `internal`: de fora do domínio, só pela `Release` |
+| [`EventoRevisao`](Entities/EventoRevisao.cs) | Linha da trilha de auditoria (só inclusão): quem fez qual ação, quando e com qual detalhe. Construtor `internal`: só a `Release` cria | — |
 | [`ExecucaoPipeline`](Entities/ExecucaoPipeline.cs) | Log de uma rodada do pipeline (rastreabilidade) | `MarcarConcluida`, `MarcarFalha(erro)` |
 
 ### Agregados independentes
@@ -72,6 +73,7 @@ classDiagram
 | Entidade | Papel |
 |---|---|
 | [`ComunicadoExportado`](Entities/ComunicadoExportado.cs) | Registro de publicação (append-only). **O construtor lança `ReleaseNaoAprovadaException` se a versão não estiver `ProntaParaExportar`** |
+| [`TokenRedefinicaoSenha`](Entities/TokenRedefinicaoSenha.cs) | Token de "esqueci a senha": guarda só o hash, vale 30 minutos e é de uso único (`MarcarComoUsado`) |
 | [`Usuario`](Entities/Usuario.cs) | Quem faz login, revisa e aprova. `Papel` é texto livre até o RBAC existir (`PapelAdmin` é a única constante). O e-mail é normalizado (trim + minúsculas) no construtor e por `NormalizarEmail`. Desligar = `Desativar()`, nunca DELETE |
 | [`DestaqueHero`](Entities/DestaqueHero.cs) | Conteúdo institucional da tela de login (`GET /branding/highlights`). Sem relação com o pipeline |
 
@@ -86,7 +88,7 @@ classDiagram
 | `ItemNaoEncontradoException` | editar/excluir/reincluir um item que não existe na Release |
 | `ReleaseNaoAprovadaException` | construir `ComunicadoExportado` de versão não aprovada |
 | `ReleaseNaoEncontradaException` | caso de uso aponta para uma chave de Release que não foi persistida |
-| `ArgumentException` | reprovar sem motivo, aprovar/reprovar sem identificar o revisor (trilha de auditoria da revisão humana), ou editar item com texto vazio |
+| `ArgumentException` | reprovar sem motivo, aprovar/reprovar sem um `Usuario` revisor ativo (trilha de auditoria da revisão humana), ou editar item com texto vazio |
 
 > Mapeamento para HTTP das exceções de revisão: ver `MapearFalhaDeRevisao` e `MapearFalhaDeRevisaoDeItem` no
 > [README da API](../InvoiSys.Api/README.md#tradução-de-erro--http).
@@ -124,11 +126,14 @@ errado em silêncio).
 | [`ILlmProvider`](Ports/ILlmProvider.cs) | saída (integração) | `OpenRouterProvider` / `ProviderPendente` | um método por estágio de IA: `CategorizarAsync`, `AgruparSemelhantesAsync`, `ReescreverLinguagemNegocioAsync`, `GerarTituloEResumoAsync` |
 | [`IReleaseRepository`](Ports/IReleaseRepository.cs) | persistência (agregado) | `ReleaseRepository` | `BuscarPorIdAsync`, `BuscarPorChaveJiraAsync` (agregado completo), `SalvarAsync`, `ListarResumosAsync(status?)` (devolve o modelo de leitura `ReleaseResumo`, nunca uma `Release` parcial) |
 | [`IHistoriaJiraRepository`](Ports/IHistoriaJiraRepository.cs) | **somente leitura** | `HistoriaJiraRepository` | consultar histórias sem carregar o agregado |
+| [`IHistoricoRevisaoRepository`](Ports/IHistoricoRevisaoRepository.cs) | **somente leitura** | `HistoricoRevisaoRepository` | `ListarPorReleaseAsync(releaseId)`: linha do tempo em ordem, com nome do usuário e público |
 | [`IExecucaoPipelineRepository`](Ports/IExecucaoPipelineRepository.cs) | **somente leitura** | `ExecucaoPipelineRepository` | histórico de execuções (mais recente primeiro) |
 | [`IComunicadoExportadoRepository`](Ports/IComunicadoExportadoRepository.cs) | **append-only** | `ComunicadoExportadoRepository` | `AdicionarAsync`, `BuscarPorIdAsync`, `ListarPorReleaseAsync` |
 | [`IUsuarioRepository`](Ports/IUsuarioRepository.cs) | persistência (agregado) | `UsuarioRepository` | `BuscarPorIdAsync`, `BuscarPorEmailAsync` (normaliza o argumento), `ExisteAlgumAsync`, `SalvarAsync` (sem delete) |
 | [`IHashSenha`](Ports/IHashSenha.cs) | saída (criptografia) | `Argon2idHashSenha` | `Gerar`, `Verificar` |
 | [`IEmissorToken`](Ports/IEmissorToken.cs) | saída (criptografia) | `JwtEmissorToken` | `Emitir(usuario)` → `TokenEmitido(Token, ExpiraEm)` |
+| [`IEnvioEmail`](Ports/IEnvioEmail.cs) | saída (e-mail) | `EnvioEmailPendente` | `EnviarRedefinicaoSenhaAsync` |
+| [`ITokenRedefinicaoSenhaRepository`](Ports/ITokenRedefinicaoSenhaRepository.cs) | persistência | `TokenRedefinicaoSenhaRepository` | `AdicionarAsync`, `BuscarPorHashAsync`, `BuscarUltimoDoUsuarioAsync`, `ConsumirAsync` (atômico), `InvalidarPendentesDoUsuarioAsync` |
 | [`IDestaqueHeroRepository`](Ports/IDestaqueHeroRepository.cs) | somente leitura | `DestaqueHeroRepository` | `ListarAtivosAsync` (ordenado) |
 
 **Não existe** porta para `VersaoComunicado` nem `ItemComunicado`, e isso é proposital:
@@ -210,7 +215,8 @@ ProviderNaoConfiguradoException ─► 501
 - `PreencherConteudo` não sobrescreve versão aprovada: a IA não desfaz em silêncio uma
   decisão humana.
 - `Aprovar` exige itens, ao menos um incluído, status `AguardandoRevisao` e o revisor
-  identificado. Sem revisor, a aprovação não serve como trilha de auditoria.
+  identificado: `Aprovar(Usuario, ...)` grava `RevisadoPorId` e o nome (`RevisadoPor`). Sem
+  revisor ativo, a aprovação não serve como trilha de auditoria.
 - `EditarItem` recusa texto vazio. Para voltar ao texto da IA, o caminho é reprocessar;
   para tirar o item, é excluir.
 - `Reabrir` não apaga `ComunicadoExportado` anteriores: o que já foi publicado
@@ -258,8 +264,6 @@ ProviderNaoConfiguradoException ─► 501
 
 ## O que ainda falta neste módulo
 
-- Mapear o fluxo de recuperação de senha (token de reset com expiração), se entrar no
-  escopo ([ADR-024](../../docs/decisoes-arquiteturais.md#adr-024--autenticação-jwt-stateless-argon2id-e-admin-inicial)).
 - Porta de renderização da exportação, se a opção escolhida em
   [P-03](../../docs/decisoes-arquiteturais.md#p-03--onde-mora-o-render-da-exportação)
   for essa.

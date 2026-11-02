@@ -6,8 +6,10 @@ concretos chegam por injeção de dependência.
 
 ```
 InvoiSys.Application/
+├── Autenticacao/
+│   └── RecuperacaoSenha.cs             # esqueci a senha: solicitar, reenviar, redefinir
 ├── Consulta/
-│   └── ConsultaReleases.cs             # listagem (resumo) e detalhe (agregado completo)
+│   └── ConsultaReleases.cs             # listagem (resumo), detalhe (agregado completo) e histórico de revisão
 ├── Pipeline/
 │   └── PipelineGeracaoReleaseNote.cs   # o caso de uso central
 ├── Revisao/
@@ -17,13 +19,30 @@ InvoiSys.Application/
 
 ---
 
+## `RecuperacaoSenha`
+
+Fluxo de "esqueci a senha" ([ADR-025](../../docs/decisoes-arquiteturais.md#adr-025--recuperação-de-senha-token-opaco-de-uso-único-e-resposta-uniforme)).
+
+**Dependências:** `IUsuarioRepository`, `ITokenRedefinicaoSenhaRepository`, `IHashSenha`,
+`IEnvioEmail`, `OpcoesRecuperacaoSenha` (URL base do link e cooldown) e `TimeProvider`.
+
+| Método | O que faz |
+|---|---|
+| `SolicitarAsync(email)` | Usuário ativo e fora do cooldown: invalida os tokens pendentes, gera um token (32 bytes), grava só o hash SHA-256 e envia o link `{UrlBase}#token=...`. Caso contrário, não faz nada e não avisa: a API responde igual |
+| `ReenviarAsync(email)` | Mesma regra de `SolicitarAsync` |
+| `RedefinirAsync(token, novaSenha)` | Valida a senha (8 a 128), consome o token de forma atômica, troca o hash e invalida os demais tokens. Falha → `TokenRedefinicaoInvalidoException` (422) |
+
+---
+
 ## `PipelineGeracaoReleaseNote`
 
 O caso de uso central. Recebe a chave de uma Release e devolve o agregado `Release` com
 a versão Cliente gerada e pronta para **revisão** (nunca publicada direto).
 
-**Dependências (construtor):** `IJiraClient`, `ILlmProvider`, `IReleaseRepository` e
-`string? modeloLlm` (rótulo do modelo para o log de execução).
+**Dependências (construtor):** `IJiraClient`, `ILlmProvider`, `IReleaseRepository`,
+`IUsuarioRepository`, `TimeProvider` e `string? modeloLlm` (rótulo do modelo para o log de
+execução). `ExecutarAsync(chaveRelease, usuarioId)` exige o usuário responsável (ativo, senão
+`RevisorInvalidoException`): ele fica no evento `processar` do histórico.
 
 ### `ExecutarAsync(chaveRelease)`: o que acontece, em ordem
 
@@ -110,16 +129,21 @@ mesmo caminho:
 ```
 1. release = IReleaseRepository.BuscarPorChaveJiraAsync(chave)
              ?? throw ReleaseNaoEncontradaException          → 404 na API
-2. release.Aprovar / Reprovar / Reabrir(..., publico)        ← regra mora no domínio
-   release.EditarItem / ExcluirItem / ReincluirItem(itemId, ...)
-3. IReleaseRepository.SalvarAsync(release)
+2. revisor = usuário do token (ativo, senão RevisorInvalidoException → 401)
+3. release.Aprovar / Reprovar / Reabrir(revisor, agora, publico)   ← regra mora no domínio
+   release.EditarItem / ExcluirItem / ReincluirItem(itemId, ..., revisor, agora)
+   (cada ação acrescenta um EventoRevisao a release.EventosPendentes)
+4. IReleaseRepository.SalvarAsync(release)    ← agregado + eventos, mesma transação
 ```
 
 As operações de item devolvem `ItemRevisado` (o item + o público da versão dona dele,
 via `Release.PublicoDoItem`), o bastante para a API montar a resposta sem refazer a busca.
 
 Nenhuma decisão de negócio aqui: o público chega já convertido e obrigatório (sem
-default para Cliente); revisor, motivo e texto de edição são validados pelo domínio.
+default para Cliente); motivo e texto de edição são validados pelo domínio. O revisor chega como id do usuário do token: `RevisaoComunicado` o carrega e recusa inexistente ou desativado (`RevisorInvalidoException`, 401).
+Todas as ações (inclusive reabrir e as de item) exigem o id do usuário autenticado: ele e o
+horário (`TimeProvider`) entram no histórico de revisão
+([ADR-027](../../docs/decisoes-arquiteturais.md#adr-027--histórico-de-revisão-é-uma-trilha-só-de-inclusão-gerada-pelo-agregado)).
 Registrado como **Scoped** (depende do repository, que é scoped).
 
 ---

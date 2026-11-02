@@ -1,3 +1,4 @@
+using InvoiSys.Application.Revisao;
 using InvoiSys.Domain.Entities;
 using InvoiSys.Domain.Enums;
 using InvoiSys.Domain.Ports;
@@ -9,17 +10,18 @@ public sealed class FormatoNaoSuportadoException(FormatoExportacao formato)
 
 public sealed class ExportacaoComunicado(
     IReleaseRepository releases,
-    IComunicadoExportadoRepository exportados)
+    IComunicadoExportadoRepository exportados,
+    IUsuarioRepository usuarios)
 {
-    public const string GeradorPadrao = "sistema";
-
     public async Task<ComunicadoExportado> ExportarAsync(
         string chaveRelease,
         PublicoAlvo publico,
         FormatoExportacao formato,
-        string? geradoPor,
+        Guid usuarioId,
         CancellationToken cancellationToken = default)
     {
+        var gerador = await UsuarioResponsavel.ObterAtivoAsync(usuarios, usuarioId, cancellationToken);
+
         var release = await releases.BuscarPorChaveJiraAsync(chaveRelease, cancellationToken)
             ?? throw new ReleaseNaoEncontradaException(chaveRelease);
 
@@ -38,7 +40,8 @@ public sealed class ExportacaoComunicado(
             formato,
             RenderizadorMarkdown.Renderizar(versao),
             null,
-            string.IsNullOrWhiteSpace(geradoPor) ? GeradorPadrao : geradoPor.Trim());
+            gerador.Nome,
+            gerador.Id);
 
         await exportados.AdicionarAsync(exportado, cancellationToken);
 

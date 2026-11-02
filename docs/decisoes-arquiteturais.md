@@ -41,6 +41,9 @@ histórico também é documentação.
 | [022](#adr-022--endpoint-só-chama-caso-de-uso-erros-de-revisão-padronizados) | Endpoint só chama caso de uso; erros de revisão padronizados | Aceita | 2026-10-03 |
 | [023](#adr-023--o-porquê-mora-na-documentação-não-em-comentário) | O porquê mora na documentação, não em comentário | Aceita | 2026-10-03 |
 | [024](#adr-024--autenticação-jwt-stateless-argon2id-e-admin-inicial) | Autenticação: JWT stateless, Argon2id e admin inicial | Aceita | 2026-10-11 |
+| [025](#adr-025--recuperação-de-senha-token-opaco-de-uso-único-e-resposta-uniforme) | Recuperação de senha: token opaco de uso único e resposta uniforme | Aceita | 2026-10-26 |
+| [026](#adr-026--rotas-de-release-exigem-token-e-o-revisor-vem-dele) | Rotas de Release exigem token e o revisor vem dele | Aceita | 2026-10-27 |
+| [027](#adr-027--histórico-de-revisão-é-uma-trilha-só-de-inclusão-gerada-pelo-agregado) | Histórico de revisão é uma trilha só de inclusão gerada pelo agregado | Aceita | 2026-11-03 |
 | [P-02](#p-02--desenho-da-autenticação) | Desenho da autenticação | **Resolvida** → ADR-024 | 2026-10-11 |
 | [P-03](#p-03--onde-mora-o-render-da-exportação) | Onde mora o render da exportação | **Proposta** | — |
 
@@ -600,6 +603,9 @@ entrada inválida. Sem regra explícita, cada PR inventava a sua.
 - ✅ Contrato de erro previsível para o frontend: 404 / 409 / 422.
 - ⚠️ Mais uma classe na Application por grupo de casos de uso.
 - Coberto por `ApiRevisaoTests` (HTTP) e `VersaoComunicadoTests` (domínio).
+- Atualização ([ADR-026](#adr-026--rotas-de-release-exigem-token-e-o-revisor-vem-dele)): o
+  revisor deixou de vir do corpo; vem do usuário do token, e quem não existe ou está
+  desativado é 401.
 
 ---
 
@@ -681,11 +687,168 @@ nasce o primeiro usuário.
 **Consequências.**
 - ✅ Sem estado de sessão no servidor; a API escala sem tabela nova.
 - ✅ Domínio e Application seguem sem dependência de criptografia.
-- ⚠️ Token emitido vale até expirar: desativar usuário só bloqueia novos logins até lá
-  (a checagem de `Ativo` por requisição fica para o #50).
+- ⚠️ Token emitido vale até expirar, mas a API consulta `Ativo` a cada requisição
+  ([ADR-026](#adr-026--rotas-de-release-exigem-token-e-o-revisor-vem-dele)): desativar o
+  usuário derruba o acesso na hora.
 - ⚠️ Trocar a chave JWT invalida todos os tokens emitidos.
 - ⚠️ Argon2id consome ~19 MiB por verificação; o login concorrente em massa pesa na
   memória do container.
+
+---
+
+## ADR-025 — Recuperação de senha: token opaco de uso único e resposta uniforme
+
+**Contexto.** O épico #47 prevê "esqueci a senha". O front espera `{ mensagem,
+expiraEmMinutos }`. Faltava decidir como guardar o token, como garantir uso único, o que
+a API revela e como limitar abuso.
+
+**Decisão.**
+
+- **Token opaco, não JWT:** 32 bytes aleatórios em base64url. No banco vai só o hash
+  SHA-256 em hex (`tokens_redefinicao_senha.token_hash`, único). SHA-256 e não Argon2id
+  porque o token tem 256 bits de entropia (não há dicionário a atacar) e a busca é por
+  igualdade no índice.
+- **Validade de 30 minutos** (`TokenRedefinicaoSenha.ValidadeMinutos`). `usado_em` serve
+  para "consumido" e para "invalidado" (reenvio ou troca de senha); a tabela não distingue
+  os dois.
+- **Uso único atômico:** `ConsumirAsync` faz `UPDATE ... WHERE usado_em IS NULL AND
+  expira_em > agora` e só quem afeta uma linha segue. Trocar a senha invalida todos os
+  outros tokens pendentes do usuário. A troca não é uma transação única: se salvar a
+  senha falhar depois de consumir o token, o usuário pede outro link.
+- **Resposta uniforme:** `forgot-password` e `resend-forgot-password` devolvem o mesmo 200
+  e o mesmo corpo para e-mail existente, inexistente ou de usuário desativado. `resend` é
+  a mesma regra de `forgot` (emitir já invalida o anterior). Token inválido, expirado e já
+  usado são o mesmo 422 com a mesma mensagem.
+- **Rate limit** (nenhum existia): `RateLimiter` nativo do ASP.NET, uma política
+  (`esqueci-senha`) compartilhada pelos dois endpoints de envio, janela fixa por IP
+  (`Auth__RecuperacaoSenha__LimiteRequisicoes`, `__JanelaMinutos`; padrão 5 por 15 min),
+  resposta 429 com `Retry-After`. Mais um **cooldown por usuário** no caso de uso
+  (`__CooldownSegundos`, padrão 60): dentro dele não se emite nem se envia outro e-mail,
+  e a resposta continua igual. Isso impede mail-bomb contra um e-mail alheio.
+- **E-mail:** porta `IEnvioEmail` no domínio. O adapter `EnvioEmailPendente` **não lança**
+  (diferente de [ADR-014](#adr-014--adapters-pendente-quando-falta-credencial-501-honesto)):
+  escreve o link no log em `Warning`, porque sem ele o fluxo ficaria inutilizável até o
+  SMTP existir. SMTP real é issue futura.
+- **Link:** `{Auth__RecuperacaoSenha__UrlBase}#token=<token>`. O fragmento não vai ao
+  servidor nem a logs de proxy ou `Referer`. `UrlBase` é obrigatória: sem ela a API não sobe.
+- **Política de senha nova:** 8 a 128 caracteres (`Usuario.ValidarSenhaNova`); o teto evita
+  custo abusivo no Argon2id.
+
+**Consequências.**
+- ✅ Vazamento do banco não entrega tokens utilizáveis.
+- ✅ Não dá para descobrir cadastros pelas respostas.
+- ⚠️ Com o adapter pendente, o link (um segredo) fica no log: só serve para desenvolvimento.
+- ⚠️ O limite é em memória, por instância e por IP; atrás de proxy é preciso configurar
+  `ForwardedHeaders`, senão todos caem no IP do proxy. Redis só quando houver réplicas.
+- ⚠️ A resposta para e-mail inexistente é um pouco mais rápida. Com SMTP real, o envio deve
+  sair da requisição (fila) para fechar esse canal de tempo.
+- ⚠️ Trocar a senha não derruba JWTs já emitidos (até 8 h), conforme a
+  [ADR-024](#adr-024--autenticação-jwt-stateless-argon2id-e-admin-inicial).
+
+---
+
+## ADR-026 — Rotas de Release exigem token e o revisor vem dele
+
+**Contexto.** Qualquer um chamava `/api/v1/releases/**` e o revisor (`aprovadoPor`,
+`revisadoPor`) era texto livre no corpo: a trilha de auditoria da revisão humana
+([ADR-007](#adr-007--revisão-humana-como-invariante-do-domínio-entidades-ricas)) dependia da
+palavra do cliente. A pendência 1 da modelagem pedia FK para `usuarios`.
+
+**Decisão.**
+
+- **Autenticação obrigatória:** todo o grupo `/api/v1/releases` (consulta, processar,
+  revisão, itens) usa `RequireAuthorization()`. Ficam públicos `/health` e
+  `/api/v1/auth/*` (esqueci-senha). Um teste percorre o `EndpointDataSource` e falha se
+  uma rota de negócio nova ficar sem autorização.
+- **Revisor vem do token:** `aprovadoPor` e `revisadoPor` saem de `AprovarIn` e
+  `ReprovarIn`. O endpoint lê o claim `sub`; `RevisaoComunicado` carrega o `Usuario` e o
+  domínio (`VersaoComunicado.Aprovar/Reprovar(Usuario, ...)`) exige revisor identificado e
+  ativo. Campo antigo enviado no corpo é ignorado.
+- **FK para usuários:** `versoes_comunicado.revisado_por_id` e
+  `comunicados_exportados.gerado_por_id`, anuláveis, `ON DELETE RESTRICT`. As colunas de
+  texto continuam e guardam o **nome exibido** no momento da decisão (histórico legível
+  mesmo se o cadastro mudar). Usuário nunca é apagado, só desativado.
+- **Registros antigos:** ficam com o id nulo e o texto preservado, sem backfill: o texto
+  era livre e não dá para ligá-lo a um usuário com segurança.
+- **Usuário desativado:** `OnTokenValidated` consulta o usuário a cada requisição e rejeita
+  token de quem não existe ou está inativo (401). Custa uma consulta por requisição.
+- **Exportação (#24):** `POST /releases/{chave}/exportar` exige o token; o gerador vem do usuário
+  autenticado (`gerado_por_id` e o nome em `gerado_por`), e `geradoPor` saiu do corpo.
+
+**Consequências.**
+- ✅ Revisão e exportação ficam atribuídas a um usuário real, com integridade referencial.
+- ✅ Migration só adiciona (colunas anuláveis, índices, FKs): sem `DROP` no `Up`.
+- ⚠️ Uma consulta ao banco por requisição autenticada.
+- ⚠️ Qualquer usuário autenticado revisa: não há RBAC por papel nesta fatia.
+- ⚠️ Edição, exclusão e reinclusão de itens ainda não registram quem agiu (#53).
+
+---
+
+## ADR-027 — Histórico de revisão é uma trilha só de inclusão gerada pelo agregado
+
+**Contexto.** `versoes_comunicado.revisado_por`/`revisado_em` guardam só o estado atual:
+na sequência aprovar → reabrir → aprovar perde-se quem aprovou primeiro e quem reabriu, e
+editar, excluir e reincluir item não registram quem agiu. A auditoria da revisão humana
+([ADR-007](#adr-007--revisão-humana-como-invariante-do-domínio-entidades-ricas)) precisa
+da história, não só do retrato.
+
+**Opções consideradas.**
+1. Tabela de auditoria preenchida por quem chama (caso de uso ou endpoint).
+2. Trigger no banco que copia a linha a cada UPDATE.
+3. Eventos gerados pelo próprio agregado `Release` e gravados pelo repository na mesma
+   transação.
+
+**Decisão.** Opção 3.
+
+- **Tabela `eventos_revisao`, só de inclusão:** `id`, `sequencia` (identity, desempate
+  estável da ordem), `release_id`, `versao_id`, `item_id` (anulável), `acao`, `usuario_id`,
+  `ocorrido_em`, `detalhe` (`jsonb`). `acao` é texto com CHECK (`processar`, `aprovar`,
+  `reprovar`, `reabrir`, `editar_item`, `excluir_item`, `reincluir_item`), como os demais
+  vocabulários ([ADR-018](#adr-018--categorias-e-públicos-fixos)).
+- **Só inclusão garantida no banco, não só por convenção:** diferente de
+  `comunicados_exportados` (porta sem método de escrita), aqui um trigger recusa `UPDATE` e
+  `DELETE` por linha e `TRUNCATE`. As FKs para `releases`, `versoes_comunicado` e `usuarios`
+  são `RESTRICT`: nem apagar a Release leva a auditoria junto.
+- **O agregado gera os eventos:** cada método da `Release` que executa uma ação
+  (`ConcluirProcessamento`, `Aprovar`, `Reprovar`, `Reabrir`, `EditarItem`, `ExcluirItem`,
+  `ReincluirItem`) exige o `Usuario` responsável (ativo) e o horário, muda o estado e só
+  então acrescenta um `EventoRevisao` a `EventosPendentes`. Os mutadores de
+  `VersaoComunicado` e `ItemComunicado` são `internal` e o construtor do evento também: a
+  `Release` é o único caminho, então nenhuma ação acontece sem evento (um teste por reflexão
+  falha se voltar a existir método público mutador).
+- **O repository grava na mesma transação:** `ReleaseRepository.SalvarAsync` faz
+  `AddRange(EventosPendentes)` e um único `SaveChangesAsync` (a transação implícita do EF);
+  só depois limpa a fila (`LimparEventosPendentes`). Segue o princípio de
+  `ExecucaoPipeline` (o agregado produz, o repository persiste junto), mas sem navegação
+  nem `Include`: o histórico cresce sem limite e carregá-lo a cada revisão seria custo sem uso.
+  A leitura é uma porta somente leitura (`IHistoricoRevisaoRepository`,
+  [ADR-009](#adr-009--repository-por-agregado-portas-de-leitura-isoladas)).
+- **`item_id` sem FK:** os itens são apagados e recriados quando a versão é reprocessada;
+  uma FK `RESTRICT` bloquearia o pipeline e `CASCADE`/`SET NULL` reescreveria a auditoria.
+  O `detalhe` guarda o texto, então o evento continua legível.
+- **Detalhe por ação:** `processar` `{ totalItens }`; `reprovar` `{ motivo }`;
+  `editar_item` `{ textoAnterior, textoNovo }`; `excluir_item` `{ motivo, texto }`;
+  `reincluir_item` `{ texto }`; `aprovar` e `reabrir` sem detalhe (a aprovação anterior
+  fica preservada por ser uma linha própria).
+- **`revisado_por_id`/`revisado_por`/`revisado_em` continuam** como retrato do estado atual
+  da versão (a consulta e o gate de exportação não reconstroem o histórico). O histórico é a
+  fonte da auditoria e esses campos são o último `aprovar`/`reprovar`, gravados na mesma
+  transação; um teste de persistência garante a consistência.
+- **`processar` só em caso de sucesso:** a falha técnica já fica em `execucoes_pipeline`.
+- **Endpoint:** `GET /api/v1/releases/{chaveRelease}/historico` devolve a linha do tempo em
+  ordem cronológica (`sequencia`), com ação, público, item, usuário (id e nome), horário e detalhe.
+- **Usuário responsável em todas as ações:** reabrir, itens e processar também exigem o
+  token (o `sub` vira o usuário no caso de uso, 401 se não existe ou está desativado).
+
+**Consequências.**
+- ✅ Aprovar → reabrir → aprovar deixa três linhas, com quem fez cada uma.
+- ✅ Editar, excluir e reincluir item têm autoria e o texto anterior.
+- ✅ O banco recusa reescrever a história, mesmo por SQL direto.
+- ⚠️ Registros anteriores a esta fatia não têm eventos (sem backfill): a história começa no deploy.
+- ⚠️ Não se apaga uma Release nem um usuário que tenha histórico (RESTRICT).
+- ⚠️ O nome do usuário vem de um join; se um dia o nome puder mudar, avaliar guardá-lo no evento.
+- ⚠️ A mudança de assinatura (`Usuario` + horário em toda ação) é intencional: quem chama
+  sem usuário não compila.
 
 ---
 

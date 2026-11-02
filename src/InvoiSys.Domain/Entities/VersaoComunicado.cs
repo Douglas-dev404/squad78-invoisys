@@ -40,6 +40,8 @@ public sealed class VersaoComunicado
     public IReadOnlyList<ItemComunicado> ItensPublicaveis =>
         [.. _itens.Where(item => item.Incluido)];
 
+    public Guid? RevisadoPorId { get; private set; }
+
     public string? RevisadoPor { get; private set; }
 
     public DateTimeOffset? RevisadoEm { get; private set; }
@@ -51,7 +53,7 @@ public sealed class VersaoComunicado
     public bool ProntaParaExportar =>
         Status == StatusRevisao.Aprovado && ItensPublicaveis.Count > 0;
 
-    public void PreencherConteudo(
+    internal void PreencherConteudo(
         IEnumerable<ItemComunicado> itens,
         string tituloExecutivo,
         string resumoExecutivo)
@@ -69,9 +71,9 @@ public sealed class VersaoComunicado
         Status = StatusRevisao.AguardandoRevisao;
     }
 
-    public void Aprovar(string revisadoPor, DateTimeOffset agora)
+    internal void Aprovar(Usuario revisor, DateTimeOffset agora)
     {
-        ExigirRevisor(revisadoPor);
+        ExigirRevisor(revisor);
 
         if (_itens.Count == 0)
         {
@@ -94,12 +96,13 @@ public sealed class VersaoComunicado
         }
 
         Status = StatusRevisao.Aprovado;
-        RevisadoPor = revisadoPor;
+        RevisadoPorId = revisor.Id;
+        RevisadoPor = revisor.Nome;
         RevisadoEm = agora;
         MotivoReprovacao = null;
     }
 
-    public void EditarItem(ItemComunicado item, string texto)
+    internal void EditarItem(ItemComunicado item, string texto)
     {
         if (string.IsNullOrWhiteSpace(texto))
         {
@@ -112,13 +115,13 @@ public sealed class VersaoComunicado
         item.EditarManualmente(texto.Trim());
     }
 
-    public void ExcluirItem(ItemComunicado item, string? motivo)
+    internal void ExcluirItem(ItemComunicado item, string? motivo)
     {
         GarantirQuePodeAlterarItem(item);
         item.Excluir(string.IsNullOrWhiteSpace(motivo) ? null : motivo.Trim());
     }
 
-    public void ReincluirItem(ItemComunicado item)
+    internal void ReincluirItem(ItemComunicado item)
     {
         GarantirQuePodeAlterarItem(item);
         item.Reincluir();
@@ -140,9 +143,9 @@ public sealed class VersaoComunicado
         }
     }
 
-    public void Reprovar(string revisadoPor, string motivo, DateTimeOffset agora)
+    internal void Reprovar(Usuario revisor, string motivo, DateTimeOffset agora)
     {
-        ExigirRevisor(revisadoPor);
+        ExigirRevisor(revisor);
 
         if (string.IsNullOrWhiteSpace(motivo))
         {
@@ -159,12 +162,13 @@ public sealed class VersaoComunicado
         }
 
         Status = StatusRevisao.Reprovado;
-        RevisadoPor = revisadoPor;
+        RevisadoPorId = revisor.Id;
+        RevisadoPor = revisor.Nome;
         RevisadoEm = agora;
         MotivoReprovacao = motivo;
     }
 
-    public void Reabrir()
+    internal void Reabrir()
     {
         if (Status != StatusRevisao.Aprovado)
         {
@@ -174,17 +178,18 @@ public sealed class VersaoComunicado
         }
 
         Status = StatusRevisao.AguardandoRevisao;
+        RevisadoPorId = null;
         RevisadoPor = null;
         RevisadoEm = null;
     }
 
-    private static void ExigirRevisor(string revisadoPor)
+    private static void ExigirRevisor(Usuario? revisor)
     {
-        if (string.IsNullOrWhiteSpace(revisadoPor))
+        if (revisor is null || !revisor.Ativo)
         {
             throw new ArgumentException(
-                "Revisão exige identificar o revisor — é a trilha de auditoria da decisão humana.",
-                nameof(revisadoPor));
+                "Revisão exige um revisor identificado e ativo — é a trilha de auditoria da decisão humana.",
+                nameof(revisor));
         }
     }
 }

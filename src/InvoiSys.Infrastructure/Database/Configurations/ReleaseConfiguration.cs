@@ -63,6 +63,7 @@ public sealed class ReleaseConfiguration : IEntityTypeConfiguration<Release>
             .HasField("_execucoes")
             .UsePropertyAccessMode(PropertyAccessMode.Field);
 
+        builder.Ignore(r => r.EventosPendentes);
         builder.Ignore(r => r.ProntaParaExportar);
         builder.Ignore(r => r.VersaoCliente);
         builder.Ignore(r => r.TituloExecutivo);

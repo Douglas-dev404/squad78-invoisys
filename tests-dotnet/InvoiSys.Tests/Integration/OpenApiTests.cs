@@ -58,6 +58,9 @@ public class OpenApiTests
             .ToList();
 
         caminhos.Should().BeEquivalentTo([
+            "/api/v1/auth/forgot-password",
+            "/api/v1/auth/resend-forgot-password",
+            "/api/v1/auth/reset-password",
             "/health",
             "/api/v1/releases",
             "/api/v1/releases/{chaveRelease}",
@@ -65,6 +68,7 @@ public class OpenApiTests
             "/api/v1/releases/{chaveRelease}/reprovar",
             "/api/v1/releases/{chaveRelease}/reabrir",
             "/api/v1/releases/{chaveRelease}/historias",
+            "/api/v1/releases/{chaveRelease}/historico",
             "/api/v1/releases/{chaveRelease}/processar",
             "/api/v1/releases/{chaveRelease}/itens/{itemId}",
             "/api/v1/releases/{chaveRelease}/itens/{itemId}/excluir",

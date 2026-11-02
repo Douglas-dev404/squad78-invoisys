@@ -28,7 +28,11 @@ public sealed class ReleaseRepository(InvoiSysDbContext contexto) : IReleaseRepo
             _contexto.Releases.Add(release);
         }
 
+        _contexto.EventosRevisao.AddRange(release.EventosPendentes);
+
         await _contexto.SaveChangesAsync(cancellationToken);
+
+        release.LimparEventosPendentes();
     }
 
     public async Task<IReadOnlyList<ReleaseResumo>> ListarResumosAsync(

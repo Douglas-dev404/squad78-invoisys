@@ -1,5 +1,8 @@
+using System.Security.Claims;
+using InvoiSys.Api.Autenticacao;
 using InvoiSys.Api.Contracts;
 using InvoiSys.Application.Exportacao;
+using InvoiSys.Application.Revisao;
 using InvoiSys.Domain.Entities;
 using InvoiSys.Domain.Enums;
 using Microsoft.AspNetCore.Mvc;
@@ -10,7 +13,9 @@ public static class ExportacaoEndpoints
 {
     public static IEndpointRouteBuilder MapExportacaoEndpoints(this IEndpointRouteBuilder rotas)
     {
-        var grupo = rotas.MapGroup("/api/v1/releases").WithTags("exportacao");
+        var grupo = rotas.MapGroup("/api/v1/releases").WithTags("exportacao")
+            .RequireAuthorization()
+            .ProducesProblem(StatusCodes.Status401Unauthorized);
 
         grupo.MapPost("/{chaveRelease}/exportar", ExportarAsync)
             .WithName("ExportarRelease")
@@ -26,9 +31,15 @@ public static class ExportacaoEndpoints
     private static async Task<IResult> ExportarAsync(
         string chaveRelease,
         [FromBody] ExportarIn corpo,
+        ClaimsPrincipal usuario,
         [FromServices] ExportacaoComunicado exportacao,
         CancellationToken cancellationToken)
     {
+        if (!UsuarioAutenticado.TentarObterId(usuario, out var usuarioId))
+        {
+            return Results.Unauthorized();
+        }
+
         if (!PublicoAlvoExtensions.TentarConverter(corpo.Publico, out var publico))
         {
             return Results.Problem(
@@ -51,7 +62,7 @@ public static class ExportacaoEndpoints
                 chaveRelease,
                 publico,
                 formato,
-                corpo.GeradoPor,
+                usuarioId,
                 cancellationToken);
 
             return Results.Created(
@@ -66,6 +77,7 @@ public static class ExportacaoEndpoints
 
     private static IResult? MapearFalhaDeExportacao(Exception exc) => exc switch
     {
+        RevisorInvalidoException => Results.Unauthorized(),
         ReleaseNaoEncontradaException =>
             Results.Problem(detail: exc.Message, statusCode: StatusCodes.Status404NotFound),
         ReleaseNaoAprovadaException or ReleaseSemItensProcessadosException =>
