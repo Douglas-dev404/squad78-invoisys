@@ -1,10 +1,12 @@
 using InvoiSys.Api.Endpoints;
+using InvoiSys.Api.Validacao;
 using InvoiSys.Application;
 using System.Text;
 using InvoiSys.Infrastructure;
 using InvoiSys.Infrastructure.Auth;
 using InvoiSys.Infrastructure.Configuration;
 using InvoiSys.Infrastructure.Database;
+using InvoiSys.Domain.Entities;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
@@ -19,6 +21,7 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddOpenApi();
 builder.Services.AddInfrastructure(builder.Configuration);
 builder.Services.AddApplication(builder.Configuration);
+builder.Services.AddValidacaoDeEntrada();
 
 var auth = builder.Configuration.GetSection(AuthOptions.SecaoConfig).Get<AuthOptions>()!;
 builder.Services
@@ -37,7 +40,8 @@ builder.Services
             RoleClaimType = "role",
         };
     });
-builder.Services.AddAuthorization();
+builder.Services.AddAuthorization(opcoes =>
+    opcoes.AddPolicy("Admin", politica => politica.RequireRole(Usuario.PapelAdmin)));
 
 var app = builder.Build();
 
@@ -76,6 +80,7 @@ app.MapReleaseEndpoints();
 app.MapRevisaoEndpoints();
 app.MapItemComunicadoEndpoints();
 app.MapExportacaoEndpoints();
+app.MapUsuarioEndpoints();
 
 app.Run();
 return 0;
