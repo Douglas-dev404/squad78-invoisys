@@ -69,7 +69,9 @@ public class OpenApiTests
             "/api/v1/releases/{chaveRelease}/itens/{itemId}",
             "/api/v1/releases/{chaveRelease}/itens/{itemId}/excluir",
             "/api/v1/releases/{chaveRelease}/itens/{itemId}/reincluir",
-            "/api/v1/releases/{chaveRelease}/exportar"
+            "/api/v1/releases/{chaveRelease}/exportar",
+            "/api/v1/usuarios",
+            "/api/v1/usuarios/{id}/desativar"
         ]);
     }
 
