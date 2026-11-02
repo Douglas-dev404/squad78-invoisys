@@ -77,20 +77,24 @@ public static class RevisaoEndpoints
     private static Task<IResult> ReabrirAsync(
         string chaveRelease,
         [FromBody] ReabrirIn corpo,
+        ClaimsPrincipal usuario,
         [FromServices] RevisaoComunicado revisao,
         CancellationToken cancellationToken) =>
         RevisarAsync(
             corpo.Publico,
-            null,
-            (publico, _) => revisao.ReabrirAsync(chaveRelease, publico, cancellationToken));
+            usuario,
+            (publico, revisorId) => revisao.ReabrirAsync(
+                chaveRelease,
+                publico,
+                revisorId,
+                cancellationToken));
 
     private static async Task<IResult> RevisarAsync(
         string? publicoInformado,
-        ClaimsPrincipal? usuario,
+        ClaimsPrincipal usuario,
         Func<PublicoAlvo, Guid, Task> revisao)
     {
-        var revisorId = Guid.Empty;
-        if (usuario is not null && !UsuarioAutenticado.TentarObterId(usuario, out revisorId))
+        if (!UsuarioAutenticado.TentarObterId(usuario, out var revisorId))
         {
             return Results.Unauthorized();
         }

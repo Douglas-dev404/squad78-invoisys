@@ -2,6 +2,7 @@ using FluentAssertions;
 using InvoiSys.Domain.Entities;
 using InvoiSys.Domain.Enums;
 using InvoiSys.Infrastructure.Database;
+using InvoiSys.Tests.Unit;
 using Microsoft.EntityFrameworkCore;
 
 namespace InvoiSys.Tests.Integration;

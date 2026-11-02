@@ -20,7 +20,11 @@ com `JwtEmissorToken` e a chave de `ConfiguracaoDeTestes`; `services.ComUsuarios
 registra o `FakeUsuarioRepository` (a API consulta o usuário a cada requisição, então todo
 teste de API precisa dele); `app.CriarClienteAutenticado()` devolve um `HttpClient` com o
 Bearer do revisor padrão. Testes de persistência usam `fixture.SalvarRevisorAsync()`, porque
-`revisado_por_id` é FK para `usuarios`.
+`revisado_por_id` e `eventos_revisao.usuario_id` são FK para `usuarios`; a fixture também grava
+o revisor padrão (`AutenticacaoDeTeste.Revisor`) no início, e `Unit/ReleaseDeTesteExtensions`
+mantém as chamadas curtas (`release.Aprovar(...)`, `ConcluirProcessamento(itens, t, r)`) usando
+esse usuário. Como `eventos_revisao` é só de inclusão, **nenhum teste limpa a tabela**: ele
+filtra pela Release que criou.
 
 ### Vendo o EF Core persistir
 

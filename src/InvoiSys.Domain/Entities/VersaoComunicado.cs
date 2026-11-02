@@ -53,7 +53,7 @@ public sealed class VersaoComunicado
     public bool ProntaParaExportar =>
         Status == StatusRevisao.Aprovado && ItensPublicaveis.Count > 0;
 
-    public void PreencherConteudo(
+    internal void PreencherConteudo(
         IEnumerable<ItemComunicado> itens,
         string tituloExecutivo,
         string resumoExecutivo)
@@ -71,7 +71,7 @@ public sealed class VersaoComunicado
         Status = StatusRevisao.AguardandoRevisao;
     }
 
-    public void Aprovar(Usuario revisor, DateTimeOffset agora)
+    internal void Aprovar(Usuario revisor, DateTimeOffset agora)
     {
         ExigirRevisor(revisor);
 
@@ -102,7 +102,7 @@ public sealed class VersaoComunicado
         MotivoReprovacao = null;
     }
 
-    public void EditarItem(ItemComunicado item, string texto)
+    internal void EditarItem(ItemComunicado item, string texto)
     {
         if (string.IsNullOrWhiteSpace(texto))
         {
@@ -115,13 +115,13 @@ public sealed class VersaoComunicado
         item.EditarManualmente(texto.Trim());
     }
 
-    public void ExcluirItem(ItemComunicado item, string? motivo)
+    internal void ExcluirItem(ItemComunicado item, string? motivo)
     {
         GarantirQuePodeAlterarItem(item);
         item.Excluir(string.IsNullOrWhiteSpace(motivo) ? null : motivo.Trim());
     }
 
-    public void ReincluirItem(ItemComunicado item)
+    internal void ReincluirItem(ItemComunicado item)
     {
         GarantirQuePodeAlterarItem(item);
         item.Reincluir();
@@ -143,7 +143,7 @@ public sealed class VersaoComunicado
         }
     }
 
-    public void Reprovar(Usuario revisor, string motivo, DateTimeOffset agora)
+    internal void Reprovar(Usuario revisor, string motivo, DateTimeOffset agora)
     {
         ExigirRevisor(revisor);
 
@@ -168,7 +168,7 @@ public sealed class VersaoComunicado
         MotivoReprovacao = motivo;
     }
 
-    public void Reabrir()
+    internal void Reabrir()
     {
         if (Status != StatusRevisao.Aprovado)
         {

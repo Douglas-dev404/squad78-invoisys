@@ -20,6 +20,8 @@ public static class DependencyInjection
             provider.GetRequiredService<IJiraClient>(),
             provider.GetRequiredService<ILlmProvider>(),
             provider.GetRequiredService<IReleaseRepository>(),
+            provider.GetRequiredService<IUsuarioRepository>(),
+            provider.GetRequiredService<TimeProvider>(),
             configuration["OpenRouter:Modelo"]));
 
         services.AddScoped(provider =>

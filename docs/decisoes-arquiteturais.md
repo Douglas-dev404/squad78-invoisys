@@ -43,6 +43,7 @@ histórico também é documentação.
 | [024](#adr-024--autenticação-jwt-stateless-argon2id-e-admin-inicial) | Autenticação: JWT stateless, Argon2id e admin inicial | Aceita | 2026-10-11 |
 | [025](#adr-025--recuperação-de-senha-token-opaco-de-uso-único-e-resposta-uniforme) | Recuperação de senha: token opaco de uso único e resposta uniforme | Aceita | 2026-10-26 |
 | [026](#adr-026--rotas-de-release-exigem-token-e-o-revisor-vem-dele) | Rotas de Release exigem token e o revisor vem dele | Aceita | 2026-10-27 |
+| [027](#adr-027--histórico-de-revisão-é-uma-trilha-só-de-inclusão-gerada-pelo-agregado) | Histórico de revisão é uma trilha só de inclusão gerada pelo agregado | Aceita | 2026-11-03 |
 | [P-02](#p-02--desenho-da-autenticação) | Desenho da autenticação | **Resolvida** → ADR-024 | 2026-10-11 |
 | [P-03](#p-03--onde-mora-o-render-da-exportação) | Onde mora o render da exportação | **Proposta** | — |
 
@@ -781,6 +782,74 @@ palavra do cliente. A pendência 1 da modelagem pedia FK para `usuarios`.
 - ⚠️ Uma consulta ao banco por requisição autenticada.
 - ⚠️ Qualquer usuário autenticado revisa: não há RBAC por papel nesta fatia.
 - ⚠️ Edição, exclusão e reinclusão de itens ainda não registram quem agiu (#53).
+
+---
+
+## ADR-027 — Histórico de revisão é uma trilha só de inclusão gerada pelo agregado
+
+**Contexto.** `versoes_comunicado.revisado_por`/`revisado_em` guardam só o estado atual:
+na sequência aprovar → reabrir → aprovar perde-se quem aprovou primeiro e quem reabriu, e
+editar, excluir e reincluir item não registram quem agiu. A auditoria da revisão humana
+([ADR-007](#adr-007--revisão-humana-como-invariante-do-domínio-entidades-ricas)) precisa
+da história, não só do retrato.
+
+**Opções consideradas.**
+1. Tabela de auditoria preenchida por quem chama (caso de uso ou endpoint).
+2. Trigger no banco que copia a linha a cada UPDATE.
+3. Eventos gerados pelo próprio agregado `Release` e gravados pelo repository na mesma
+   transação.
+
+**Decisão.** Opção 3.
+
+- **Tabela `eventos_revisao`, só de inclusão:** `id`, `sequencia` (identity, desempate
+  estável da ordem), `release_id`, `versao_id`, `item_id` (anulável), `acao`, `usuario_id`,
+  `ocorrido_em`, `detalhe` (`jsonb`). `acao` é texto com CHECK (`processar`, `aprovar`,
+  `reprovar`, `reabrir`, `editar_item`, `excluir_item`, `reincluir_item`), como os demais
+  vocabulários ([ADR-018](#adr-018--categorias-e-públicos-fixos)).
+- **Só inclusão garantida no banco, não só por convenção:** diferente de
+  `comunicados_exportados` (porta sem método de escrita), aqui um trigger recusa `UPDATE` e
+  `DELETE` por linha e `TRUNCATE`. As FKs para `releases`, `versoes_comunicado` e `usuarios`
+  são `RESTRICT`: nem apagar a Release leva a auditoria junto.
+- **O agregado gera os eventos:** cada método da `Release` que executa uma ação
+  (`ConcluirProcessamento`, `Aprovar`, `Reprovar`, `Reabrir`, `EditarItem`, `ExcluirItem`,
+  `ReincluirItem`) exige o `Usuario` responsável (ativo) e o horário, muda o estado e só
+  então acrescenta um `EventoRevisao` a `EventosPendentes`. Os mutadores de
+  `VersaoComunicado` e `ItemComunicado` são `internal` e o construtor do evento também: a
+  `Release` é o único caminho, então nenhuma ação acontece sem evento (um teste por reflexão
+  falha se voltar a existir método público mutador).
+- **O repository grava na mesma transação:** `ReleaseRepository.SalvarAsync` faz
+  `AddRange(EventosPendentes)` e um único `SaveChangesAsync` (a transação implícita do EF);
+  só depois limpa a fila (`LimparEventosPendentes`). Segue o princípio de
+  `ExecucaoPipeline` (o agregado produz, o repository persiste junto), mas sem navegação
+  nem `Include`: o histórico cresce sem limite e carregá-lo a cada revisão seria custo sem uso.
+  A leitura é uma porta somente leitura (`IHistoricoRevisaoRepository`,
+  [ADR-009](#adr-009--repository-por-agregado-portas-de-leitura-isoladas)).
+- **`item_id` sem FK:** os itens são apagados e recriados quando a versão é reprocessada;
+  uma FK `RESTRICT` bloquearia o pipeline e `CASCADE`/`SET NULL` reescreveria a auditoria.
+  O `detalhe` guarda o texto, então o evento continua legível.
+- **Detalhe por ação:** `processar` `{ totalItens }`; `reprovar` `{ motivo }`;
+  `editar_item` `{ textoAnterior, textoNovo }`; `excluir_item` `{ motivo, texto }`;
+  `reincluir_item` `{ texto }`; `aprovar` e `reabrir` sem detalhe (a aprovação anterior
+  fica preservada por ser uma linha própria).
+- **`revisado_por_id`/`revisado_por`/`revisado_em` continuam** como retrato do estado atual
+  da versão (a consulta e o gate de exportação não reconstroem o histórico). O histórico é a
+  fonte da auditoria e esses campos são o último `aprovar`/`reprovar`, gravados na mesma
+  transação; um teste de persistência garante a consistência.
+- **`processar` só em caso de sucesso:** a falha técnica já fica em `execucoes_pipeline`.
+- **Endpoint:** `GET /api/v1/releases/{chaveRelease}/historico` devolve a linha do tempo em
+  ordem cronológica (`sequencia`), com ação, público, item, usuário (id e nome), horário e detalhe.
+- **Usuário responsável em todas as ações:** reabrir, itens e processar também exigem o
+  token (o `sub` vira o usuário no caso de uso, 401 se não existe ou está desativado).
+
+**Consequências.**
+- ✅ Aprovar → reabrir → aprovar deixa três linhas, com quem fez cada uma.
+- ✅ Editar, excluir e reincluir item têm autoria e o texto anterior.
+- ✅ O banco recusa reescrever a história, mesmo por SQL direto.
+- ⚠️ Registros anteriores a esta fatia não têm eventos (sem backfill): a história começa no deploy.
+- ⚠️ Não se apaga uma Release nem um usuário que tenha histórico (RESTRICT).
+- ⚠️ O nome do usuário vem de um join; se um dia o nome puder mudar, avaliar guardá-lo no evento.
+- ⚠️ A mudança de assinatura (`Usuario` + horário em toda ação) é intencional: quem chama
+  sem usuário não compila.
 
 ---
 

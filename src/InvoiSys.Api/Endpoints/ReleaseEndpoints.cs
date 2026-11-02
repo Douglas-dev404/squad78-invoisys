@@ -1,6 +1,9 @@
+using System.Security.Claims;
+using InvoiSys.Api.Autenticacao;
 using InvoiSys.Api.Contracts;
 using InvoiSys.Application.Consulta;
 using InvoiSys.Application.Pipeline;
+using InvoiSys.Application.Revisao;
 using InvoiSys.Domain.Entities;
 using InvoiSys.Domain.Enums;
 using InvoiSys.Domain.Ports;
@@ -35,6 +38,12 @@ public static class ReleaseEndpoints
             .Produces<ReleaseOut>()
             .ProducesProblem(StatusCodes.Status501NotImplemented)
             .ProducesProblem(StatusCodes.Status502BadGateway);
+
+        grupo.MapGet("/{chaveRelease}/historico", HistoricoAsync)
+            .WithName("HistoricoRevisao")
+            .WithSummary("Linha do tempo da revisão: quem processou, aprovou, reprovou, reabriu ou alterou itens.")
+            .Produces<IReadOnlyList<EventoRevisaoOut>>()
+            .ProducesProblem(StatusCodes.Status404NotFound);
 
         grupo.MapPost("/{chaveRelease}/processar", ProcessarReleaseAsync)
             .WithName("ProcessarRelease")
@@ -143,14 +152,37 @@ public static class ReleaseEndpoints
         }
     }
 
-    private static async Task<IResult> ProcessarReleaseAsync(
+    private static async Task<IResult> HistoricoAsync(
         string chaveRelease,
-        [FromServices] PipelineGeracaoReleaseNote pipeline,
+        [FromServices] ConsultaReleases consulta,
         CancellationToken cancellationToken)
     {
         try
         {
-            var release = await pipeline.ExecutarAsync(chaveRelease, cancellationToken);
+            var eventos = await consulta.HistoricoAsync(chaveRelease, cancellationToken);
+
+            return Results.Ok(eventos.Select(EventoRevisaoOut.De).ToList());
+        }
+        catch (ReleaseNaoEncontradaException exc)
+        {
+            return Results.Problem(detail: exc.Message, statusCode: StatusCodes.Status404NotFound);
+        }
+    }
+
+    private static async Task<IResult> ProcessarReleaseAsync(
+        string chaveRelease,
+        ClaimsPrincipal usuario,
+        [FromServices] PipelineGeracaoReleaseNote pipeline,
+        CancellationToken cancellationToken)
+    {
+        if (!UsuarioAutenticado.TentarObterId(usuario, out var usuarioId))
+        {
+            return Results.Unauthorized();
+        }
+
+        try
+        {
+            var release = await pipeline.ExecutarAsync(chaveRelease, usuarioId, cancellationToken);
 
             return Results.Ok(new ReleaseProcessadaOut(
                 ChaveJira: release.ChaveJira,
@@ -161,6 +193,10 @@ public static class ReleaseEndpoints
                     i.Categoria.ParaValor(),
                     i.Texto,
                     i.Origens))]));
+        }
+        catch (RevisorInvalidoException)
+        {
+            return Results.Unauthorized();
         }
         catch (RevisaoHumanaObrigatoriaException exc)
         {

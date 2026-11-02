@@ -112,7 +112,8 @@ substitui `{{chave}}` literalmente ([ADR-005](../../docs/decisoes-arquiteturais.
 
 | Classe | Destaque |
 |---|---|
-| `ReleaseRepository` | `Include` de histórias, versões → itens e execuções (sem lazy loading: faltar Include = lista vazia silenciosa). `SalvarAsync` só faz `Add` se a entidade estiver `Detached`; senão deixa o ChangeTracker gerar UPDATE |
+| `ReleaseRepository` | `Include` de histórias, versões → itens e execuções (sem lazy loading: faltar Include = lista vazia silenciosa). `SalvarAsync` só faz `Add` se a entidade estiver `Detached`; senão deixa o ChangeTracker gerar UPDATE. Grava `Release.EventosPendentes` no mesmo `SaveChangesAsync` (mesma transação) e só depois limpa a fila |
+| `HistoricoRevisaoRepository` | leitura `AsNoTracking` de `eventos_revisao` com join em `usuarios` e `versoes_comunicado`, ordenada por `sequencia`; sem escrita |
 | `HistoriaJiraRepository`, `ExecucaoPipelineRepository` | leitura `AsNoTracking`, sem escrita |
 | `ComunicadoExportadoRepository` | append-only: `AdicionarAsync` + consultas |
 | `UsuarioRepository` | busca por id/e-mail + `SalvarAsync`, sem delete |
@@ -126,6 +127,7 @@ substitui `{{chave}}` literalmente ([ADR-005](../../docs/decisoes-arquiteturais.
 | `InitialCreate` | 8 tabelas, FKs, índices, CHECKs |
 | `TriggersAtualizadoEm` | função `set_atualizado_em()` + trigger em `releases`, `versoes_comunicado`, `itens_comunicado` |
 | `ChavesGeradasNoDominio` | só snapshot (`ValueGeneratedNever`), sem SQL |
+| `EventosRevisao` | tabela `eventos_revisao` (CHECK de `acao`, FKs `RESTRICT`, `detalhe` jsonb) + triggers que recusam UPDATE, DELETE e TRUNCATE |
 | `RevisorEGeradorComoFk` | colunas `revisado_por_id` e `gerado_por_id` (anuláveis), índices e FKs `RESTRICT`; sem `DROP` no `Up` |
 | `TokensRedefinicaoSenha` | tabela `tokens_redefinicao_senha` (FK `RESTRICT`, índice único em `token_hash`) |
 

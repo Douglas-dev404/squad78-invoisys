@@ -20,6 +20,8 @@ public sealed class InvoiSysDbContext(DbContextOptions<InvoiSysDbContext> option
 
     public DbSet<ComunicadoExportado> ComunicadosExportados => Set<ComunicadoExportado>();
 
+    public DbSet<EventoRevisao> EventosRevisao => Set<EventoRevisao>();
+
     public DbSet<DestaqueHero> DestaquesHero => Set<DestaqueHero>();
 
     public DbSet<TokenRedefinicaoSenha> TokensRedefinicaoSenha => Set<TokenRedefinicaoSenha>();

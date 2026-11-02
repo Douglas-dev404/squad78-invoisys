@@ -86,3 +86,30 @@ public sealed class FakeHashSenha : IHashSenha
 
     public bool Verificar(string senha, string hash) => hash == $"hash:{senha}";
 }
+
+public sealed class FakeHistoricoRevisaoRepository(
+    FakeReleaseRepository releases,
+    FakeUsuarioRepository usuarios) : IHistoricoRevisaoRepository
+{
+    public async Task<IReadOnlyList<EventoRevisaoResumo>> ListarPorReleaseAsync(
+        Guid releaseId,
+        CancellationToken cancellationToken = default)
+    {
+        var release = await releases.BuscarPorIdAsync(releaseId, cancellationToken);
+
+        return
+        [
+            .. releases.Eventos
+                .Where(e => e.ReleaseId == releaseId)
+                .Select(e => new EventoRevisaoResumo(
+                    e.Id,
+                    e.Acao,
+                    release!.Versoes.First(v => v.Id == e.VersaoId).Publico,
+                    e.ItemId,
+                    e.UsuarioId,
+                    usuarios.Usuarios.First(u => u.Id == e.UsuarioId).Nome,
+                    e.OcorridoEm,
+                    e.Detalhe)),
+        ];
+    }
+}

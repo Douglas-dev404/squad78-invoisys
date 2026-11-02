@@ -65,6 +65,7 @@ public static class DependencyInjection
         services.AddScoped<IExecucaoPipelineRepository, ExecucaoPipelineRepository>();
         services.AddScoped<IComunicadoExportadoRepository, ComunicadoExportadoRepository>();
         services.AddScoped<IUsuarioRepository, UsuarioRepository>();
+        services.AddScoped<IHistoricoRevisaoRepository, HistoricoRevisaoRepository>();
         services.AddScoped<ITokenRedefinicaoSenhaRepository, TokenRedefinicaoSenhaRepository>();
         services.AddScoped<IDestaqueHeroRepository, DestaqueHeroRepository>();
     }

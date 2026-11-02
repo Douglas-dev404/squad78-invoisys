@@ -22,6 +22,8 @@ public sealed class PostgresContainerFixture : IAsyncLifetime
 
         await using var contexto = CriarContexto();
         await contexto.Database.MigrateAsync();
+
+        await new UsuarioRepository(contexto).SalvarAsync(AutenticacaoDeTeste.Revisor);
     }
 
     public async Task DisposeAsync() => await _container.DisposeAsync();

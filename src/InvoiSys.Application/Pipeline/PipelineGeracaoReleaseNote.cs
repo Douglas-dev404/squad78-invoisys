@@ -1,4 +1,5 @@
 using InvoiSys.Domain.Entities;
+using InvoiSys.Application.Revisao;
 using InvoiSys.Domain.Ports;
 
 namespace InvoiSys.Application.Pipeline;
@@ -7,6 +8,8 @@ public sealed class PipelineGeracaoReleaseNote(
     IJiraClient jiraClient,
     ILlmProvider llmProvider,
     IReleaseRepository releaseRepository,
+    IUsuarioRepository usuarioRepository,
+    TimeProvider relogio,
     string? modeloLlm = null)
 {
     private readonly IJiraClient _jira = jiraClient;
@@ -17,8 +20,12 @@ public sealed class PipelineGeracaoReleaseNote(
 
     public async Task<Release> ExecutarAsync(
         string chaveRelease,
+        Guid usuarioId,
         CancellationToken cancellationToken = default)
     {
+        var usuario = await UsuarioResponsavel.ObterAtivoAsync(
+            usuarioRepository, usuarioId, cancellationToken);
+
         // Reusar a instância carregada: SalvarAsync decide INSERT/UPDATE pelo rastreamento do EF.
         var release = await _releaseRepository.BuscarPorChaveJiraAsync(chaveRelease, cancellationToken);
 
@@ -53,7 +60,7 @@ public sealed class PipelineGeracaoReleaseNote(
                 [.. itens.Select(i => i.Texto)],
                 cancellationToken);
 
-            release.ConcluirProcessamento(itens, titulo, resumo);
+            release.ConcluirProcessamento(itens, titulo, resumo, usuario, relogio.GetUtcNow());
             execucao.MarcarConcluida();
         }
         catch (Exception exc)

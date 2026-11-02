@@ -33,7 +33,8 @@ InvoiSys.Api/
 | `GET` | `/api/v1/releases?status=` | `ListarReleasesAsync` → `ConsultaReleases` | `ReleaseResumoOut[]` (mais recente primeiro) | 422 (status desconhecido) |
 | `GET` | `/api/v1/releases/{chaveRelease}` | `BuscarReleaseAsync` → `ConsultaReleases` | `ReleaseDetalheOut` (todas as versões por público; itens como `ItemRevisaoOut`, com `id`) | 404 |
 | `GET` | `/api/v1/releases/{chaveRelease}/historias` | `BuscarHistoriasAsync` → `IJiraClient` | `ReleaseOut` | 501, 502 |
-| `POST` | `/api/v1/releases/{chaveRelease}/processar` | `ProcessarReleaseAsync` → `PipelineGeracaoReleaseNote` | `ReleaseProcessadaOut` | 409, 501, 502 |
+| `GET` | `/api/v1/releases/{chaveRelease}/historico` | `HistoricoAsync` → `ConsultaReleases` | `EventoRevisaoOut[]` em ordem cronológica: `{ id, acao, publico, itemId, usuario: { id, nome }, ocorridoEm, detalhe }` | 401, 404 |
+| `POST` | `/api/v1/releases/{chaveRelease}/processar` | `ProcessarReleaseAsync` → `PipelineGeracaoReleaseNote` | `ReleaseProcessadaOut` | 401, 409, 501, 502 |
 | `POST` | `/api/v1/releases/{chaveRelease}/aprovar` | `AprovarAsync` → `RevisaoComunicado` | 204 | 404, 409, 422 |
 | `POST` | `/api/v1/releases/{chaveRelease}/reprovar` | `ReprovarAsync` → `RevisaoComunicado` | 204 | 404, 409, 422 |
 | `POST` | `/api/v1/releases/{chaveRelease}/reabrir` | `ReabrirAsync` → `RevisaoComunicado` | 204 | 404, 409, 422 |
@@ -42,6 +43,26 @@ InvoiSys.Api/
 | `POST` | `/api/v1/releases/{chaveRelease}/itens/{itemId}/reincluir` | `ReincluirItemAsync` → `RevisaoComunicado` | `ItemRevisaoOut` | 404, 409 |
 | `GET` | `/openapi/v1.json` | gerado (só em Development) | spec OpenAPI 3.1 | — |
 | `GET` | `/swagger` | Swagger UI (só em Development) | tela para explorar e testar as rotas | — |
+
+### Histórico de revisão (`/historico`)
+
+Trilha de auditoria só de inclusão ([ADR-027](../../docs/decisoes-arquiteturais.md#adr-027--histórico-de-revisão-é-uma-trilha-só-de-inclusão-gerada-pelo-agregado)):
+uma linha por ação (`processar`, `aprovar`, `reprovar`, `reabrir`, `editar_item`,
+`excluir_item`, `reincluir_item`), com o usuário do token, o horário e o `detalhe`
+(`motivo`, `textoAnterior`/`textoNovo`, `totalItens`). Release sem eventos devolve `[]`;
+Release inexistente, 404. Aprovar → reabrir → aprovar aparece como três linhas.
+
+```json
+[
+  { "id": "…", "acao": "aprovar", "publico": "cliente", "itemId": null,
+    "usuario": { "id": "…", "nome": "Ana Revisora" },
+    "ocorridoEm": "2026-11-03T14:03:11Z", "detalhe": null },
+  { "id": "…", "acao": "editar_item", "publico": "cliente", "itemId": "…",
+    "usuario": { "id": "…", "nome": "Ana Revisora" },
+    "ocorridoEm": "2026-11-03T14:05:40Z",
+    "detalhe": { "textoAnterior": "…", "textoNovo": "…" } }
+]
+```
 
 ### Exemplo de resposta de `/processar`
 

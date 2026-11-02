@@ -65,6 +65,7 @@ classDiagram
 | [`HistoriaJira`](Entities/HistoriaJira.cs) | Dado bruto do Jira. `record` **imutável**: o pipeline gera cópias limpas com `with`, nunca muta | `TextoFonte` (Release Note dedicada **ou** descrição técnica), `PossuiReleaseNoteDedicada` |
 | [`VersaoComunicado`](Entities/VersaoComunicado.cs) | O comunicado **para um público**, com revisão própria (`StatusRevisao`). Responde "pode exportar?" | `Aprovar`, `Reprovar(motivo)`, `Reabrir`, `PreencherConteudo`, `EditarItem`/`ExcluirItem`/`ReincluirItem` (recusam versão aprovada, [ADR-021](../../docs/decisoes-arquiteturais.md#adr-021--item-de-versão-aprovada-não-é-editado-sem-reabrir)), `ItensPublicaveis`, `ProntaParaExportar` |
 | [`ItemComunicado`](Entities/ItemComunicado.cs) | Um parágrafo do comunicado, originado de 1+ histórias | `TextoFinal` (edição humana vence), `Origens`. `EditarManualmente`, `Excluir(motivo)` e `Reincluir` são `internal`: de fora do domínio, só pela `Release` |
+| [`EventoRevisao`](Entities/EventoRevisao.cs) | Linha da trilha de auditoria (só inclusão): quem fez qual ação, quando e com qual detalhe. Construtor `internal`: só a `Release` cria | — |
 | [`ExecucaoPipeline`](Entities/ExecucaoPipeline.cs) | Log de uma rodada do pipeline (rastreabilidade) | `MarcarConcluida`, `MarcarFalha(erro)` |
 
 ### Agregados independentes
@@ -125,6 +126,7 @@ errado em silêncio).
 | [`ILlmProvider`](Ports/ILlmProvider.cs) | saída (integração) | `OpenRouterProvider` / `ProviderPendente` | um método por estágio de IA: `CategorizarAsync`, `AgruparSemelhantesAsync`, `ReescreverLinguagemNegocioAsync`, `GerarTituloEResumoAsync` |
 | [`IReleaseRepository`](Ports/IReleaseRepository.cs) | persistência (agregado) | `ReleaseRepository` | `BuscarPorIdAsync`, `BuscarPorChaveJiraAsync` (agregado completo), `SalvarAsync`, `ListarResumosAsync(status?)` (devolve o modelo de leitura `ReleaseResumo`, nunca uma `Release` parcial) |
 | [`IHistoriaJiraRepository`](Ports/IHistoriaJiraRepository.cs) | **somente leitura** | `HistoriaJiraRepository` | consultar histórias sem carregar o agregado |
+| [`IHistoricoRevisaoRepository`](Ports/IHistoricoRevisaoRepository.cs) | **somente leitura** | `HistoricoRevisaoRepository` | `ListarPorReleaseAsync(releaseId)`: linha do tempo em ordem, com nome do usuário e público |
 | [`IExecucaoPipelineRepository`](Ports/IExecucaoPipelineRepository.cs) | **somente leitura** | `ExecucaoPipelineRepository` | histórico de execuções (mais recente primeiro) |
 | [`IComunicadoExportadoRepository`](Ports/IComunicadoExportadoRepository.cs) | **append-only** | `ComunicadoExportadoRepository` | `AdicionarAsync`, `BuscarPorIdAsync`, `ListarPorReleaseAsync` |
 | [`IUsuarioRepository`](Ports/IUsuarioRepository.cs) | persistência (agregado) | `UsuarioRepository` | `BuscarPorIdAsync`, `BuscarPorEmailAsync` (normaliza o argumento), `ExisteAlgumAsync`, `SalvarAsync` (sem delete) |

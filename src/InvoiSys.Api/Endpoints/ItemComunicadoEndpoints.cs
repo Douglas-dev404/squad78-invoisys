@@ -1,3 +1,5 @@
+using System.Security.Claims;
+using InvoiSys.Api.Autenticacao;
 using InvoiSys.Api.Contracts;
 using InvoiSys.Application.Revisao;
 using InvoiSys.Domain.Entities;
@@ -44,38 +46,54 @@ public static class ItemComunicadoEndpoints
         string chaveRelease,
         Guid itemId,
         [FromBody] EditarItemIn corpo,
+        ClaimsPrincipal usuario,
         [FromServices] RevisaoComunicado revisao,
         CancellationToken cancellationToken) =>
-        RevisarItemAsync(() => revisao.EditarItemAsync(
+        RevisarItemAsync(usuario, revisorId => revisao.EditarItemAsync(
             chaveRelease,
             itemId,
             corpo.Texto ?? string.Empty,
+            revisorId,
             cancellationToken));
 
     private static Task<IResult> ExcluirItemAsync(
         string chaveRelease,
         Guid itemId,
         [FromBody] ExcluirItemIn? corpo,
+        ClaimsPrincipal usuario,
         [FromServices] RevisaoComunicado revisao,
         CancellationToken cancellationToken) =>
-        RevisarItemAsync(() => revisao.ExcluirItemAsync(
+        RevisarItemAsync(usuario, revisorId => revisao.ExcluirItemAsync(
             chaveRelease,
             itemId,
             corpo?.Motivo,
+            revisorId,
             cancellationToken));
 
     private static Task<IResult> ReincluirItemAsync(
         string chaveRelease,
         Guid itemId,
+        ClaimsPrincipal usuario,
         [FromServices] RevisaoComunicado revisao,
         CancellationToken cancellationToken) =>
-        RevisarItemAsync(() => revisao.ReincluirItemAsync(chaveRelease, itemId, cancellationToken));
+        RevisarItemAsync(usuario, revisorId => revisao.ReincluirItemAsync(
+            chaveRelease,
+            itemId,
+            revisorId,
+            cancellationToken));
 
-    private static async Task<IResult> RevisarItemAsync(Func<Task<ItemRevisado>> revisao)
+    private static async Task<IResult> RevisarItemAsync(
+        ClaimsPrincipal usuario,
+        Func<Guid, Task<ItemRevisado>> revisao)
     {
+        if (!UsuarioAutenticado.TentarObterId(usuario, out var revisorId))
+        {
+            return Results.Unauthorized();
+        }
+
         try
         {
-            var (item, publico) = await revisao();
+            var (item, publico) = await revisao(revisorId);
 
             return Results.Ok(ItemRevisaoOut.De(item, publico));
         }
@@ -87,6 +105,7 @@ public static class ItemComunicadoEndpoints
 
     private static IResult? MapearFalhaDeRevisaoDeItem(Exception exc) => exc switch
     {
+        RevisorInvalidoException => Results.Unauthorized(),
         ReleaseNaoEncontradaException or ItemNaoEncontradoException =>
             Results.Problem(detail: exc.Message, statusCode: StatusCodes.Status404NotFound),
         TransicaoDeStatusInvalidaException =>
