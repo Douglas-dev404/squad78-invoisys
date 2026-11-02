@@ -772,9 +772,8 @@ palavra do cliente. A pendência 1 da modelagem pedia FK para `usuarios`.
   era livre e não dá para ligá-lo a um usuário com segurança.
 - **Usuário desativado:** `OnTokenValidated` consulta o usuário a cada requisição e rejeita
   token de quem não existe ou está inativo (401). Custa uma consulta por requisição.
-- **Exportação (#24):** a coluna `gerado_por_id` e a propriedade na entidade já existem
-  (parâmetro opcional no construtor); ligar o endpoint ao usuário do token é feito quando a
-  #24 for integrada.
+- **Exportação (#24):** `POST /releases/{chave}/exportar` exige o token; o gerador vem do usuário
+  autenticado (`gerado_por_id` e o nome em `gerado_por`), e `geradoPor` saiu do corpo.
 
 **Consequências.**
 - ✅ Revisão e exportação ficam atribuídas a um usuário real, com integridade referencial.

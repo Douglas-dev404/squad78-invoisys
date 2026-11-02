@@ -6,6 +6,7 @@ using InvoiSys.Domain.Entities;
 using InvoiSys.Domain.Enums;
 using InvoiSys.Domain.Ports;
 using InvoiSys.Tests.Fakes;
+using InvoiSys.Tests.Unit;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
@@ -24,6 +25,7 @@ public class ApiExportacaoTests
             {
                 services.RemoveAll<IReleaseRepository>();
                 services.RemoveAll<IComunicadoExportadoRepository>();
+                services.ComUsuarios(AutenticacaoDeTeste.Revisor);
                 services.AddScoped(_ => releases);
                 services.AddScoped(_ => exportados);
             }));
@@ -44,7 +46,7 @@ public class ApiExportacaoTests
 
         if (aprovada)
         {
-            release.Aprovar("victor", DateTimeOffset.UtcNow);
+            release.Aprovar(AutenticacaoDeTeste.Revisor, DateTimeOffset.UtcNow);
         }
 
         var releases = new FakeReleaseRepository();
@@ -59,7 +61,7 @@ public class ApiExportacaoTests
         string chave = Chave)
     {
         using var app = CriarApp(releases, exportados);
-        using var client = app.CreateClient();
+        using var client = app.CriarClienteAutenticado();
         return await client.PostAsJsonAsync($"/api/v1/releases/{chave}/exportar", corpo);
     }
 
@@ -72,7 +74,7 @@ public class ApiExportacaoTests
         var resposta = await Exportar(
             releases,
             exportados,
-            new { publico = "cliente", formato = "markdown", geradoPor = "victor" });
+            new { publico = "cliente", formato = "markdown" });
 
         resposta.StatusCode.Should().Be(HttpStatusCode.Created);
         var corpo = await resposta.Content.ReadFromJsonAsync<JsonElement>();
@@ -82,7 +84,8 @@ public class ApiExportacaoTests
 
         var salvo = exportados.Exportados.Should().ContainSingle().Subject;
         salvo.Conteudo.Should().Contain("Item publicado.");
-        salvo.GeradoPor.Should().Be("victor");
+        salvo.GeradoPor.Should().Be(AutenticacaoDeTeste.Revisor.Nome);
+        salvo.GeradoPorId.Should().Be(AutenticacaoDeTeste.Revisor.Id);
     }
 
     [Fact]
@@ -101,14 +104,16 @@ public class ApiExportacaoTests
     }
 
     [Fact]
-    public async Task Exportar_sem_gerado_por_registra_sistema()
+    public async Task Exportar_ignora_geradoPor_do_corpo_e_usa_o_usuario_do_token()
     {
         var (releases, _) = await ReleaseSalva(aprovada: true);
         var exportados = new FakeComunicadoExportadoRepository();
 
-        await Exportar(releases, exportados, new { publico = "cliente", formato = "markdown" });
+        await Exportar(releases, exportados, new { publico = "cliente", formato = "markdown", geradoPor = "impostor" });
 
-        exportados.Exportados.Single().GeradoPor.Should().Be("sistema");
+        var salvo = exportados.Exportados.Single();
+        salvo.GeradoPor.Should().Be(AutenticacaoDeTeste.Revisor.Nome);
+        salvo.GeradoPorId.Should().Be(AutenticacaoDeTeste.Revisor.Id);
     }
 
     [Fact]

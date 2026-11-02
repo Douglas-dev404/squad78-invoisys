@@ -309,7 +309,7 @@ cada público, em cada formato.
 | `formato` | `varchar(20)` | não | — | `FormatoExportacao`, com CHECK. |
 | `conteudo` | `text` | **sim** | — | Markdown / HTML. |
 | `caminho_arquivo` | `text` | **sim** | — | Caminho/URL quando binário (PDF). |
-| `gerado_por_id` | `uuid` | **sim** | — | **FK** → `usuarios.id` `RESTRICT`. Indexada. Preenchida quando o endpoint de exportação (#24) passar a usar o usuário do token. |
+| `gerado_por_id` | `uuid` | **sim** | — | **FK** → `usuarios.id` `RESTRICT`. Indexada. Preenchida pela exportação com o usuário do token (nulo nos registros antigos). |
 | `gerado_por` | `varchar(200)` | **sim** | — | Nome exibido de quem gerou. |
 | `gerado_em` | `timestamptz` | não | — | |
 
@@ -547,7 +547,7 @@ evento (`execucoes_pipeline`, `comunicados_exportados`) ou de cadastro simples
    ([ADR-026](decisoes-arquiteturais.md#adr-026--rotas-de-release-exigem-token-e-o-revisor-vem-dele)):
    `revisado_por_id` e `gerado_por_id` são FK `RESTRICT`. Resta que os registros anteriores
    à autenticação ficam com o id nulo (o texto antigo foi preservado, sem backfill) e que o
-   endpoint de exportação (#24) ainda precisa passar o usuário do token.
+   ids nulos nos registros anteriores; a exportação já grava `gerado_por_id` do token.
 2. **Recuperação de senha sem e-mail real** — o token está modelado
    (`tokens_redefinicao_senha`), mas o envio é o adapter pendente, que só loga o link.
 3. **Repositories prontos, API de revisão ainda não os usa** — o pipeline já persiste
