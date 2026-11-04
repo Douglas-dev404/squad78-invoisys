@@ -1,3 +1,4 @@
+import { useNavigate } from 'react-router-dom';
 import { useProfile } from '../../hooks/useProfile';
 import { Layout } from '../../components/Layout/Layout';
 import { ProfileField } from '../../components/ProfileField/ProfileField';
@@ -14,20 +15,18 @@ function formatDate(isoDate) {
   });
 }
 
-export function ProfilePage({ onLogout, onProfileClick, onBack, onNavigate }) {
+export function ProfilePage() {
+  const navigate = useNavigate();
   const { profile, loading, error, clearError, refetch } = useProfile();
 
   return (
     <Layout
-      onLogout={onLogout}
-      onProfileClick={onProfileClick}
-      activeScreen="profile"
-      onNavigate={onNavigate}
+
     >
       <header className="mb-lg">
-        {onBack && (
+        {(
           <button
-            onClick={onBack}
+            onClick={() => navigate(-1)}
             className="flex items-center gap-1 text-on-surface-variant hover:text-primary font-label-md text-label-md mb-sm transition-colors"
           >
             <span className="material-symbols-outlined text-[18px]">

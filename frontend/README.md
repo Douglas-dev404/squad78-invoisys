@@ -137,3 +137,7 @@ sessão e emite `invoisys:unauthorized`; o roteamento trata a navegação para l
 A aprovação humana continua obrigatória no backend antes de qualquer exportação.
 
 Testes do cliente e da sessão (sem dependências novas): `node --test tests/*.test.js`.
+
+## Roteamento (F-02)
+
+BrowserRouter mantém URLs, voltar/avançar e links diretos. Rotas protegidas consultam a sessão da F-01; /usuarios e /usuarios/novo exigem papel admin e mostram Sem permissão para os demais. O controle definitivo de autorização permanece na API. As rotas de Releases e redefinição reservam espaço para F-04/F-06 e F-13. O servidor estático deve servir index.html para rotas da SPA; public/_redirects registra a regra para a configuração do Render (B-03).

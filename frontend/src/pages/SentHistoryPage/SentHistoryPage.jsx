@@ -11,7 +11,7 @@ function normalize(value) {
   return value.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLocaleLowerCase('pt-BR');
 }
 
-export function SentHistoryPage({ onLogout, onProfileClick, onNavigate }) {
+export function SentHistoryPage() {
   const [filters, setFilters] = useState(INITIAL_FILTERS);
   const [page, setPage] = useState(1);
 
@@ -35,7 +35,7 @@ export function SentHistoryPage({ onLogout, onProfileClick, onNavigate }) {
   };
 
   return (
-    <Layout onLogout={onLogout} onProfileClick={onProfileClick} activeScreen="sent-history" onNavigate={onNavigate}>
+    <Layout>
       <div className="mx-auto w-full max-w-[1280px]">
         <header className="mb-lg flex flex-col gap-sm lg:flex-row lg:items-end lg:justify-between">
           <div>
