@@ -64,6 +64,8 @@ reprocessamento recusado → UPDATE ao reabrir → DELETE + INSERT ao reprocessa
 | `HistoriaJiraTests` | Prioridade da Release Note sobre a descrição técnica (`TextoFonte`) |
 | `PipelineGeracaoReleaseNoteTests` | Orquestração dos 5 estágios, limpeza, chave alucinada, falha marca Release/execução |
 | `OpenRouterProviderTests` | Foco no parsing defensivo (o que quebra em produção é resposta fora do formato). Corpo da request, fallback de modelos, JSON em code fence, validação de grupos, categoria inválida, erros HTTP → exceção de domínio |
+| `OpenAiProviderTests` | Mesmos casos do OpenRouter para o adapter da OpenAI (resposta válida, JSON malformado, 401, 429, timeout), mais: corpo sem o campo `models`, 401 sem corpo nem chave no log e `ProviderPendente` citando a variável certa |
+| `EscolhaDoProvedorLlmTests` | `Llm:Provedor` no composition root: padrão OpenRouter, OpenAi com chave, sem chave cai no `ProviderPendente`, chave do outro provedor não vale, valor desconhecido derruba o startup |
 | `JiraRestClientAdfTests` | Achatamento de ADF em texto. Isolado porque, se falhar, o pipeline recebe texto vazio e o comunicado sai oco sem erro nenhum |
 
 ### Integration

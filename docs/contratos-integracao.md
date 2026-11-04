@@ -89,10 +89,41 @@ Fonte primária, consultada em 2026-08-24 e revalidada em 2026-09-22:
 
 ---
 
+## OpenAI (LLM provider)
+
+Adapter: `src/InvoiSys.Infrastructure/Llm/OpenAiProvider.cs`, sobre a mesma base do
+OpenRouter (`ChatCompletionsLlmProvider.cs`). Configuração:
+`src/InvoiSys.Infrastructure/Configuration/OpenAiOptions.cs` (`OpenAi__ApiKey`,
+`OpenAi__Modelo`, `OpenAi__Endpoint` opcional). Escolhido com `Llm__Provedor=OpenAi`
+([ADR-029](decisoes-arquiteturais.md#adr-029--adapter-openai-para-o-illmprovider-escolhido-por-configuração)).
+
+### Conferido em 2026-11-03
+
+| Ponto | Detalhe |
+|---|---|
+| Endpoint | `POST https://api.openai.com/v1/chat/completions`, configurável em `OpenAi__Endpoint`. |
+| Schema | Mesmo request/response do OpenRouter (Chat Completions): `model`, `messages`, `temperature`, `response_format`; texto em `choices[0].message.content`, consumo em `usage`. |
+| Saída estruturada | `response_format: {"type": "json_object"}`. A API exige a palavra "JSON" em alguma mensagem; os prompts `03` e `05`, os únicos em JSON mode, a contêm. |
+| Fallback entre modelos | Não existe: o adapter **não envia** `models`. |
+| Modelo padrão | `gpt-4o-mini` (`OpenAi__Modelo`). |
+| Custo | A resposta não traz `usage.cost`; calcular custo fica fora do escopo. |
+
+### Pendências reais
+
+1. **Nunca validado contra chamada real.** Os testes usam respostas fabricadas
+   (`OpenAiProviderTests`). A validação com chave real é o teste manual da #61 e a B-09.
+2. **Contrato conferido em documentação secundária** (guias do JSON mode da Microsoft
+   para a mesma API e relatos da comunidade OpenAI); confirmar em platform.openai.com.
+3. **`temperature = 0.2` fixa.** Modelos da família GPT-5 e o-series só aceitam o valor
+   padrão e podem recusar a requisição; use `gpt-4o-mini` ou equivalente até isso ser
+   tratado.
+
+---
+
 ## Onde a configuração vive
 
 Nenhuma camada lê variável de ambiente direto — sempre via `IOptions<T>`
-(`JiraOptions`, `OpenRouterOptions`), configurado na composition root
+(`JiraOptions`, `OpenRouterOptions`, `OpenAiOptions`), configurado na composition root
 (`InvoiSys.Infrastructure/DependencyInjection.cs`). Ver `.env.example` na raiz do
 repositório para a lista completa de variáveis e seus nomes exatos.
 
