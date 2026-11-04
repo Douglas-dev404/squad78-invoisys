@@ -1,5 +1,5 @@
 import { useNavigate } from 'react-router-dom';
-import { clearSession } from '../../utils/session';
+import { useAuth } from '../../hooks/useAuth';
 import { SideNavBar } from '../SideNavBar/SideNavBar';
 import { TopNavBar } from '../TopNavBar/TopNavBar';
 import { useSidebarMinimize } from '../../hooks/useSidebarMinimize';
@@ -9,7 +9,7 @@ export function Layout({
   fullBleed = false,
 }) {
   const navigate = useNavigate();
-  const onLogout = () => { clearSession(); navigate('/login', { replace: true }); };
+  const { logout: onLogout } = useAuth();
   const { isMinimized, toggle } = useSidebarMinimize();
 
   return (

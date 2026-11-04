@@ -11,8 +11,8 @@ import { BRAND_LOGO_URL, UI_STRINGS } from '../../utils/constants';
  * @param {string} [props.email=''] - E-mail para o qual o link foi enviado
  * @param {Function} props.onNavigateToLogin - Callback para retornar à tela de Login
  */
-export function EmailConfirmationPage({ email = '', onNavigateToLogin }) {
-  const { isResending, resendSuccess, error: resendError, resendReset } = usePasswordRecovery();
+export function EmailConfirmationPage({ email = '', mensagem, expiraEmMinutos, onNavigateToLogin }) {
+  const { isResending, resendSuccess, error: resendError, resendReset, message, expiraEmMinutos: novaValidade } = usePasswordRecovery();
 
   const handleResend = async () => {
     try {
@@ -50,13 +50,14 @@ export function EmailConfirmationPage({ email = '', onNavigateToLogin }) {
               {UI_STRINGS.EMAIL_SENT_TITLE}
             </h1>
             <p className="font-body-md text-body-md text-on-surface-variant">
-              {UI_STRINGS.EMAIL_SENT_SUBTITLE}
+              {message || mensagem || UI_STRINGS.EMAIL_SENT_SUBTITLE}
             </p>
           </header>
 
           {/* Card de confirmação com ícone, reenvio e retorno */}
           <EmailConfirmationCard
             email={email}
+            expiraEmMinutos={novaValidade ?? expiraEmMinutos}
             isResending={isResending}
             resendSuccess={resendSuccess}
             resendError={resendError}

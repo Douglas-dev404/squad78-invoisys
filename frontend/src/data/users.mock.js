@@ -1,5 +1,6 @@
 export const ROLE_LABELS = {
-  admin: 'Admin',
+  admin: 'Administrador',
+  release_manager: 'Gestor de Release',
   reviewer: 'Revisor',
   viewer: 'Visualizador',
 };
