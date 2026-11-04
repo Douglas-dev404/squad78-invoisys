@@ -6,7 +6,7 @@ import { ProductivityChart } from '../../components/ProductivityChart/Productivi
 import { CardsTable } from '../../components/CardsTable/CardsTable';
 import { AlertError } from '../../components/AlertError/AlertError';
 
-export function DashboardPage({ onLogout, onProfileClick, onNavigate }) {
+export function DashboardPage() {
   const {
     kpi,
     chart,
@@ -26,12 +26,7 @@ export function DashboardPage({ onLogout, onProfileClick, onNavigate }) {
   };
 
   return (
-    <Layout
-      onLogout={onLogout}
-      onProfileClick={onProfileClick}
-      activeScreen="dashboard"
-      onNavigate={onNavigate}
-    >
+    <Layout>
       {/* Header */}
         <header className="mb-lg">
           <h2 className="font-headline-lg text-headline-lg text-primary">
