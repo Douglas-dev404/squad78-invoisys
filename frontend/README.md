@@ -137,3 +137,7 @@ sessão e emite `invoisys:unauthorized`; o roteamento trata a navegação para l
 A aprovação humana continua obrigatória no backend antes de qualquer exportação.
 
 Testes do cliente e da sessão (sem dependências novas): `node --test tests/*.test.js`.
+
+## Destaques do login (F-05)
+
+GET /branding/highlights é público e usa o cliente HTTP da F-01 sem Bearer. O service converte titulo/descricao/icone em title/description/icon. Falha da API retorna os destaques locais sem alerta visual; o motivo é registrado por console.warn. Lista vazia do servidor é respeitada. O hook cancela atualizações de componentes desmontados e inicializa o estado de carregamento. getBrandInfo e MOCK_BRAND_INFO foram removidos após busca de referências. A integração com banco depende do PR #94 (B-04).
