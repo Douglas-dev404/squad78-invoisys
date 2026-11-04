@@ -1,3 +1,4 @@
+import { useNavigate } from 'react-router-dom';
 import { useCreateUser } from '../../hooks/useCreateUser';
 import { Layout } from '../../components/Layout/Layout';
 import { InputField } from '../../components/InputField/InputField';
@@ -33,7 +34,8 @@ const EXTRA_PERMISSION_OPTIONS = [
   },
 ];
 
-export function CreateUserPage({ onLogout, onProfileClick, onNavigate, onCancel, onCreated }) {
+export function CreateUserPage() {
+  const navigate = useNavigate();
   const {
     fullName,
     email,
@@ -48,7 +50,7 @@ export function CreateUserPage({ onLogout, onProfileClick, onNavigate, onCancel,
     handleRoleChange,
     toggleExtraPermission,
     handleSubmit,
-  } = useCreateUser({ onSuccess: onCreated });
+  } = useCreateUser({ onSuccess: () => navigate('/usuarios') });
 
   const onSubmit = (e) => {
     handleSubmit(e);
@@ -56,10 +58,7 @@ export function CreateUserPage({ onLogout, onProfileClick, onNavigate, onCancel,
 
   return (
     <Layout
-      onLogout={onLogout}
-      onProfileClick={onProfileClick}
-      activeScreen="user-management"
-      onNavigate={onNavigate}
+
     >
       <div className="max-w-4xl mx-auto space-y-lg">
         {/* Page Header */}
@@ -176,7 +175,7 @@ export function CreateUserPage({ onLogout, onProfileClick, onNavigate, onCancel,
             <div className="flex flex-col-reverse sm:flex-row justify-end gap-sm pt-md">
               <button
                 type="button"
-                onClick={onCancel}
+                onClick={() => navigate('/usuarios')}
                 disabled={isSubmitting}
                 className="px-md py-sm rounded-lg border border-primary text-primary font-label-md text-label-md hover:bg-primary/5 transition-colors text-center disabled:opacity-60 disabled:cursor-not-allowed"
               >

@@ -1,15 +1,15 @@
+import { useNavigate } from 'react-router-dom';
+import { clearSession } from '../../utils/session';
 import { SideNavBar } from '../SideNavBar/SideNavBar';
 import { TopNavBar } from '../TopNavBar/TopNavBar';
 import { useSidebarMinimize } from '../../hooks/useSidebarMinimize';
 
 export function Layout({
   children,
-  onLogout,
-  onProfileClick,
-  activeScreen,
-  onNavigate,
   fullBleed = false,
 }) {
+  const navigate = useNavigate();
+  const onLogout = () => { clearSession(); navigate('/login', { replace: true }); };
   const { isMinimized, toggle } = useSidebarMinimize();
 
   return (
@@ -18,12 +18,10 @@ export function Layout({
       <SideNavBar
         isMinimized={isMinimized}
         onToggleMinimize={toggle}
-        activeScreen={activeScreen}
-        onNavigate={onNavigate}
       />
       <TopNavBar
         onLogout={onLogout}
-        onProfileClick={onProfileClick}
+        onProfileClick={() => navigate('/perfil')}
         isMinimized={isMinimized}
       />
 
