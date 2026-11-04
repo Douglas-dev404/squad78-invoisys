@@ -41,6 +41,7 @@ histórico também é documentação.
 | [022](#adr-022--endpoint-só-chama-caso-de-uso-erros-de-revisão-padronizados) | Endpoint só chama caso de uso; erros de revisão padronizados | Aceita | 2026-10-03 |
 | [023](#adr-023--o-porquê-mora-na-documentação-não-em-comentário) | O porquê mora na documentação, não em comentário | Aceita | 2026-10-03 |
 | [024](#adr-024--autenticação-jwt-stateless-argon2id-e-admin-inicial) | Autenticação: JWT stateless, Argon2id e admin inicial | Aceita | 2026-10-11 |
+| [029](#adr-029--adapter-openai-para-o-illmprovider-escolhido-por-configuração) | Adapter OpenAI para o `ILlmProvider`, escolhido por configuração | Aceita | 2026-11-03 |
 | [P-02](#p-02--desenho-da-autenticação) | Desenho da autenticação | **Resolvida** → ADR-024 | 2026-10-11 |
 | [P-03](#p-03--onde-mora-o-render-da-exportação) | Onde mora o render da exportação | **Proposta** | — |
 
@@ -686,6 +687,43 @@ nasce o primeiro usuário.
 - ⚠️ Trocar a chave JWT invalida todos os tokens emitidos.
 - ⚠️ Argon2id consome ~19 MiB por verificação; o login concorrente em massa pesa na
   memória do container.
+
+---
+
+## ADR-029 — Adapter OpenAI para o `ILlmProvider`, escolhido por configuração
+
+**Contexto.** A chave da OpenRouter limita o teste do fluxo completo (Jira → IA →
+comunicado) e existe uma chave da OpenAI com limite maior. A porta `ILlmProvider` já é
+agnóstica de provedor, e OpenRouter e OpenAI falam o mesmo protocolo
+(`POST /chat/completions`, `response_format: json_object`, campo `usage`).
+
+**Opções consideradas.**
+1. Porta nova só para a OpenAI.
+2. Adapter novo copiando o `OpenRouterProvider`.
+3. Adapter novo sobre uma base comum, escolhido por configuração.
+
+**Decisão.** Opção 3.
+- `ChatCompletionsLlmProvider` (base abstrata) concentra o que é comum: montagem do
+  request, JSON mode, parsing defensivo, validação e tradução de erro HTTP.
+  `OpenRouterProvider` e `OpenAiProvider` só informam nome, endpoint, modelo e fallback.
+- `Llm:Provedor` (`OpenRouter`, padrão, ou `OpenAi`, sem diferenciar maiúsculas) decide
+  qual adapter atende o `ILlmProvider`. Valor desconhecido derruba o startup com mensagem
+  citando `Llm__Provedor`.
+- Sem a chave do provedor escolhido, o provider é o `ProviderPendente` (501, como na
+  [ADR-014](#adr-014--adapters-pendente-quando-falta-credencial-501-honesto)), com a
+  mensagem citando a variável certa. A chave do outro provedor não vale.
+- O adapter da OpenAI não envia `models`: o fallback entre modelos é recurso da OpenRouter.
+- O corpo de respostas 401 e 403 não vai para o log: o da OpenAI costuma citar um trecho
+  da chave.
+- Custo (`usage.cost`) não existe na OpenAI; calculá-lo fica fora desta decisão.
+
+**Consequências.**
+- ✅ Nenhuma porta, caso de uso ou prompt muda; trocar de provedor é configuração.
+- ✅ Corrigir parsing ou tradução de erro vale para os dois provedores.
+- ⚠️ Trocar `Llm:Provedor` exige reiniciar a API.
+- ⚠️ `temperature = 0.2` é fixa: modelos que só aceitam o valor padrão (família GPT-5 e
+  o-series) podem recusá-la. O padrão `gpt-4o-mini` não tem essa restrição.
+- ⚠️ Com `Llm:Provedor=OpenAi`, o log de execução do pipeline registra `OpenAi:Modelo`.
 
 ---
 

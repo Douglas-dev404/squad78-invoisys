@@ -19,7 +19,9 @@ public static class DependencyInjection
             provider.GetRequiredService<IJiraClient>(),
             provider.GetRequiredService<ILlmProvider>(),
             provider.GetRequiredService<IReleaseRepository>(),
-            configuration["OpenRouter:Modelo"]));
+            string.Equals(configuration["Llm:Provedor"]?.Trim(), "OpenAi", StringComparison.OrdinalIgnoreCase)
+                ? configuration["OpenAi:Modelo"]
+                : configuration["OpenRouter:Modelo"]));
 
         services.AddScoped<RevisaoComunicado>();
         services.AddScoped<ConsultaReleases>();

@@ -10,6 +10,7 @@ using InvoiSys.Infrastructure.Llm;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Http.Resilience;
 using Microsoft.Extensions.Options;
 
 namespace InvoiSys.Infrastructure;
@@ -23,13 +24,15 @@ public static class DependencyInjection
         services.Configure<JiraOptions>(configuration.GetSection(JiraOptions.SecaoConfig));
         services.Configure<OpenRouterOptions>(
             configuration.GetSection(OpenRouterOptions.SecaoConfig));
+        services.Configure<OpenAiOptions>(
+            configuration.GetSection(OpenAiOptions.SecaoConfig));
 
         services.AddSingleton<PromptLoader>();
 
         AddAuth(services, configuration);
 
         AddJiraClient(services);
-        AddLlmProvider(services);
+        AddLlmProvider(services, configuration);
         AddDatabase(services, configuration);
 
         return services;
@@ -104,32 +107,62 @@ public static class DependencyInjection
         });
     }
 
-    private static void AddLlmProvider(IServiceCollection services)
+    private static void AddLlmProvider(IServiceCollection services, IConfiguration configuration)
     {
+        var provedor = LerProvedorLlm(configuration);
+
         services.AddHttpClient<OpenRouterProvider>((provider, http) =>
         {
             var opcoes = provider.GetRequiredService<IOptions<OpenRouterOptions>>().Value;
-
-            http.DefaultRequestHeaders.Authorization =
-                new AuthenticationHeaderValue("Bearer", opcoes.ApiKey);
-
-            http.Timeout = TimeSpan.FromSeconds(120);
+            ConfigurarClienteLlm(http, opcoes.ApiKey);
         })
-        .AddStandardResilienceHandler(opcoes =>
-        {
-            opcoes.Retry.MaxRetryAttempts = 2;
-            opcoes.Retry.Delay = TimeSpan.FromSeconds(2);
-            opcoes.AttemptTimeout.Timeout = TimeSpan.FromSeconds(60);
-            opcoes.TotalRequestTimeout.Timeout = TimeSpan.FromSeconds(180);
-            opcoes.CircuitBreaker.SamplingDuration = TimeSpan.FromSeconds(120);
-        });
+        .AddStandardResilienceHandler(ConfigurarResilienciaLlm);
 
-        services.AddScoped<ILlmProvider>(provider =>
+        services.AddHttpClient<OpenAiProvider>((provider, http) =>
         {
-            var opcoes = provider.GetRequiredService<IOptions<OpenRouterOptions>>().Value;
-            return opcoes.EstaConfigurado
+            var opcoes = provider.GetRequiredService<IOptions<OpenAiOptions>>().Value;
+            ConfigurarClienteLlm(http, opcoes.ApiKey);
+        })
+        .AddStandardResilienceHandler(ConfigurarResilienciaLlm);
+
+        services.AddScoped<ILlmProvider>(provider => provedor switch
+        {
+            ProvedorLlm.OpenAi => provider.GetRequiredService<IOptions<OpenAiOptions>>().Value.EstaConfigurado
+                ? provider.GetRequiredService<OpenAiProvider>()
+                : new ProviderPendente("OpenAi:ApiKey"),
+            _ => provider.GetRequiredService<IOptions<OpenRouterOptions>>().Value.EstaConfigurado
                 ? provider.GetRequiredService<OpenRouterProvider>()
-                : new ProviderPendente();
+                : new ProviderPendente(),
         });
+    }
+
+    private static ProvedorLlm LerProvedorLlm(IConfiguration configuration)
+    {
+        var valor = configuration["Llm:Provedor"];
+        if (string.IsNullOrWhiteSpace(valor))
+        {
+            return ProvedorLlm.OpenRouter;
+        }
+
+        return Enum.TryParse<ProvedorLlm>(valor.Trim(), ignoreCase: true, out var provedor)
+            && Enum.IsDefined(provedor)
+            ? provedor
+            : throw new InvalidOperationException(
+                $"Llm:Provedor inválido: '{valor}'. Use OpenRouter ou OpenAi (variável Llm__Provedor).");
+    }
+
+    private static void ConfigurarClienteLlm(HttpClient http, string apiKey)
+    {
+        http.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", apiKey);
+        http.Timeout = TimeSpan.FromSeconds(120);
+    }
+
+    private static void ConfigurarResilienciaLlm(HttpStandardResilienceOptions opcoes)
+    {
+        opcoes.Retry.MaxRetryAttempts = 2;
+        opcoes.Retry.Delay = TimeSpan.FromSeconds(2);
+        opcoes.AttemptTimeout.Timeout = TimeSpan.FromSeconds(60);
+        opcoes.TotalRequestTimeout.Timeout = TimeSpan.FromSeconds(180);
+        opcoes.CircuitBreaker.SamplingDuration = TimeSpan.FromSeconds(120);
     }
 }
