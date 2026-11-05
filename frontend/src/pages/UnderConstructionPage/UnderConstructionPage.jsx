@@ -20,9 +20,9 @@ export function UnderConstructionPage({
         </h2>
       </header>
 
-      <section className="bg-surface-container-lowest rounded-xl border border-surface-variant/50 shadow-[0px_4px_12px_rgba(27,67,50,0.08)] p-xl flex flex-col items-center justify-center text-center min-h-[400px]">
+      <section className="bg-surface-container-lowest rounded-xl border border-surface-variant/50 shadow-[0px_4px_12px_rgba(27,67,50,0.08)] p-md sm:p-xl flex flex-col items-center justify-center text-center min-h-[400px]">
         <div className="w-20 h-20 rounded-full bg-secondary-container flex items-center justify-center mb-md">
-          <span className="material-symbols-outlined text-on-secondary-container text-[40px]">
+          <span aria-hidden="true" className="material-symbols-outlined text-on-secondary-container text-[40px]">
             construction
           </span>
         </div>

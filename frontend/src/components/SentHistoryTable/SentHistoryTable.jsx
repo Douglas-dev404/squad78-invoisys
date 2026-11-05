@@ -1,5 +1,5 @@
 const dateFormatter = new Intl.DateTimeFormat('pt-BR', {
-  day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit',
+  day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit',
 });
 
 const statusClassName = {
@@ -15,7 +15,7 @@ export function SentHistoryTable({ items, total, page, pageSize, onPageChange })
 
   return (
     <section aria-label="Registros do histórico" className="overflow-hidden rounded-xl border border-surface-variant/50 bg-surface-container-lowest shadow-[0px_4px_12px_rgba(27,67,50,0.08)]">
-      <div className="overflow-x-auto">
+      <div className="overflow-x-auto" tabIndex={0} role="region" aria-label="Tabela de histórico; role horizontalmente para ver todas as colunas">
         <table className="w-full min-w-[780px] border-collapse text-left text-body-sm">
           <thead className="bg-surface-bright text-label-sm text-on-surface-variant">
             <tr>
@@ -36,7 +36,7 @@ export function SentHistoryTable({ items, total, page, pageSize, onPageChange })
                   <span className="block text-label-sm text-on-surface-variant">{item.detail}</span>
                 </td>
                 <td className="whitespace-nowrap px-md py-sm text-on-surface-variant">
-                  {dateFormatter.format(new Date(item.sentAt))}
+                  {dateFormatter.format(new Date(item.sentAt)).replace(', ', ' ')}
                 </td>
                 <td className="px-md py-sm">
                   <span className="rounded-full bg-surface-container px-2 py-1 text-label-sm text-on-surface-variant">{item.tone}</span>

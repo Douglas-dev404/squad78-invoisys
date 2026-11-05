@@ -6,9 +6,6 @@ export const BRAND_NAME = 'Invoisys';
 
 export const BRAND_DEFAULT_ICON = 'energy_savings_leaf';
 
-export const BRAND_LOGO_URL =
-  'https://lh3.googleusercontent.com/aida/AEtjO1V_Kz1B-3aJ7QsfypFylkuKC1jKnYdKu5_nE1HHcuPFXyRTJVAcdUtmDLCtQyzck0j6T8L4oXVr4c4CnlaHvhNeLkeKGqacKPkvRUmCWJhOkRfS6JZdT289QuxySzdLMX0snc9rutkX40jokCjC6zfcgRRRqM3pLyAEUn4pn-BND4lA1TwaReJTFNWOdDigO40QfvpJ8EpZyVtZ0_4Ce60JCPXxoFiO09ViucsLTHCkLWo1ghO7ki5T6-hE';
-
 export const UI_STRINGS = {
   // Login
   LOGIN_TITLE: 'Bem-vindo de volta',
@@ -22,7 +19,7 @@ export const UI_STRINGS = {
   FORGOT_PASSWORD_LABEL: 'Esqueci minha senha',
   EMPTY_HIGHLIGHTS_TITLE: 'Nenhum destaque disponível no momento',
   EMPTY_HIGHLIGHTS_SUBTITLE: 'Novas informações serão exibidas em breve.',
-  ERROR_RETRY_BUTTON: 'Tentar novamente',
+  ERROR_RETRY_BUTTON: 'Tentar de novo',
 
   // Recuperação de Senha
   RECOVERY_TITLE: 'Recuperar Senha',

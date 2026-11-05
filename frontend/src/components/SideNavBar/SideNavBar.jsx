@@ -1,22 +1,23 @@
 export function SideNavBar({
   isMinimized = false,
+  mobileOpen = false,
   onToggleMinimize,
   activeScreen = 'dashboard',
   onNavigate,
 }) {
   const navItems = [
-    { icon: 'dashboard', label: 'Dashboard', screenKey: 'dashboard' },
-    { icon: 'rate_review', label: 'Review Queue', screenKey: 'review-queue' },
-    { icon: 'history', label: 'Sent History', screenKey: 'sent-history' },
-    { icon: 'receipt_long', label: 'System Logs', screenKey: 'system-logs' },
-    { icon: 'group', label: 'User Management', screenKey: 'user-management' },
-    { icon: 'settings', label: 'Technical Settings', screenKey: 'technical-settings' },
+    { icon: 'dashboard', label: 'Painel', screenKey: 'dashboard' },
+    { icon: 'rate_review', label: 'Releases', screenKey: 'review-queue' },
+    { icon: 'history', label: 'Histórico de envios', screenKey: 'sent-history' },
+    { icon: 'receipt_long', label: 'Registros do sistema', screenKey: 'system-logs' },
+    { icon: 'group', label: 'Usuários', screenKey: 'user-management' },
+    { icon: 'settings', label: 'Configurações técnicas', screenKey: 'technical-settings' },
   ];
 
   return (
-    <nav
-      className={`fixed left-0 top-0 h-full bg-surface shadow-sm shadow-[0px_4px_12px_rgba(27,67,50,0.08)] z-50 transition-all duration-300 ${
-        isMinimized ? 'w-20' : 'w-[260px]'
+    <nav id="menu-principal" aria-label="Menu principal"
+      className={`${mobileOpen ? 'block' : 'hidden'} md:block fixed left-0 top-16 md:top-0 h-[calc(100dvh-4rem)] md:h-full overflow-y-auto bg-surface shadow-sm shadow-[0px_4px_12px_rgba(27,67,50,0.08)] z-50 transition-all duration-300 ${
+        isMinimized ? 'w-full md:w-20' : 'w-full md:w-[260px]'
       }`}
     >
       <div className="flex flex-col h-full py-md">
@@ -25,7 +26,7 @@ export function SideNavBar({
           <div className="flex items-center justify-between gap-xs mb-lg px-gutter transition-all duration-300">
             <div className="flex items-center gap-xs flex-1">
               <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center text-on-primary flex-shrink-0">
-                <span
+                <span aria-hidden="true"
                   className="material-symbols-outlined"
                   style={{ fontVariationSettings: "'FILL' 1" }}
                 >
@@ -37,17 +38,17 @@ export function SideNavBar({
                   Invoisys
                 </h1>
                 <p className="font-label-sm text-label-sm text-on-surface-variant">
-                  Task Formalization
+                  Comunicados de release
                 </p>
               </div>
             </div>
             <button
               onClick={onToggleMinimize}
-              className="w-8 h-8 rounded-lg flex items-center justify-center text-on-surface-variant hover:bg-surface-container-low transition-colors flex-shrink-0"
+              className="hidden md:flex w-8 h-8 rounded-lg flex items-center justify-center text-on-surface-variant hover:bg-surface-container-low transition-colors flex-shrink-0"
               aria-label="Minimizar"
               title="Minimizar"
             >
-              <span className="material-symbols-outlined text-[20px]">
+              <span aria-hidden="true" className="material-symbols-outlined text-[20px]">
                 chevron_left
               </span>
             </button>
@@ -57,7 +58,7 @@ export function SideNavBar({
         {isMinimized && (
           <div className="flex flex-col items-center gap-sm mb-lg px-sm transition-all duration-300">
             <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center text-on-primary flex-shrink-0">
-              <span
+              <span aria-hidden="true"
                 className="material-symbols-outlined"
                 style={{ fontVariationSettings: "'FILL' 1" }}
               >
@@ -66,11 +67,11 @@ export function SideNavBar({
             </div>
             <button
               onClick={onToggleMinimize}
-              className="w-8 h-8 rounded-lg flex items-center justify-center text-on-surface-variant hover:bg-surface-container-low transition-colors flex-shrink-0"
+              className="hidden md:flex w-8 h-8 rounded-lg flex items-center justify-center text-on-surface-variant hover:bg-surface-container-low transition-colors flex-shrink-0"
               aria-label="Expandir"
               title="Expandir"
             >
-              <span className="material-symbols-outlined text-[20px]">
+              <span aria-hidden="true" className="material-symbols-outlined text-[20px]">
                 chevron_right
               </span>
             </button>
@@ -96,9 +97,11 @@ export function SideNavBar({
                       ? 'text-primary font-bold border-r-4 border-primary bg-secondary-container/20 hover:bg-secondary-container/10'
                       : 'text-on-surface-variant hover:text-primary hover:bg-secondary-container/10'
                   }`}
+                  aria-label={item.label}
+                  aria-current={isActive ? 'page' : undefined}
                   title={isMinimized ? item.label : undefined}
                 >
-                  <span className="material-symbols-outlined flex-shrink-0">
+                  <span aria-hidden="true" className="material-symbols-outlined flex-shrink-0">
                     {item.icon}
                   </span>
                   {!isMinimized && (
@@ -115,13 +118,15 @@ export function SideNavBar({
         {/* CTA */}
         <div className={`transition-all duration-300 ${isMinimized ? 'px-1' : 'px-gutter'}`}>
           <button
+            onClick={() => onNavigate?.('review-queue')}
+            aria-label="Nova formalização"
             className="w-full bg-primary-container text-on-primary rounded-lg py-sm font-label-md text-label-md hover:opacity-90 transition-opacity active:scale-[0.98] shadow-[0px_4px_12px_rgba(27,67,50,0.08)] flex items-center justify-center gap-xs"
-            title={isMinimized ? 'New Formalization' : undefined}
+            title={isMinimized ? 'Nova formalização' : undefined}
           >
-            <span className="material-symbols-outlined text-[18px] flex-shrink-0">
+            <span aria-hidden="true" className="material-symbols-outlined text-[18px] flex-shrink-0">
               add
             </span>
-            {!isMinimized && <span className="whitespace-nowrap">New Formalization</span>}
+            {!isMinimized && <span className="whitespace-nowrap">Nova formalização</span>}
           </button>
         </div>
       </div>

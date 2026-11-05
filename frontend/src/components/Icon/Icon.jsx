@@ -27,6 +27,7 @@ export function Icon({
           ? "'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24"
           : "'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24",
       }}
+      role={ariaHidden ? undefined : 'img'}
       aria-hidden={ariaHidden}
       aria-label={ariaLabel}
     >

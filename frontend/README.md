@@ -1,95 +1,109 @@
 # Frontend — InvoiSys
 
-Interface web onde o revisor vai **ver, editar, aprovar e exportar** os comunicados
-gerados pela IA. Stack: **React 19 + Vite 8 + Tailwind CSS 3**, lint com **oxlint**.
-
-> **Estado atual:** telas de **login**, **recuperação de senha** e **confirmação de
-> envio**, ainda sem integração com o backend (serviços com mock e latência simulada).
-> A **tela de revisão**, requisito obrigatório do enunciado, ainda não existe (ver
-> [roadmap](#o-que-falta-até-a-entrega)).
+React 19, Vite 8 e Tailwind CSS 3. O lint usa oxlint. Instale com o lockfile existente:
 
 ```bash
+cd frontend
 npm ci
-npm run dev       # http://localhost:5173
-npm run lint      # oxlint (o CI roda)
-npm run build     # build de produção (o CI roda)
+npm run dev
+npm run lint -- --deny-warnings
+npm run build
 ```
 
-Configuração: copie `.env.example` → `.env`.
+O servidor de desenvolvimento abre em `http://localhost:5173`. O CI usa Node 22;
+para reproduzir o ambiente do CI, prefira essa versão. Não execute `npm audit fix`
+como parte do acabamento visual: atualização de dependências é uma mudança separada.
 
-| Variável | Padrão | Para quê |
+## Telas e navegação nesta versão
+
+| Tela | Como acessar | Dados |
 |---|---|---|
-| `VITE_API_BASE_URL` | `http://localhost:8080/api/v1` | base de todas as chamadas à API |
+| Login | Inicialização | Autenticação simulada |
+| Recuperação de senha | Esqueci minha senha | Serviço simulado |
+| Confirmação de envio | Enviar um e-mail válido no formulário | Serviço simulado |
+| Painel | Entrar no login | Indicadores, gráfico e busca simulados |
+| Histórico de envios | Menu Histórico de envios | Prévia com filtros e paginação locais |
+| Usuários | Menu Usuários | Lista e edição simuladas em memória |
+| Novo usuário | Usuários → Novo usuário | Cadastro simulado em memória |
+| Perfil | Botão Meu perfil, na barra superior | Dados simulados |
+| Releases, registros e configurações | Menu lateral | Aviso de funcionalidade pendente |
 
----
+O `App.jsx` ainda controla telas por estado local. **Esta versão não tem rotas reais**:
+abrir `/perfil` ou atualizar o navegador volta ao login. O roteamento pertence à #65.
+A tabela a seguir descreve os caminhos planejados, não implementados nesta entrega:
 
-## Arquitetura em camadas
+| Caminho planejado | Tela/dependência |
+|---|---|
+| `/login`, `/esqueci-senha`, `/email-enviado` | Roteamento #65 e sessão #66 |
+| `/redefinir-senha` | #73 |
+| `/dashboard`, `/historico`, `/usuarios`, `/usuarios/novo`, `/perfil` | #65 e integrações correspondentes |
+| `/releases` | #67 |
+| `/releases/:chave` | #69 |
+| Caminho desconhecido → 404 | #65 |
 
-O front segue uma separação estrita, para que trocar mock por API real mexa em **um
-arquivo por domínio**:
+## Configuração da API
 
-```
-pages/  ──►  hooks/  ──►  services/  ──►  config/api.config.js ──► backend
-  │            │              └── hoje: data/*.mock.js (latência simulada)
-  └──► components/ (visuais, sem estado de servidor)
-```
+Copie `.env.example` para `.env` dentro de `frontend/` e configure:
 
-| Camada | Pasta | Responsabilidade | Exemplo |
-|---|---|---|---|
-| **Página** | [`src/pages/`](src/pages/) | Orquestra hooks + componentes + validação de formulário. Uma por tela | `LoginPage` usa `useAuth`, `useHeroHighlights`, `validateLoginForm` |
-| **Hook** | [`src/hooks/`](src/hooks/) | Estado de servidor: expõe `{ data, loading, error, ...ações }` | `useAuth` → `{ user, loading, error, login, logout, clearError }` |
-| **Serviço** | [`src/services/`](src/services/) | Única camada que "fala com a API". **Assinaturas já definitivas**; o corpo hoje é mock, com o `fetch` real comentado como `TODO` | `auth.service.js`: `login`, `requestPasswordReset`, `resendPasswordReset`, `logout`, `getCurrentUser` |
-| **Config** | [`src/config/api.config.js`](src/config/api.config.js) | `API_BASE_URL`, timeout e mapa `ENDPOINTS` | `ENDPOINTS.AUTH.LOGIN` |
-| **Componente** | [`src/components/`](src/components/) | Visual e reutilizável, sem chamada de rede | `Button`, `InputField`, `Alert`, `LoginForm`, `HeroSection` |
-| **Mock** | [`src/data/`](src/data/) | Formato de resposta que o backend deve devolver | `auth.mock.js`, `branding.mock.js` |
-| **Utils** | [`src/utils/`](src/utils/) | Constantes de UI (`UI_STRINGS`) e validadores | `isValidEmail`, `validateLoginForm` |
-
-### Fluxo de telas atual
-
-```
-LoginPage ──"Esqueci minha senha"──► ForgotPasswordPage ──enviar──► EmailConfirmationPage
-    ▲                                        │                              │
-    └────────────── voltar ──────────────────┴──────────── voltar ──────────┘
+```dotenv
+VITE_API_BASE_URL=http://localhost:8080/api/v1
 ```
 
-Navegação hoje é por estado local em [`App.jsx`](src/App.jsx) (`currentScreen`); há
-`TODO` para trocar por `react-router-dom`.
+Reinicie o Vite após alterar variáveis. A configuração é lida em
+`src/config/api.config.js`. **Alterar essa URL não ativa integrações**: nesta base,
+os serviços ainda retornam mocks. As issues #64 e #66 substituem essa fundação pelo
+cliente HTTP e autenticação reais. Os contratos definidos pelo backend têm precedência
+sobre os formatos antigos dos mocks. Não envie credenciais no repositório.
 
-### Contrato que o front já espera do backend
+## Organização e manutenção
 
-| Endpoint (em `api.config.js`) | Usado por | Existe no backend? |
-|---|---|---|
-| `POST /auth/login` → `{ user, token }` | `auth.service.login` | ❌ Fase 3 |
-| `GET /auth/me` | `getCurrentUser` | ❌ Fase 3 |
-| `POST /auth/logout` | `logout` | ❌ Fase 3 |
-| `POST /auth/forgot-password` → `{ message, expiresInMinutes }` | `requestPasswordReset` | ❌ Fase 3 |
-| `POST /auth/resend-forgot-password` | `resendPasswordReset` | ❌ Fase 3 |
-| `GET /branding/highlights` | `branding.service.getHeroHighlights` | ❌ entidade + repository prontos, falta endpoint |
+- Páginas compõem componentes e validação; serviços concentram o acesso aos dados.
+- `useAsyncResource` mantém carregamento, resultado, erro e nova tentativa. O efeito
+  só atualiza estado após a resposta e ignora respostas de componentes desmontados.
+- A busca do painel filtra o conjunto simulado carregado. Isso evita respostas de buscas
+  antigas sobrescreverem resultados atuais. A API real será integrada na #77.
+- Permissões em edição são iniciadas ao selecionar um usuário, não em efeito.
+- Mocks ainda consumidos por telas foram preservados. `MOCK_BRAND_INFO` e sua função
+  exclusiva sem consumidores foram removidos. O histórico continua sendo uma prévia.
+- Datas válidas usam `dd/mm/aaaa HH:mm`, no fuso do navegador; números usam `pt-BR`.
+- O gráfico aceita lista vazia e valores zero sem dividir por zero.
 
-O formato exato esperado está nos mocks de [`src/data/`](src/data/).
+## Acessibilidade e responsividade
 
----
+A navegação lateral recolhe abaixo de 768 px. O botão da barra superior abre o menu;
+Esc fecha e devolve o foco ao botão. Em telas maiores, o menu mantém a opção de minimizar.
+O link “Ir para o conteúdo” fica visível ao receber foco por teclado. O foco é destacado
+em controles, e a preferência por movimento reduzido é respeitada.
 
-## O que falta até a entrega
+As tabelas rolam dentro de uma região identificada e focável, sem ampliar a página.
+O painel de usuário usa `<dialog>` nativo: foco contido, fechamento por Esc e retorno
+ao controle que o abriu. Campos e ações de alteração ficam bloqueados durante o envio.
+Os textos dos selos continuam identificando status independentemente da cor.
 
-| # | Item | Depende de |
-|---|---|---|
-| 1 | **CORS** no backend (sem isso o browser bloqueia `:5173` → `:8080`) | backend, Fase 3 |
-| 2 | Trocar mocks de `auth.service`/`branding.service` por `fetch` real; guardar token (preferir cookie HttpOnly) | endpoints `/auth/*`, `/branding/highlights` |
-| 3 | `react-router-dom` + rota protegida | — |
-| 4 | **Lista de Releases** (`GET /releases`) + botão "processar" (`POST /releases/{chave}/processar`) | #21 |
-| 5 | **Tela de revisão**: versão por público, itens agrupados por categoria, edição inline (`TextoFinal`), excluir/reincluir com motivo, aprovar/reprovar (motivo obrigatório)/reabrir | #22, #23 |
-| 6 | Exportar Markdown (download/preview) | #24 |
-| 7 | Dashboard e gestão de usuários (em desenvolvimento) | — |
-| 8 | Histórico de envios (em desenvolvimento) | #24 |
-| 9 | Testes (Vitest + Testing Library; Playwright no fluxo de revisão) | — |
+## Validação da issue #81
 
-### Convenções para telas novas
+Ver `docs/issue81-validacao.md` na raiz do repositório para a matriz de cobertura,
+evidências e pendências. A revisão final da #81 depende das telas e integrações que
+não estão presentes nesta base. Esta entrega não deve fechar a issue automaticamente.
 
-- Toda chamada de rede num `*.service.js`, com o endpoint em `api.config.js`.
-- Todo estado de servidor num hook `use*` que expõe `data/loading/error`.
-- Toda tela trata os quatro estados: **carregando, erro (com "tentar novamente"), vazio,
-  sucesso**.
-- Textos de UI em `UI_STRINGS`, não literais espalhados.
-- Categorias e status chegam da API como `snake_case` (`nova_funcionalidade`,
-  `aguardando_revisao`). Mapeie para rótulo de exibição num lugar só.
+Revisão manual:
+
+1. Rodar login → recuperação → confirmação e reenvio → voltar ao login.
+2. Entrar com o usuário de demonstração já definido em `auth.service.js`.
+3. Abrir painel, buscar um termo inexistente e limpar a busca.
+4. Percorrer histórico e testar filtros com e sem resultado.
+5. Abrir Usuários, selecionar uma pessoa, alterar permissões, salvar, fechar e reabrir.
+6. No diálogo, percorrer Tab/Shift+Tab e Esc; confirmar restauração do foco.
+7. Abrir Novo usuário; testar campos vazios, envio e e-mail duplicado.
+8. Abrir Perfil e voltar; usar o menu móvel com teclado.
+9. Repetir em 360, 768 e 1280 px, verificando rolagem horizontal e legibilidade.
+10. Após integração das dependências, repetir com a API real, incluindo falha de rede,
+    estados vazios e novas tentativas. Testes contra mocks não comprovam integração.
+
+### Recursos visuais locais
+
+As mesmas fontes Inter e Material Symbols usadas pela interface estão em `public/fonts`,
+com suas licenças (SIL Open Font License 1.1). Nenhum pacote foi adicionado
+ao projeto. Isso evita que indisponibilidade do Google Fonts transforme ícones em palavras
+e quebre o cabeçalho móvel. A marca nas telas de recuperação usa o mesmo símbolo do login;
+os avatares ilustrativos usam iniciais, sem depender de URLs temporárias externas.

@@ -1,56 +1,25 @@
-export function TopNavBar({ onLogout, onProfileClick, isMinimized = false }) {
-  const handleLogout = () => {
-    if (onLogout) {
-      onLogout();
-    }
-  };
-
+export function TopNavBar({ onLogout, onProfileClick, isMinimized = false,
+  menuOpen, onToggleMenu, menuButtonRef }) {
   return (
-    <header
-      className={`fixed top-0 bg-surface-container-lowest border-b border-surface-variant/50 z-40 transition-all duration-300 ${
-        isMinimized ? 'ml-20 w-[calc(100%-80px)]' : 'ml-[260px] w-[calc(100%-260px)]'
-      }`}
-    >
-      <div className="flex justify-end items-center w-full px-gutter h-16">
-        {/* Actions */}
-        <div className="flex items-center gap-sm">
-          <button
-            className="w-10 h-10 rounded-full flex items-center justify-center text-on-surface-variant hover:bg-surface-container-low transition-colors"
-            aria-label="Notificações"
-          >
-            <span className="material-symbols-outlined">notifications</span>
+    <header className={`fixed top-0 right-0 left-0 bg-surface-container-lowest border-b border-surface-variant z-40 ${
+      isMinimized ? 'md:left-20' : 'md:left-[260px]'}`}>
+      <div className="flex items-center justify-between md:justify-end gap-xs px-sm sm:px-gutter h-16">
+        <button ref={menuButtonRef} type="button" onClick={onToggleMenu}
+          aria-label={menuOpen ? 'Fechar menu' : 'Abrir menu'} aria-expanded={menuOpen}
+          aria-controls="menu-principal" className="md:hidden p-2 rounded-lg">
+          <span aria-hidden="true" className="material-symbols-outlined">{menuOpen ? 'close' : 'menu'}</span>
+        </button>
+        <div className="flex items-center gap-xs sm:gap-sm">
+          <button type="button" disabled title="Notificações ainda indisponíveis" aria-label="Notificações indisponíveis" className="p-2 rounded-full opacity-60">
+            <span aria-hidden="true" className="material-symbols-outlined">notifications</span>
           </button>
-          <button
-            className="w-10 h-10 rounded-full flex items-center justify-center text-on-surface-variant hover:bg-surface-container-low transition-colors"
-            aria-label="Ajuda"
-          >
-            <span className="material-symbols-outlined">help_outline</span>
+          <button type="button" onClick={onLogout} aria-label="Sair da conta" title="Sair" className="p-2 rounded-full hover:bg-surface-container">
+            <span aria-hidden="true" className="material-symbols-outlined">logout</span>
           </button>
-          <button className="bg-primary text-on-primary px-sm py-xs rounded-lg font-label-md text-label-md hover:bg-primary/90 transition-colors ml-sm">
-            Formalize
+          <button type="button" onClick={onProfileClick} aria-label="Ver meu perfil" title="Meu perfil"
+            className="w-10 h-10 rounded-full bg-primary text-on-primary flex items-center justify-center">
+            <span aria-hidden="true" className="material-symbols-outlined">person</span>
           </button>
-          <button
-            onClick={handleLogout}
-            className="w-10 h-10 rounded-full flex items-center justify-center text-on-surface-variant hover:bg-surface-container-low transition-colors ml-sm"
-            aria-label="Sair da conta"
-            title="Sair"
-          >
-            <span className="material-symbols-outlined">logout</span>
-          </button>
-          <div className="ml-sm pl-sm border-l border-surface-variant">
-            <button
-              onClick={onProfileClick}
-              className="rounded-full focus:outline-none focus:ring-2 focus:ring-primary/40 transition-shadow"
-              aria-label="Ver meu perfil"
-              title="Meu perfil"
-            >
-              <img
-                className="w-8 h-8 rounded-full object-cover border border-surface-variant/50"
-                alt="Foto de perfil"
-                src="https://lh3.googleusercontent.com/aida-public/AB6AXuCKLcr-v89KoV9oSKV-9JPg_L-t1F-Sv8gJoP3E8f2mTajVf5NcsZVIjTJqB6HA9JzmG8r-v-LjiUp4GBRW_unG63RYRCjo38mRKsAxg-X4UmEBuOH72pM4xvWZcnZH19QUkCALyNgW_7oxl7JCsjtSTe471M2QlRoAVzaNV-mXUPFV5osGBDCwAmmops2g1TuYf8geKxyqWvZpGmKjsiG15IWDEoX6tHpMXRmV-g1hyz8ZCNzczIU69A"
-              />
-            </button>
-          </div>
         </div>
       </div>
     </header>

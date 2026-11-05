@@ -73,9 +73,8 @@ export function LoginPage({ onNavigateToForgotPassword, onLoginSuccess }) {
         // TODO: Integrar com react-router-dom para navegação definitiva
         window.location.href = '/dashboard';
       }
-    } catch (err) {
-      // O erro já é tratado e armazenado no estado do hook useAuth
-      console.error('Falha ao autenticar usuário:', err);
+    } catch {
+      // O hook exibe o erro no formulário.
     }
   };
 
@@ -91,11 +90,11 @@ export function LoginPage({ onNavigateToForgotPassword, onLoginSuccess }) {
   };
 
   return (
-    <main className="bg-surface font-body-md text-on-surface antialiased min-h-screen flex flex-col md:flex-row w-full">
+    <main tabIndex={-1} className="bg-surface font-body-md text-on-surface antialiased min-h-screen flex flex-col lg:flex-row w-full">
       {/* Coluna Esquerda: Formulário de Autenticação */}
       <section
         aria-label="Formulário de acesso"
-        className="w-full md:w-5/12 lg:w-4/12 flex flex-col items-center justify-center p-gutter min-h-screen relative z-10 bg-surface shadow-[4px_0_24px_rgba(27,67,50,0.02)]"
+        className="w-full lg:w-5/12 xl:w-4/12 flex flex-col items-center justify-center p-gutter min-h-screen relative z-10 bg-surface shadow-[4px_0_24px_rgba(27,67,50,0.02)]"
       >
         <div className="w-full max-w-sm flex flex-col">
           {/* Logotipo e Nome da Plataforma */}

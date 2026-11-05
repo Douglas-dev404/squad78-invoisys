@@ -8,7 +8,7 @@ export function SearchBar({ onSearch, isLoading }) {
   };
 
   const handleSearch = () => {
-    onSearch(query);
+    if (!isLoading) onSearch(query);
   };
 
   const handleKeyDown = (e) => {
@@ -19,10 +19,14 @@ export function SearchBar({ onSearch, isLoading }) {
 
   return (
     <div className="mb-lg bg-surface-container-lowest border border-surface-variant/50 rounded-xl p-xs shadow-[0px_4px_12px_rgba(27,67,50,0.08)] flex items-center justify-between gap-sm transition-all focus-within:border-primary focus-within:ring-2 focus-within:ring-primary/20">
-      <div className="flex items-center gap-sm flex-1 pl-sm">
-        <span className="material-symbols-outlined text-outline">search</span>
+      <div className="flex items-center gap-xs sm:gap-sm flex-1 min-w-0 pl-xs sm:pl-sm">
+        <span aria-hidden="true" className="material-symbols-outlined text-outline">search</span>
+        <label htmlFor="busca-comunicados" className="sr-only">Buscar tarefas</label>
         <input
-          type="text"
+          id="busca-comunicados"
+          name="query"
+          type="search"
+          disabled={isLoading}
           placeholder="Buscar tarefas por título, ID do Jira ou responsável..."
           value={query}
           onChange={handleInputChange}
@@ -32,15 +36,14 @@ export function SearchBar({ onSearch, isLoading }) {
         />
       </div>
       <div className="flex items-center gap-xs pr-xs">
-        <span className="hidden md:inline-flex items-center px-2 py-1 rounded bg-surface-container font-label-sm text-[11px] text-on-surface-variant font-medium border border-outline-variant/30">
-          ⌘K
-        </span>
+
         <button
           onClick={handleSearch}
           disabled={isLoading}
           aria-busy={isLoading}
           className="bg-primary text-on-primary px-sm py-xs rounded-lg font-label-md text-label-md hover:bg-primary/90 transition-colors flex items-center gap-1 shadow-sm disabled:opacity-70 disabled:cursor-not-allowed"
         >
+          {isLoading && <span className="loading-spinner" aria-hidden="true" />}
           <span>Buscar</span>
         </button>
       </div>

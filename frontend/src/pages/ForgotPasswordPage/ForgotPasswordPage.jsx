@@ -4,7 +4,7 @@ import { ForgotPasswordForm } from '../../components/ForgotPasswordForm/ForgotPa
 import { Alert } from '../../components/Alert/Alert';
 import { usePasswordRecovery } from '../../hooks/usePasswordRecovery';
 import { isValidEmail } from '../../utils/validators';
-import { BRAND_LOGO_URL, UI_STRINGS } from '../../utils/constants';
+import { UI_STRINGS } from '../../utils/constants';
 
 /**
  * Página de Recuperação de Senha da Invoisys.
@@ -54,8 +54,8 @@ export function ForgotPasswordPage({ onNavigateToLogin, onNavigateToConfirmation
       }
       // TODO: Se react-router-dom estiver configurado:
       // navigate('/email-confirmacao', { state: { email } });
-    } catch (err) {
-      console.error('Falha na solicitação de recuperação de senha:', err);
+    } catch {
+      // O hook exibe o erro no formulário.
     }
   };
 
@@ -71,7 +71,7 @@ export function ForgotPasswordPage({ onNavigateToLogin, onNavigateToConfirmation
   };
 
   return (
-    <main className="bg-pattern min-h-screen flex items-center justify-center font-body-md text-on-surface p-gutter md:p-lg">
+    <main tabIndex={-1} className="bg-pattern min-h-screen flex items-center justify-center font-body-md text-on-surface p-gutter md:p-lg">
       <div className="w-full max-w-md">
         {/* Cartão principal do formulário */}
         <section
@@ -80,7 +80,7 @@ export function ForgotPasswordPage({ onNavigateToLogin, onNavigateToConfirmation
         >
           {/* Cabeçalho com Logotipo e Instruções */}
           <header className="flex flex-col items-center mb-xl text-center">
-            <BrandLogoCard logoUrl={BRAND_LOGO_URL} />
+            <BrandLogoCard />
 
             <h1 className="font-headline-lg-mobile md:font-headline-lg text-headline-lg-mobile md:text-headline-lg text-primary mb-xs">
               {UI_STRINGS.RECOVERY_TITLE}

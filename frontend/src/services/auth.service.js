@@ -1,4 +1,3 @@
-import { ENDPOINTS } from '../config/api.config';
 import { MOCK_AUTH_USER, MOCK_PASSWORD_RESET_RESPONSE } from '../data/auth.mock';
 
 /**

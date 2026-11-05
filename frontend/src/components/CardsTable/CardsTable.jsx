@@ -1,10 +1,12 @@
+import { formatDateTime } from '../../utils/format';
+
 export function CardsTable({ cards, isLoading, onRowClick }) {
   if (isLoading) {
     return (
       <section className="bg-surface-container-lowest rounded-xl shadow-[0px_4px_12px_rgba(27,67,50,0.08)] border border-surface-variant/50 overflow-hidden">
         <div className="px-md py-sm border-b border-surface-variant/30 flex justify-between items-center bg-surface-container-lowest">
           <h3 className="font-headline-sm text-headline-sm text-primary">
-            Últimos Cards Formalizados
+            Últimos comunicados formalizados
           </h3>
         </div>
         <div className="p-lg space-y-4">
@@ -24,11 +26,11 @@ export function CardsTable({ cards, isLoading, onRowClick }) {
       <section className="bg-surface-container-lowest rounded-xl shadow-[0px_4px_12px_rgba(27,67,50,0.08)] border border-surface-variant/50 overflow-hidden">
         <div className="px-md py-sm border-b border-surface-variant/30 flex justify-between items-center bg-surface-container-lowest">
           <h3 className="font-headline-sm text-headline-sm text-primary">
-            Últimos Cards Formalizados
+            Últimos comunicados formalizados
           </h3>
         </div>
         <div className="p-lg text-center text-on-surface-variant font-body-md">
-          Nenhum card encontrado
+          Nenhum comunicado encontrado. Ajuste a busca ou tente novamente.
         </div>
       </section>
     );
@@ -44,32 +46,27 @@ export function CardsTable({ cards, isLoading, onRowClick }) {
     <section className="bg-surface-container-lowest rounded-xl shadow-[0px_4px_12px_rgba(27,67,50,0.08)] border border-surface-variant/50 overflow-hidden">
       <div className="px-md py-sm border-b border-surface-variant/30 flex justify-between items-center bg-surface-container-lowest">
         <h3 className="font-headline-sm text-headline-sm text-primary">
-          Últimos Cards Formalizados
+          Últimos comunicados formalizados
         </h3>
-        <button className="text-primary font-label-md text-label-md hover:underline flex items-center gap-xs">
-          Ver todos{' '}
-          <span className="material-symbols-outlined text-[16px]">
-            arrow_forward
-          </span>
-        </button>
+
       </div>
-      <div className="overflow-x-auto">
-        <table className="w-full text-left border-collapse">
+      <div className="overflow-x-auto" tabIndex={0} role="region" aria-label="Tabela de comunicados; role horizontalmente para ver todas as colunas">
+        <table className="w-full min-w-[720px] text-left border-collapse">
           <thead>
             <tr className="border-b border-outline-variant/20 bg-surface-bright">
-              <th className="px-md py-sm font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider font-medium">
+              <th scope="col" className="px-md py-sm font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider font-medium">
                 ID Jira
               </th>
-              <th className="px-md py-sm font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider font-medium">
+              <th scope="col" className="px-md py-sm font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider font-medium">
                 Descrição da Tarefa
               </th>
-              <th className="px-md py-sm font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider font-medium">
+              <th scope="col" className="px-md py-sm font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider font-medium">
                 Responsável
               </th>
-              <th className="px-md py-sm font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider font-medium">
+              <th scope="col" className="px-md py-sm font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider font-medium">
                 Status
               </th>
-              <th className="px-md py-sm font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider font-medium text-right">
+              <th scope="col" className="px-md py-sm font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider font-medium text-right">
                 Data
               </th>
             </tr>
@@ -78,11 +75,11 @@ export function CardsTable({ cards, isLoading, onRowClick }) {
             {cards.data.map((card) => (
               <tr
                 key={card.id}
-                onClick={() => onRowClick?.(card)}
-                className="border-b border-outline-variant/10 hover:bg-secondary-container/5 transition-colors cursor-pointer group"
+
+                className="border-b border-outline-variant/10 hover:bg-secondary-container/5 transition-colors group"
               >
                 <td className="px-md py-sm text-primary font-medium group-hover:underline">
-                  {card.jiraId}
+                  {onRowClick ? <button type="button" onClick={() => onRowClick(card)} className="underline">{card.jiraId}</button> : card.jiraId}
                 </td>
                 <td className="px-md py-sm text-on-surface">{card.title}</td>
                 <td className="px-md py-sm text-on-surface-variant">
@@ -99,7 +96,7 @@ export function CardsTable({ cards, isLoading, onRowClick }) {
                   </span>
                 </td>
                 <td className="px-md py-sm text-on-surface-variant text-right">
-                  {card.date}
+                  {formatDateTime(card.createdAt)}
                 </td>
               </tr>
             ))}

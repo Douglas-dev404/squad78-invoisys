@@ -39,7 +39,7 @@ export function SentHistoryPage({ onLogout, onProfileClick, onNavigate }) {
       <div className="mx-auto w-full max-w-[1280px]">
         <header className="mb-lg flex flex-col gap-sm lg:flex-row lg:items-end lg:justify-between">
           <div>
-            <div className="mb-xs flex items-center gap-xs">
+            <div className="mb-xs flex flex-wrap items-center gap-xs">
               <h2 className="font-headline-lg text-headline-lg text-on-surface">Histórico de Envios</h2>
               <span className="rounded-full bg-secondary-container px-2 py-1 text-label-sm text-on-secondary-container">Prévia</span>
             </div>
@@ -50,7 +50,7 @@ export function SentHistoryPage({ onLogout, onProfileClick, onNavigate }) {
           </div>
           <button type="button" disabled title="Disponível após integração com o histórico real" className="inline-flex h-10 items-center justify-center gap-xs self-start rounded-lg border border-outline-variant px-sm text-body-sm font-medium text-on-surface-variant opacity-60 lg:self-auto">
             <span aria-hidden="true" className="material-symbols-outlined text-[18px]">download</span>
-            Exportar log
+            Exportar histórico
           </button>
         </header>
 

@@ -36,7 +36,7 @@ export function UserManagementPage({
       fullBleed
     >
       {/* Left Side: User List */}
-      <section className="flex-1 p-gutter overflow-y-auto flex flex-col gap-md">
+      <section className="flex-1 min-w-0 p-sm sm:p-gutter overflow-y-auto flex flex-col gap-md">
         <div className="flex flex-col lg:flex-row lg:justify-between lg:items-end gap-sm mb-sm">
           <div className="min-w-0">
             <h2 className="font-headline-lg text-headline-lg text-primary">
@@ -50,7 +50,7 @@ export function UserManagementPage({
             onClick={onCreateUser}
             className="bg-primary text-on-primary font-label-md text-label-md py-sm px-md rounded-lg flex items-center justify-center gap-xs hover:bg-primary/90 transition-colors shadow-sm flex-shrink-0 whitespace-nowrap self-start lg:self-auto"
           >
-            <span className="material-symbols-outlined text-[18px]">
+            <span aria-hidden="true" className="material-symbols-outlined text-[18px]">
               person_add
             </span>
             Novo Usuário
