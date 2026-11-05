@@ -1,3 +1,9 @@
+@font-face { font-family: 'Inter'; font-style: normal; font-weight: 400; font-display: swap; src: url('/fonts/inter-latin-400-normal.woff2') format('woff2'); }
+@font-face { font-family: 'Inter'; font-style: normal; font-weight: 500; font-display: swap; src: url('/fonts/inter-latin-500-normal.woff2') format('woff2'); }
+@font-face { font-family: 'Inter'; font-style: normal; font-weight: 600; font-display: swap; src: url('/fonts/inter-latin-600-normal.woff2') format('woff2'); }
+@font-face { font-family: 'Inter'; font-style: normal; font-weight: 700; font-display: swap; src: url('/fonts/inter-latin-700-normal.woff2') format('woff2'); }
+@font-face { font-family: 'Material Symbols Outlined'; font-style: normal; font-weight: 400; font-display: block; src: url('/fonts/material-symbols-outlined-latin-400-normal.woff2') format('woff2'); }
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -33,3 +39,27 @@
   -webkit-font-smoothing: antialiased;
   font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
 }
+
+@layer base {
+  :where(button, a, input, select, textarea, [tabindex]):focus-visible {
+    outline: 3px solid #007b50 !important;
+    outline-offset: 3px;
+  }
+  h1, h2, h3, h4, p { overflow-wrap: anywhere; }
+  button, input, select, textarea { font: inherit; }
+  input, select, textarea { max-width: 100%; min-width: 0; }
+}
+.skip-link { position: fixed; left: 1rem; top: -6rem; z-index: 100;
+  padding: .75rem 1rem; background: #012d1d; color: white; border-radius: .5rem; }
+.skip-link:focus { top: 1rem; }
+.user-dialog { width: min(440px, calc(100vw - 2rem)); max-width: none; max-height: calc(100dvh - 2rem); }
+.user-dialog::backdrop { background: rgb(0 33 20 / .55); }
+.loading-spinner { display: inline-block; width: 1em; height: 1em; border: 2px solid currentColor;
+  border-right-color: transparent; border-radius: 50%; animation: spin .8s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important;
+    transition-duration: .01ms !important; scroll-behavior: auto !important; }
+}
+
+.material-symbols-outlined { width: 1em; height: 1em; overflow: hidden; flex-shrink: 0; vertical-align: middle; }

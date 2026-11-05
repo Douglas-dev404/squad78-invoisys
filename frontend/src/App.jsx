@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { LoginPage } from './pages/LoginPage/LoginPage';
 import { ForgotPasswordPage } from './pages/ForgotPasswordPage/ForgotPasswordPage';
 import { EmailConfirmationPage } from './pages/EmailConfirmationPage/EmailConfirmationPage';
@@ -10,9 +10,9 @@ import { CreateUserPage } from './pages/CreateUserPage/CreateUserPage';
 import { SentHistoryPage } from './pages/SentHistoryPage/SentHistoryPage';
 
 const UNDER_CONSTRUCTION_SCREENS = {
-  'review-queue': 'Review Queue',
-  'system-logs': 'System Logs',
-  'technical-settings': 'Technical Settings',
+  'review-queue': 'Releases',
+  'system-logs': 'Registros do sistema',
+  'technical-settings': 'Configurações técnicas',
 };
 
 /**
@@ -24,6 +24,15 @@ function App() {
   const [currentScreen, setCurrentScreen] = useState('login');
   const [previousScreen, setPreviousScreen] = useState('dashboard');
   const [recoveryEmail, setRecoveryEmail] = useState('');
+
+  useEffect(() => {
+    const titles = { login: 'Acesso', 'forgot-password': 'Recuperar senha',
+      'email-confirmation': 'E-mail enviado', dashboard: 'Painel', profile: 'Meu perfil',
+      'create-user': 'Novo usuário', 'user-management': 'Usuários', 'sent-history': 'Histórico de envios' };
+    document.title = `${titles[currentScreen] || UNDER_CONSTRUCTION_SCREENS[currentScreen] || 'Invoisys'} - Invoisys`;
+    window.scrollTo(0, 0);
+    document.querySelector('main')?.focus({ preventScroll: true });
+  }, [currentScreen]);
 
   const navigateToProfile = () => {
     setPreviousScreen(currentScreen);

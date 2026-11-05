@@ -1,9 +1,12 @@
-export function PermissionOptionCard({ label, description, checked, onChange }) {
+export function PermissionOptionCard({ name, label, description, checked, onChange, disabled = false }) {
   return (
     <label className="flex items-start gap-sm p-sm rounded-lg border border-surface-variant hover:bg-surface-container transition-colors cursor-pointer group">
       <div className="flex items-center h-5">
         <input
+          id={`nova-permissao-${name}`}
+          name={name}
           type="checkbox"
+          disabled={disabled}
           checked={checked}
           onChange={onChange}
           className="w-4 h-4 text-primary bg-surface-container-lowest border-surface-variant rounded focus:ring-primary/20 focus:ring-2"

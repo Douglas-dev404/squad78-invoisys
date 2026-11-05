@@ -12,7 +12,7 @@ export const profileMock = {
   email: MOCK_AUTH_USER.email,
   role: MOCK_AUTH_USER.role,
   roleLabel: ROLE_LABELS[MOCK_AUTH_USER.role] || MOCK_AUTH_USER.role,
-  avatarUrl: MOCK_AUTH_USER.avatarUrl,
+  avatarUrl: null,
   department: 'Engenharia de Software',
   phone: '+55 (11) 98765-4321',
   location: 'São Paulo, Brasil',

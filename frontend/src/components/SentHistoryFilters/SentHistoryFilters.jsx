@@ -14,6 +14,8 @@ export function SentHistoryFilters({ filters, onChange, onClear }) {
             <span aria-hidden="true" className="material-symbols-outlined text-[18px] text-on-surface-variant">search</span>
             <input
               className="min-w-0 w-full border-0 bg-transparent p-0 text-body-sm text-on-surface placeholder:text-on-surface-variant focus:ring-0"
+              id="historico-busca"
+              name="query"
               type="search"
               placeholder="ID ou título da tarefa"
               value={filters.query}
@@ -24,7 +26,7 @@ export function SentHistoryFilters({ filters, onChange, onClear }) {
 
         <label className="block min-w-0">
           <span className="mb-2 block text-label-sm text-on-surface-variant">Período</span>
-          <select className={selectClassName} value={filters.period} onChange={(event) => onChange('period', event.target.value)}>
+          <select id="historico-periodo" name="period" className={selectClassName} value={filters.period} onChange={(event) => onChange('period', event.target.value)}>
             <option value="7">Últimos 7 dias</option>
             <option value="30">Últimos 30 dias</option>
             <option value="90">Últimos 90 dias</option>
@@ -34,7 +36,7 @@ export function SentHistoryFilters({ filters, onChange, onClear }) {
 
         <label className="block min-w-0">
           <span className="mb-2 block text-label-sm text-on-surface-variant">Tom da IA</span>
-          <select className={selectClassName} value={filters.tone} onChange={(event) => onChange('tone', event.target.value)}>
+          <select id="historico-tom" name="tone" className={selectClassName} value={filters.tone} onChange={(event) => onChange('tone', event.target.value)}>
             <option value="all">Todos os tons</option>
             <option value="Técnico">Técnico</option>
             <option value="Formal">Formal</option>
@@ -44,7 +46,7 @@ export function SentHistoryFilters({ filters, onChange, onClear }) {
 
         <label className="block min-w-0">
           <span className="mb-2 block text-label-sm text-on-surface-variant">Status</span>
-          <select className={selectClassName} value={filters.status} onChange={(event) => onChange('status', event.target.value)}>
+          <select id="historico-status" name="status" className={selectClassName} value={filters.status} onChange={(event) => onChange('status', event.target.value)}>
             <option value="all">Todos os status</option>
             <option value="Enviado">Enviado</option>
             <option value="Pendente">Pendente</option>

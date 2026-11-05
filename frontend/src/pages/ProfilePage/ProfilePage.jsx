@@ -1,18 +1,8 @@
+import { formatDateTime } from '../../utils/format';
 import { useProfile } from '../../hooks/useProfile';
 import { Layout } from '../../components/Layout/Layout';
 import { ProfileField } from '../../components/ProfileField/ProfileField';
 import { AlertError } from '../../components/AlertError/AlertError';
-
-function formatDate(isoDate) {
-  if (!isoDate) return '—';
-  return new Date(isoDate).toLocaleString('pt-BR', {
-    day: '2-digit',
-    month: '2-digit',
-    year: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-  });
-}
 
 export function ProfilePage({ onLogout, onProfileClick, onBack, onNavigate }) {
   const { profile, loading, error, clearError, refetch } = useProfile();
@@ -30,7 +20,7 @@ export function ProfilePage({ onLogout, onProfileClick, onBack, onNavigate }) {
             onClick={onBack}
             className="flex items-center gap-1 text-on-surface-variant hover:text-primary font-label-md text-label-md mb-sm transition-colors"
           >
-            <span className="material-symbols-outlined text-[18px]">
+            <span aria-hidden="true" className="material-symbols-outlined text-[18px]">
               arrow_back
             </span>
             Voltar
@@ -49,12 +39,12 @@ export function ProfilePage({ onLogout, onProfileClick, onBack, onNavigate }) {
       )}
 
       {loading && (
-        <div className="bg-surface-container-lowest rounded-xl border border-surface-variant/50 shadow-[0px_4px_12px_rgba(27,67,50,0.08)] p-lg">
-          <div className="flex items-center gap-md mb-lg">
+        <div className="bg-surface-container-lowest rounded-xl border border-surface-variant/50 shadow-[0px_4px_12px_rgba(27,67,50,0.08)] p-sm sm:p-lg">
+          <div className="flex flex-wrap items-center gap-sm mb-lg">
             <div className="w-20 h-20 rounded-full bg-surface-container animate-pulse" />
             <div className="flex-1 space-y-2">
-              <div className="h-4 w-40 bg-surface-container animate-pulse rounded" />
-              <div className="h-3 w-56 bg-surface-container animate-pulse rounded" />
+              <div className="h-4 w-full max-w-40 bg-surface-container animate-pulse rounded" />
+              <div className="h-3 w-full max-w-56 bg-surface-container animate-pulse rounded" />
             </div>
           </div>
           {[...Array(5)].map((_, i) => (
@@ -66,15 +56,18 @@ export function ProfilePage({ onLogout, onProfileClick, onBack, onNavigate }) {
         </div>
       )}
 
+      {!loading && !error && !profile && <p role="status">Nenhuma informação de perfil disponível.</p>}
       {!loading && !error && profile && (
-        <section className="bg-surface-container-lowest rounded-xl border border-surface-variant/50 shadow-[0px_4px_12px_rgba(27,67,50,0.08)] p-lg max-w-2xl">
+        <section className="bg-surface-container-lowest rounded-xl border border-surface-variant/50 shadow-[0px_4px_12px_rgba(27,67,50,0.08)] p-sm sm:p-lg max-w-2xl">
           {/* Cabeçalho do perfil */}
-          <div className="flex items-center gap-md mb-lg pb-lg border-b border-surface-variant/30">
-            <img
+          <div className="flex flex-wrap items-center gap-sm mb-lg pb-lg border-b border-surface-variant/30">
+            {profile.avatarUrl ? <img
               src={profile.avatarUrl}
               alt={`Foto de perfil de ${profile.name}`}
-              className="w-20 h-20 rounded-full object-cover border border-surface-variant/50"
-            />
+              className="w-20 h-20 shrink-0 rounded-full object-cover border border-surface-variant/50"
+            /> : <span aria-hidden="true" className="w-20 h-20 shrink-0 rounded-full bg-secondary-container text-on-secondary-container flex items-center justify-center text-headline-md">
+              {profile.name.split(/\s+/).slice(0, 2).map((part) => part[0]).join('').toLocaleUpperCase('pt-BR')}
+            </span>}
             <div>
               <h3 className="font-headline-sm text-headline-sm text-on-surface">
                 {profile.name}
@@ -102,12 +95,12 @@ export function ProfilePage({ onLogout, onProfileClick, onBack, onNavigate }) {
             <ProfileField
               icon="calendar_today"
               label="Conta criada em"
-              value={formatDate(profile.createdAt)}
+              value={formatDateTime(profile.createdAt)}
             />
             <ProfileField
               icon="schedule"
               label="Último acesso"
-              value={formatDate(profile.lastAccessAt)}
+              value={formatDateTime(profile.lastAccessAt)}
             />
           </div>
         </section>

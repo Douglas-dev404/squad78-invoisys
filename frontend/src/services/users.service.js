@@ -97,7 +97,7 @@ export async function createUser({ fullName, email, role, extraPermissions }) {
           {
             id: `act_${id}_created`,
             description: 'Usuário cadastrado no sistema',
-            date: 'Agora',
+            date: new Date().toISOString(),
           },
         ],
       };

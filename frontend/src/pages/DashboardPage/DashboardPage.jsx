@@ -11,7 +11,6 @@ export function DashboardPage({ onLogout, onProfileClick, onNavigate }) {
     kpi,
     chart,
     cards,
-    searchQuery,
     loading,
     error,
     handleSearch,
@@ -19,11 +18,6 @@ export function DashboardPage({ onLogout, onProfileClick, onNavigate }) {
     refetch,
   } = useDashboard();
 
-  const handleCardRowClick = (card) => {
-    // TODO: Navegar para página de detalhes do card quando React Router estiver configurado
-    // navigate(`/cards/${card.id}`);
-    console.log('Card clicked:', card);
-  };
 
   return (
     <Layout
@@ -35,7 +29,7 @@ export function DashboardPage({ onLogout, onProfileClick, onNavigate }) {
       {/* Header */}
         <header className="mb-lg">
           <h2 className="font-headline-lg text-headline-lg text-primary">
-            Dashboard Principal
+            Painel principal
           </h2>
           <p className="font-body-md text-body-md text-on-surface-variant mt-xs">
             Visão geral das atividades de formalização desta semana.
@@ -51,18 +45,25 @@ export function DashboardPage({ onLogout, onProfileClick, onNavigate }) {
           />
         )}
 
+        {!loading && !error && kpi && [kpi.formalizedCards.value, kpi.inReview.value, kpi.sentToClient.value].every((value) => value === 0) &&
+          <p role="status" className="mb-md">Nenhuma atividade registrada. Os indicadores serão atualizados após o processamento de uma Release.</p>}
         {/* Search Bar */}
         <SearchBar onSearch={handleSearch} isLoading={loading} />
 
+        {loading && <div role="status" className="grid grid-cols-1 xl:grid-cols-3 gap-md mb-lg">
+          <span className="sr-only">Carregando indicadores...</span>
+          {[1, 2, 3].map((id) => <div key={id} className="h-40 bg-surface-container animate-pulse rounded-xl" />)}
+        </div>}
+        {!loading && !error && !kpi && <p role="status">Nenhum indicador disponível.</p>}
         {/* KPI Grid */}
         {kpi && (
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-md mb-lg">
+          <div className="grid grid-cols-1 xl:grid-cols-3 gap-md mb-lg">
             <KPICard
-              label="Cards Formalizados"
+              label="Comunicados formalizados"
               value={kpi.formalizedCards.value}
               trend={
                 <>
-                  <span className="material-symbols-outlined text-[16px]">
+                  <span aria-hidden="true" className="material-symbols-outlined text-[16px]">
                     trending_up
                   </span>
                   {kpi.formalizedCards.trend} {kpi.formalizedCards.trendLabel}
@@ -76,7 +77,7 @@ export function DashboardPage({ onLogout, onProfileClick, onNavigate }) {
               value={kpi.inReview.value}
               trend={
                 <>
-                  <span className="material-symbols-outlined text-[16px]">
+                  <span aria-hidden="true" className="material-symbols-outlined text-[16px]">
                     schedule
                   </span>
                   {kpi.inReview.trend}
@@ -90,7 +91,7 @@ export function DashboardPage({ onLogout, onProfileClick, onNavigate }) {
               value={kpi.sentToClient.value}
               trend={
                 <>
-                  <span className="material-symbols-outlined text-[16px]">
+                  <span aria-hidden="true" className="material-symbols-outlined text-[16px]">
                     done_all
                   </span>
                   {kpi.sentToClient.trend}
@@ -109,7 +110,6 @@ export function DashboardPage({ onLogout, onProfileClick, onNavigate }) {
       <CardsTable
         cards={cards}
         isLoading={loading}
-        onRowClick={handleCardRowClick}
       />
     </Layout>
   );

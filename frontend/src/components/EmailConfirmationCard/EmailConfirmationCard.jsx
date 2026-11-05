@@ -36,6 +36,7 @@ export function EmailConfirmationCard({
         />
       </div>
 
+      {email && <p className="text-body-sm text-on-surface break-all text-center">Confira a caixa de entrada de <strong>{email}</strong>.</p>}
       {/* Textos e ação de reenvio */}
       <div className="text-center space-y-xs">
         <p className="font-body-sm text-body-sm text-on-surface-variant">
@@ -43,7 +44,7 @@ export function EmailConfirmationCard({
         </p>
 
         {resendSuccess ? (
-          <p className="font-label-md text-label-md text-secondary">
+          <p role="status" className="font-label-md text-label-md text-secondary">
             {UI_STRINGS.RESEND_SUCCESS_MESSAGE}
           </p>
         ) : (
@@ -54,6 +55,7 @@ export function EmailConfirmationCard({
             aria-busy={isResending}
             className="font-label-md text-label-md text-primary-container hover:text-tertiary-container transition-colors underline underline-offset-4 disabled:opacity-60 disabled:cursor-not-allowed"
           >
+            {isResending && <span className="loading-spinner mr-2" aria-hidden="true" />}
             {isResending
               ? UI_STRINGS.RESENDING_LINK_LABEL
               : UI_STRINGS.RESEND_LINK_LABEL}

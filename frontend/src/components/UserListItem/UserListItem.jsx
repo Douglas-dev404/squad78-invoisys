@@ -3,8 +3,9 @@ export function UserListItem({ user, isSelected, onClick }) {
 
   return (
     <div
-      onClick={onClick}
+      onClick={(event) => { event.currentTarget.focus(); onClick?.(); }}
       role="button"
+      aria-haspopup="dialog"
       tabIndex={0}
       onKeyDown={(e) => {
         if (e.key === 'Enter' || e.key === ' ') {
@@ -14,9 +15,9 @@ export function UserListItem({ user, isSelected, onClick }) {
       }}
       className={`bg-surface-container-lowest rounded-xl p-sm flex items-center justify-between shadow-[0px_4px_12px_rgba(27,67,50,0.04)] cursor-pointer hover:bg-surface-container-low transition-colors ${
         isSelected ? 'border-2 border-primary-fixed' : 'border border-surface-variant/50'
-      } ${!isActive ? 'opacity-75' : ''}`}
+      } `}
     >
-      <div className="flex items-center gap-md min-w-0 flex-1">
+      <div className="flex items-center gap-xs sm:gap-md min-w-0 flex-1">
         {user.avatarUrl ? (
           <img
             className="w-12 h-12 rounded-full object-cover border border-surface-variant flex-shrink-0"
@@ -37,7 +38,7 @@ export function UserListItem({ user, isSelected, onClick }) {
           </p>
         </div>
       </div>
-      <div className="flex items-center gap-sm flex-shrink-0 ml-md">
+      <div className="flex items-center gap-sm flex-shrink-0 ml-xs sm:ml-md">
         <div className="font-body-sm text-body-sm text-on-surface hidden sm:block whitespace-nowrap">
           {user.roleLabel}
         </div>

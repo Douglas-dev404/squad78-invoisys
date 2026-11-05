@@ -21,15 +21,15 @@ export function HeroSection({
   isLoading = false,
   error = null,
   onRetry,
-  mainTitle = 'Gestão automatizada de tasks',
+  mainTitle = 'Gestão automatizada de tarefas',
   mainSubtitle = 'Simplifique sua produtividade.',
 }) {
   return (
     <aside
       aria-label="Apresentação institucional Invoisys"
-      className="hidden md:block w-full md:w-7/12 lg:w-8/12 h-screen relative bg-surface-container-low overflow-hidden"
+      className="hidden lg:block w-full lg:w-7/12 xl:w-8/12 min-h-screen self-stretch relative bg-surface-container-low overflow-hidden"
     >
-      <div className="flex flex-col items-center justify-center h-full p-gutter text-center bg-primary-container overflow-y-auto">
+      <div className="flex flex-col items-center justify-center min-h-screen h-full p-gutter text-center bg-primary-container overflow-y-auto">
         <div className="max-w-xl w-full flex flex-col items-center">
           {/* Título e subtítulo do Hero */}
           <header className="mb-8">

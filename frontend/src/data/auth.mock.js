@@ -14,11 +14,6 @@ export const MOCK_AUTH_USER = {
   createdAt: '2026-01-15T10:30:00.000Z',
 };
 
-export const MOCK_VALID_CREDENTIALS = {
-  email: 'nome@empresa.com.br',
-  password: 'password123',
-};
-
 export const MOCK_PASSWORD_RESET_RESPONSE = {
   message: 'Se o e-mail estiver cadastrado, você receberá um link com as instruções para redefinir sua senha em instantes.',
   expiresInMinutes: 30,

@@ -13,7 +13,7 @@ const ROLE_OPTIONS = [
 const EXTRA_PERMISSION_OPTIONS = [
   {
     key: 'systemLogs',
-    label: 'Acesso a Logs do Sistema',
+    label: 'Acesso aos registros do sistema',
     description: 'Visualização do histórico de atividades.',
   },
   {
@@ -29,7 +29,7 @@ const EXTRA_PERMISSION_OPTIONS = [
   {
     key: 'exportReports',
     label: 'Exportação de Relatórios',
-    description: 'Download de dados em CSV/PDF.',
+    description: 'Baixar dados em CSV/PDF.',
   },
 ];
 
@@ -80,7 +80,7 @@ export function CreateUserPage({ onLogout, onProfileClick, onNavigate, onCancel,
                 role="alert"
                 className="bg-error-container border border-error rounded-lg p-sm flex items-start gap-sm"
               >
-                <span
+                <span aria-hidden="true"
                   className="material-symbols-outlined text-error flex-shrink-0"
                   style={{ fontVariationSettings: "'FILL' 1" }}
                 >
@@ -97,7 +97,7 @@ export function CreateUserPage({ onLogout, onProfileClick, onNavigate, onCancel,
                   className="text-error hover:opacity-70 transition-opacity"
                   aria-label="Fechar"
                 >
-                  <span className="material-symbols-outlined text-[18px]">
+                  <span aria-hidden="true" className="material-symbols-outlined text-[18px]">
                     close
                   </span>
                 </button>
@@ -163,8 +163,10 @@ export function CreateUserPage({ onLogout, onProfileClick, onNavigate, onCancel,
                 {EXTRA_PERMISSION_OPTIONS.map((option) => (
                   <PermissionOptionCard
                     key={option.key}
+                    name={option.key}
                     label={option.label}
                     description={option.description}
+                    disabled={isSubmitting}
                     checked={extraPermissions[option.key]}
                     onChange={() => toggleExtraPermission(option.key)}
                   />
@@ -188,6 +190,7 @@ export function CreateUserPage({ onLogout, onProfileClick, onNavigate, onCancel,
                 aria-busy={isSubmitting}
                 className="px-md py-sm rounded-lg bg-primary-container text-on-primary font-label-md text-label-md hover:bg-primary transition-colors text-center shadow-sm disabled:opacity-60 disabled:cursor-not-allowed"
               >
+                {isSubmitting && <span className="loading-spinner mr-2" aria-hidden="true" />}
                 {isSubmitting ? 'Cadastrando...' : 'Cadastrar Usuário'}
               </button>
             </div>

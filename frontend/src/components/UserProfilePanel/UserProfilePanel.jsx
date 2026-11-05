@@ -1,3 +1,7 @@
+import { useEffect, useRef } from 'react';
+import { Button } from '../Button/Button';
+import { formatDateTime } from '../../utils/format';
+
 const PERMISSION_OPTIONS = [
   { key: 'admin', label: 'Administrador (Acesso Total)' },
   { key: 'reviewer', label: 'Revisor de Tarefas' },
@@ -14,27 +18,47 @@ export function UserProfilePanel({
   isSaving,
   saveError,
 }) {
+  const dialog = useRef(null);
+  useEffect(() => {
+    const element = dialog.current;
+    if (!element) return;
+    const opener = document.activeElement;
+    element.showModal();
+    const previous = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => { element.close(); document.body.style.overflow = previous; opener?.focus(); };
+  }, []);
+
   if (!user || !draftPermissions) return null;
 
   const isActive = user.status === 'active';
 
   return (
-    <aside className="w-[400px] bg-surface-container-lowest border-l border-surface-variant shadow-[-4px_0px_24px_rgba(27,67,50,0.03)] flex flex-col h-full overflow-hidden flex-shrink-0">
+    <dialog ref={dialog} onCancel={onClose} onKeyDown={(event) => {
+      if (event.key !== 'Tab') return;
+      const controls = [...event.currentTarget.querySelectorAll('button:not(:disabled), input:not(:disabled), [tabindex="0"]')];
+      const first = controls[0];
+      const last = controls.at(-1);
+      if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last?.focus(); }
+      if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first?.focus(); }
+    }} role="dialog" aria-modal="true" aria-labelledby="perfil-usuario-titulo"
+      className="user-dialog bg-surface-container-lowest text-on-surface border border-surface-variant rounded-xl p-0">
+      <div className="flex flex-col max-h-[calc(100dvh-2rem)]">
       {/* Panel Header */}
-      <div className="p-gutter border-b border-surface-variant/50 flex justify-between items-start">
-        <h3 className="font-headline-sm text-headline-sm text-primary">
+      <div className="p-sm sm:p-gutter border-b border-surface-variant/50 flex justify-between items-start">
+        <h3 id="perfil-usuario-titulo" className="font-headline-sm text-headline-sm text-primary">
           Perfil do Usuário
         </h3>
         <button
-          onClick={onClose}
+          type="button" onClick={onClose}
           className="text-on-surface-variant hover:text-on-surface transition-colors"
           aria-label="Fechar painel"
         >
-          <span className="material-symbols-outlined">close</span>
+          <span aria-hidden="true" className="material-symbols-outlined">close</span>
         </button>
       </div>
 
-      <div className="flex-1 overflow-y-auto p-gutter flex flex-col gap-lg">
+      <div className="flex-1 min-h-0 overflow-y-auto p-sm sm:p-gutter flex flex-col gap-lg">
         {/* Identity Section */}
         <div className="flex flex-col items-center text-center gap-sm">
           {user.avatarUrl ? (
@@ -52,7 +76,7 @@ export function UserProfilePanel({
             <h2 className="font-headline-md text-headline-md text-on-surface">
               {user.name}
             </h2>
-            <p className="font-body-md text-body-md text-on-surface-variant">
+            <p className="font-body-md text-body-md text-on-surface-variant break-words">
               {user.email}
             </p>
             <span
@@ -79,8 +103,11 @@ export function UserProfilePanel({
                 className="flex items-center gap-sm cursor-pointer group"
               >
                 <input
+                  id={`usuario-permissao-${option.key}`}
+                  name={`permissao-${option.key}`}
                   type="checkbox"
-                  checked={draftPermissions[option.key]}
+                  disabled={isSaving}
+                  checked={Boolean(draftPermissions[option.key])}
                   onChange={() => onTogglePermission(option.key)}
                   className="w-5 h-5 rounded text-primary-container border-outline focus:ring-primary focus:ring-offset-0 bg-surface-container-lowest"
                 />
@@ -110,7 +137,7 @@ export function UserProfilePanel({
                     {entry.description}
                   </p>
                   <p className="font-label-sm text-label-sm text-on-surface-variant mt-1">
-                    {entry.date}
+                    {formatDateTime(entry.date)}
                   </p>
                 </div>
               ))}
@@ -127,23 +154,12 @@ export function UserProfilePanel({
 
       {/* Panel Footer Actions */}
       <div className="p-md border-t border-surface-variant/50 flex gap-sm bg-surface">
-        <button
-          onClick={onToggleStatus}
-          disabled={isSaving}
-          aria-busy={isSaving}
-          className="flex-1 bg-surface-container-high text-on-surface font-label-md text-label-md py-sm rounded-lg hover:bg-surface-container-highest transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
-        >
+        <Button onClick={onToggleStatus} isLoading={isSaving} className="flex-1 !bg-surface-container-high !text-on-surface">
           {isActive ? 'Desativar' : 'Ativar'}
-        </button>
-        <button
-          onClick={onSave}
-          disabled={isSaving}
-          aria-busy={isSaving}
-          className="flex-1 bg-primary text-on-primary font-label-md text-label-md py-sm rounded-lg hover:bg-primary/90 transition-colors shadow-sm disabled:opacity-60 disabled:cursor-not-allowed"
-        >
-          {isSaving ? 'Salvando...' : 'Salvar'}
-        </button>
+        </Button>
+        <Button onClick={onSave} isLoading={isSaving} className="flex-1">Salvar</Button>
       </div>
-    </aside>
+    </div>
+    </dialog>
   );
 }

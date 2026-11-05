@@ -1,7 +1,7 @@
 import { BrandLogoCard } from '../../components/BrandLogoCard/BrandLogoCard';
 import { EmailConfirmationCard } from '../../components/EmailConfirmationCard/EmailConfirmationCard';
 import { usePasswordRecovery } from '../../hooks/usePasswordRecovery';
-import { BRAND_LOGO_URL, UI_STRINGS } from '../../utils/constants';
+import { UI_STRINGS } from '../../utils/constants';
 
 /**
  * Página de confirmação do envio do link de recuperação de senha.
@@ -35,7 +35,7 @@ export function EmailConfirmationPage({ email = '', onNavigateToLogin }) {
   };
 
   return (
-    <main className="bg-pattern min-h-screen flex items-center justify-center font-body-md text-on-surface p-gutter md:p-lg">
+    <main tabIndex={-1} className="bg-pattern min-h-screen flex items-center justify-center font-body-md text-on-surface p-gutter md:p-lg">
       <div className="w-full max-w-md">
         {/* Cartão principal */}
         <section
@@ -44,7 +44,7 @@ export function EmailConfirmationPage({ email = '', onNavigateToLogin }) {
         >
           {/* Cabeçalho com Logotipo e Instruções */}
           <header className="flex flex-col items-center mb-xl text-center">
-            <BrandLogoCard logoUrl={BRAND_LOGO_URL} />
+            <BrandLogoCard />
 
             <h1 className="font-headline-lg-mobile md:font-headline-lg text-headline-lg-mobile md:text-headline-lg text-primary mb-xs">
               {UI_STRINGS.EMAIL_SENT_TITLE}

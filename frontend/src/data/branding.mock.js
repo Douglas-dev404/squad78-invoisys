@@ -3,19 +3,10 @@
  * Permite simular retornos de API dinâmicos para a seção lateral (Hero) e cabeçalhos.
  */
 
-export const MOCK_BRAND_INFO = {
-  companyName: 'Invoisys',
-  logoIcon: 'energy_savings_leaf',
-  loginTitle: 'Bem-vindo de volta',
-  loginSubtitle: 'Insira suas credenciais para acessar a plataforma de formalização.',
-  forgotPasswordText: 'Esqueci minha senha',
-  forgotPasswordUrl: '#',
-};
-
 export const MOCK_HERO_HIGHLIGHTS = [
   {
     id: 'hl_01',
-    title: 'Gestão automatizada de tasks',
+    title: 'Gestão automatizada de tarefas',
     description: 'Simplifique sua produtividade.',
     icon: 'task_alt',
     createdAt: '2026-02-01T08:00:00.000Z',
