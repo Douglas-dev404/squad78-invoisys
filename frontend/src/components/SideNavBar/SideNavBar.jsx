@@ -108,7 +108,7 @@ export function SideNavBar({
 
         {/* CTA */}
         <div className={`transition-all duration-300 ${isMinimized ? 'px-1' : 'px-gutter'}`}>
-          <button onClick={() => navigate('/releases')} className="w-full bg-primary-container text-on-primary rounded-lg py-sm font-label-md text-label-md hover:opacity-90 transition-opacity active:scale-[0.98] shadow-[0px_4px_12px_rgba(27,67,50,0.08)] flex items-center justify-center gap-xs"
+          <button onClick={() => navigate('/releases?nova=1')} className="w-full bg-primary-container text-on-primary rounded-lg py-sm font-label-md text-label-md hover:opacity-90 transition-opacity active:scale-[0.98] shadow-[0px_4px_12px_rgba(27,67,50,0.08)] flex items-center justify-center gap-xs"
             title={isMinimized ? 'Nova Release' : undefined}
           >
             <span className="material-symbols-outlined text-[18px] flex-shrink-0">

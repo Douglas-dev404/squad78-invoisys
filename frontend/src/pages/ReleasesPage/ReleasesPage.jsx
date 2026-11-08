@@ -153,6 +153,16 @@ export function ReleasesPage() {
   const { releases, carregando, erro, recarregar } = useReleases(status || undefined);
 
   const [modalAberto, setModalAberto] = useState(false);
+  const mostrarModal = modalAberto || searchParams.get('nova') === '1';
+
+  const fecharModal = () => {
+    setModalAberto(false);
+    if (searchParams.has('nova')) {
+      const semNova = new URLSearchParams(searchParams);
+      semNova.delete('nova');
+      setSearchParams(semNova, { replace: true });
+    }
+  };
   const [paginaSalva, setPaginaSalva] = useState({ status, numero: 1 });
 
   const ordenadas = useMemo(
@@ -168,7 +178,7 @@ export function ReleasesPage() {
   const trocarAba = (valor) => setSearchParams(valor ? { status: valor } : {});
   const irParaPagina = (numero) => setPaginaSalva({ status, numero });
   const aoProcessar = () => {
-    setModalAberto(false);
+    fecharModal();
     recarregar();
   };
 
@@ -233,9 +243,9 @@ export function ReleasesPage() {
         {conteudo}
       </div>
 
-      {modalAberto && (
+      {mostrarModal && (
         <ProcessarReleaseModal
-          onClose={() => setModalAberto(false)}
+          onClose={fecharModal}
           onSucesso={aoProcessar}
         />
       )}
