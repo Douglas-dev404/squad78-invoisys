@@ -73,11 +73,72 @@ Testes: 349 no backend e 18 no front.
 
 **PR #57: trava contra processamento duplicado e observabilidade** (Douglas). Implementado e testado; volta depois do rebase sobre o adapter da OpenAI (#100).
 
-- **Trava:** dois cliques em "Processar" na mesma Release faziam a IA rodar duas vezes (~10 chamadas pagas cada). A trava usa um *advisory lock* do Postgres por Release: a segunda chamada recebe 409 na hora, antes do Jira e da IA. Não precisa de infraestrutura nova.
-- **Observabilidade escolhida:**
-  - **Langfuse** (self-hosted) para a IA: um trace por execução, com prompt, resposta, modelo, tokens, custo e latência de cada chamada.
-  - **Prometheus + Grafana** para o sistema: métricas de HTTP, do pipeline e da IA, com dashboard pronto.
-  - Precisa de containers próprios (Langfuse usa Postgres, Redis e ClickHouse), que o plano gratuito não comporta. A meta é subir na **Entrega 4**.
+### Trava contra processamento duplicado
+
+**O problema.** Processar uma Release faz **2N + 2 chamadas pagas à IA**, sendo N o número de grupos de histórias: 1 para agrupar, 1 para categorizar e 1 para reescrever cada grupo, e 1 para título e resumo. A `2026.10.0` tem 8 grupos: são 18 chamadas e ~17 s. Se alguém clica duas vezes, ou duas pessoas processam a mesma Release ao mesmo tempo, tudo isso roda em dobro.
+
+O banco já tinha `UNIQUE` em `chave_jira`, mas essa proteção só age no **fim**: a segunda execução gasta as 18 chamadas e falha ao gravar. Ela evita o dado duplicado, não o custo duplicado.
+
+**O tipo de trava.** É uma trava **pessimista**: impede o conflito antes de ele acontecer, em vez de detectá-lo depois. Também é **sem espera** (*try-lock*): quem chega em segundo lugar não entra numa fila, recebe a recusa na hora.
+
+| Pergunta | Resposta |
+|---|---|
+| Que recurso do banco? | *Advisory lock* de sessão do PostgreSQL (`pg_try_advisory_lock`). É uma trava sobre um **número** escolhido pela aplicação, e não sobre uma linha. Isso importa porque, na primeira execução, a linha da Release ainda nem existe |
+| Qual número? | Os 8 primeiros bytes do SHA-256 de `invoisys:processar-release:<CHAVE EM MAIÚSCULAS>`. A mesma Release gera sempre o mesmo número; Releases diferentes geram números diferentes (colisão com chance de ~1 em 2⁶⁴) |
+| Quando ela é pega? | No começo do pipeline, **antes** de chamar o Jira e a IA |
+| E quem chega em segundo? | `pg_try_advisory_lock` devolve `false` na hora, e a API responde **409** ("Release já está em processamento"). Medido: ~25 ms, contra ~2,7 s da execução que segura a trava (no teste com Jira e IA simulados) |
+| Quando é solta? | Ao terminar, com sucesso ou com erro (`await using` + `pg_advisory_unlock`). Se a API cair no meio, a conexão fecha e o PostgreSQL solta a trava sozinho, sem deixar Release presa |
+| Funciona com várias instâncias da API? | Sim. A trava mora no banco, que todas as instâncias compartilham. Um `lock` em memória só protegeria uma instância |
+| Por que não otimista? | Concorrência otimista (versão/`UNIQUE`) só detecta o conflito na hora de gravar, depois da IA já ter sido paga |
+| Custo | Ocupa 1 conexão do pool durante a execução (~20 s). O status "Processando" ainda não aparece no `GET /releases` |
+
+A trava também conta quantas duplicadas barrou: métrica `invoisys.pipeline.bloqueios`, abaixo.
+
+### Observabilidade
+
+**Escolha:** **Langfuse** para enxergar a IA, e **Prometheus + Grafana** para as métricas do sistema. Tudo instrumentado com **OpenTelemetry**, o padrão aberto, para não amarrar o código a um fornecedor. Fica **desligado por padrão** (`Observabilidade__Habilitada=false`); o arquivo `docker-compose.observabilidade.yml` liga tudo localmente.
+
+**Como os dados nascem no código.** O código usa as APIs nativas do .NET: `ActivitySource` para os traces e `Meter` para as métricas. Por isso o `InvoiSys.Domain` não depende de nenhuma biblioteca de observabilidade, e quem exporta é o OpenTelemetry SDK, configurado só na API.
+
+**Langfuse: traces da IA**
+
+| Aspecto | Como funciona |
+|---|---|
+| O que é registrado | Um **trace** por execução do pipeline, com um **span do tipo `generation`** para cada chamada à IA. Cada span guarda prompt, resposta, modelo, temperatura, tokens de entrada e de saída, custo (quando o provedor informa) e latência |
+| Como chega lá | A API **envia** (push) via **OTLP** (HTTP/protobuf) para o endpoint OpenTelemetry do Langfuse, autenticando com a chave pública e a secreta. O Langfuse não tem SDK para .NET; por isso o caminho é OpenTelemetry |
+| Para que serve | Abrir uma execução e ver exatamente o que a IA recebeu e devolveu em cada etapa. É assim que se depura um texto ruim, compara modelos e acompanha custo por Release |
+| O que roda | Langfuse self-hosted: web + worker + PostgreSQL + ClickHouse (análises) + Redis (fila) + MinIO (armazenamento dos eventos) |
+
+**Prometheus + Grafana: métricas do sistema**
+
+| Aspecto | Como funciona |
+|---|---|
+| Como chega lá | Também por **push**: a API envia as métricas por OTLP a cada **15 s** para o receptor OTLP do Prometheus (`--web.enable-otlp-receiver`). Não é o *scrape* clássico, então a API não precisa expor um `/metrics` público |
+| Métricas da aplicação | `invoisys.pipeline.execucoes` (por resultado), `invoisys.pipeline.duracao`, `invoisys.pipeline.bloqueios` (duplicadas barradas), `invoisys.llm.chamadas` (por etapa, modelo e resultado), `invoisys.llm.duracao`, `invoisys.llm.tokens` |
+| Métricas do runtime | .NET (memória, CPU, GC), ASP.NET Core (requisições por rota e status, latência), Kestrel, HttpClient (chamadas ao Jira e à IA) e Npgsql (banco) |
+| Grafana | Dashboard pronto, com seções Visão geral, IA (execuções, falhas, duplicadas barradas, chamadas, tokens, p95 de latência por etapa), API HTTP (requisições, erros 5xx, p95 por rota) e Runtime .NET |
+
+**Por que ainda não está no ar.** O Langfuse self-hosted sozinho são 6 containers (ClickHouse incluído), e o plano atual (um App Service B1) não comporta isso. Antes de subir na **Entrega 4**, vale avaliar os **planos gratuitos do Langfuse Cloud e do Grafana Cloud**: o código não muda, só os endpoints e as chaves.
+
+**Pendência técnica do rebase:** no #57, a instrumentação da IA estava no `OpenRouterProvider`. Depois do #100, ela precisa ir para a base comum `ChatCompletionsLlmProvider`, para que as chamadas da OpenAI também apareçam no Langfuse.
+
+## O que cada tela faz
+
+| Tela | Rota | O que faz | Dados |
+|---|---|---|---|
+| Login | `/login` | Entra com e-mail e senha. Mostra erro de credencial (sem revelar se o e-mail existe), erro por campo (422) e excesso de tentativas (429). À direita, os destaques institucionais | **Reais** (API); destaques vêm do banco, com fallback local |
+| Esqueci a senha | `/esqueci-senha` | Pede o link de redefinição pelo e-mail | **Real**. Ainda sem SMTP: o link sai no log da API |
+| E-mail enviado | `/email-enviado` | Confirma o envio, mostra a validade do link (30 min) e permite reenviar | **Real** |
+| Redefinir senha | `/redefinir-senha` | Placeholder | Tela na Entrega 2 (#73); a API já existe |
+| Dashboard | `/dashboard` | KPIs (formalizados, em revisão, enviados), gráfico da semana e últimos cards | **Exemplo**. API na Entrega 2 (#74), tela real na Entrega 3 (#77) |
+| Releases | `/releases` | Lista as Releases com status e data; filtra por status (abas na URL); pagina; **Processar Release** abre o modal que dispara Jira + IA (até 3 min de espera, trava contra duplo clique, erro da API em português) | **Real** |
+| Detalhe da Release | `/releases/:chave` | Placeholder | Entrega 2 (#69–#72). A API já devolve o comunicado completo |
+| Histórico de envios | `/historico` | Filtros e tabela dos comunicados enviados, com prévia | **Exemplo**. API na Entrega 2 (#75), tela real na Entrega 3 (#79) |
+| Perfil | `/perfil` | Nome, e-mail, cargo e data de criação do usuário logado | **Real** (`/auth/me`) |
+| Usuários | `/usuarios` | Lista, busca, painel do usuário, ativar e desativar. **Só admin** | **Exemplo**. API no PR #99 (Entrega 2), tela real na Entrega 3 (#78) |
+| Novo usuário | `/usuarios/novo` | Nome, e-mail, cargo e permissões. **Só admin** | **Exemplo** (some no F5) |
+
+Em todas as telas internas: menu lateral (recolhível), barra superior com o usuário logado e "Sair". Sem sessão, qualquer rota interna volta para o login; um cargo sem permissão vê "Sem permissão". Os botões **Notificações**, **Ajuda** e **Formalizar** ainda não têm função.
 
 ## Ficou para as próximas entregas
 
