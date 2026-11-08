@@ -147,7 +147,7 @@ public class ApiAutenticacaoTests
             {
                 (exigeAuth && !anonimo).Should().BeTrue($"{rota} identifica o usuário do token");
             }
-            else if (rota.StartsWith("/api/v1/auth/", StringComparison.Ordinal) || rota == "/health")
+            else if (rota.StartsWith("/api/v1/auth/", StringComparison.Ordinal) || rota is "/health" or "/api/v1/branding/highlights")
             {
                 (exigeAuth && !anonimo).Should().BeFalse($"{rota} deve ser pública");
             }

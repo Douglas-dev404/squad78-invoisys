@@ -62,6 +62,7 @@ public class OpenApiTests
             "/api/v1/auth/resend-forgot-password",
             "/api/v1/auth/reset-password",
             "/health",
+            "/api/v1/branding/highlights",
             "/api/v1/releases",
             "/api/v1/releases/{chaveRelease}",
             "/api/v1/releases/{chaveRelease}/aprovar",
@@ -104,6 +105,23 @@ public class OpenApiTests
 
         spec.RootElement.GetProperty("components").GetProperty("securitySchemes")
             .GetProperty("Bearer").GetProperty("scheme").GetString().Should().Be("bearer");
+    }
+
+    [Fact]
+    public async Task Destaques_publicam_resposta_array_com_os_campos_do_contrato()
+    {
+        using var spec = await BuscarSpecAsync();
+
+        var schema = spec.RootElement.GetProperty("paths")
+            .GetProperty("/api/v1/branding/highlights").GetProperty("get")
+            .GetProperty("responses").GetProperty("200")
+            .GetProperty("content").GetProperty("application/json").GetProperty("schema");
+
+        schema.GetProperty("type").GetString().Should().Be("array");
+        schema.GetProperty("items").GetProperty("$ref").GetString().Should().Contain("DestaqueOut");
+        spec.RootElement.GetProperty("components").GetProperty("schemas")
+            .GetProperty("DestaqueOut").GetProperty("properties").EnumerateObject()
+            .Select(p => p.Name).Should().BeEquivalentTo("id", "titulo", "descricao", "icone");
     }
 
     [Fact]

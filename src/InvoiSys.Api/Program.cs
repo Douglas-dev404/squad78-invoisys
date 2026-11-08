@@ -101,6 +101,7 @@ app.MapReleaseEndpoints();
 app.MapRevisaoEndpoints();
 app.MapItemComunicadoEndpoints();
 app.MapExportacaoEndpoints();
+app.MapBrandingEndpoints();
 
 app.Run();
 return 0;

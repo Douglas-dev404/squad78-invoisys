@@ -129,6 +129,8 @@ substitui `{{chave}}` literalmente ([ADR-005](../../docs/decisoes-arquiteturais.
 | `RevisorEGeradorComoFk` | colunas `revisado_por_id` e `gerado_por_id` (anuláveis), índices e FKs `RESTRICT`; sem `DROP` no `Up` |
 | `TokensRedefinicaoSenha` | tabela `tokens_redefinicao_senha` (FK `RESTRICT`, índice único em `token_hash`) |
 
+| `DestaquesIniciais` | três destaques do login, inseridos condicionalmente por id ou título; reaplicação não duplica nem altera dados existentes; rollback preserva os registros |
+
 Modelo completo, tabela por tabela: [docs/modelagem-de-dominio.md](../../docs/modelagem-de-dominio.md).
 
 ---
