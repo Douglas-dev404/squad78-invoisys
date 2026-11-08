@@ -6,6 +6,10 @@ public sealed class RevisaoHumanaObrigatoriaException(string mensagem) : Excepti
 
 public sealed class ReleaseSemItensProcessadosException(string mensagem) : Exception(mensagem);
 
+public sealed class ReleaseSemHistoriasException(string chaveJira)
+    : Exception($"A Release '{chaveJira}' não tem histórias no Jira. Confira se a fixVersion existe "
+        + "e se a conta do Jira tem acesso ao projeto.");
+
 public sealed class ItemNaoEncontradoException(string mensagem) : Exception(mensagem);
 
 public sealed class ReleaseNaoEncontradaException(string chaveJira)
@@ -59,7 +63,15 @@ public sealed class Release
     public VersaoComunicado? VersaoPara(PublicoAlvo publico) =>
         _versoes.FirstOrDefault(versao => versao.Publico == publico);
 
-    public void MarcarProcessando() => Status = StatusPipeline.Processando;
+    public void MarcarProcessando()
+    {
+        if (_historias.Count == 0)
+        {
+            throw new ReleaseSemHistoriasException(ChaveJira);
+        }
+
+        Status = StatusPipeline.Processando;
+    }
 
     public void GarantirQuePodeReprocessar(PublicoAlvo publico = PublicoAlvo.Cliente)
     {

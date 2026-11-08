@@ -159,17 +159,15 @@ public class PipelineGeracaoReleaseNoteTests
     }
 
     [Fact]
-    public async Task Release_sem_historias_conclui_sem_itens()
+    public async Task Release_sem_historias_e_recusada_antes_da_IA_e_nada_e_gravado()
     {
         var jira = new FakeJiraClient { Historias = [] };
-        var llm = new FakeLlmProvider();
+        var llm = new FakeLlmProvider { FalhaAoChamar = new InvalidOperationException("a IA não devia ser chamada") };
+        var repositorio = new FakeReleaseRepository();
 
-        var release = await new PipelineGeracaoReleaseNote(jira, llm, new FakeReleaseRepository()).ExecutarAsync("REL-VAZIA");
+        var acao = () => new PipelineGeracaoReleaseNote(jira, llm, repositorio).ExecutarAsync("REL-VAZIA");
 
-        release.Itens.Should().BeEmpty();
-        release.Status.Should().Be(StatusPipeline.AguardandoRevisao);
-
-        var acao = () => release.Aprovar(UmRevisor("darth.code"), DateTimeOffset.UtcNow);
-        acao.Should().Throw<ReleaseSemItensProcessadosException>();
+        (await acao.Should().ThrowAsync<ReleaseSemHistoriasException>()).WithMessage("*REL-VAZIA*");
+        (await repositorio.BuscarPorChaveJiraAsync("REL-VAZIA")).Should().BeNull();
     }
 }

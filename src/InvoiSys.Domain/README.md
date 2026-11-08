@@ -80,6 +80,7 @@ classDiagram
 
 | Exceção | Lançada quando |
 |---|---|
+| `ReleaseSemHistoriasException` | processar Release sem histórias no Jira (`MarcarProcessando`, [ADR-030](../../docs/decisoes-arquiteturais.md#adr-030--release-sem-histórias-no-jira-é-recusada-antes-da-ia)); a API responde 422 |
 | `RevisaoHumanaObrigatoriaException` | aprovar Release com pipeline em `falhou`, transição de revisão inválida, ou reprocessar versão já aprovada sem reabrir (`GarantirQuePodeReprocessar`, [ADR-020](../../docs/decisoes-arquiteturais.md#adr-020--versão-aprovada-não-é-reprocessada-sem-reabrir)) |
 | `ReleaseSemItensProcessadosException` | aprovar/reprovar público sem versão gerada, ou versão sem itens |
 | `VersaoSemItensException` | (interna à versão) aprovar sem itens ou com todos excluídos |

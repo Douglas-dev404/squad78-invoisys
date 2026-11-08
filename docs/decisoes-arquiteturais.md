@@ -859,6 +859,28 @@ agnóstica de provedor, e OpenRouter e OpenAI falam o mesmo protocolo
 
 ---
 
+## ADR-030 — Release sem histórias no Jira é recusada antes da IA
+
+**Contexto.** Desde o port para .NET, uma Release sem histórias seguia o pipeline: a IA
+recebia uma lista vazia, inventava título e resumo, e a Release ficava em
+`aguardando_revisao` sem itens. A aprovação já era bloqueada
+(`ReleaseSemItensProcessadosException`), então nada era publicado, mas a validação real de
+08/11 mostrou o custo: a busca do Jira responde **200 com lista vazia** quando o token é
+inválido (acesso anônimo), e o resultado foi um comunicado inventado em vez de um erro.
+
+**Decisão.** `Release.MarcarProcessando()` recusa Release sem histórias com
+`ReleaseSemHistoriasException`, e a API responde **422** com a causa provável (fixVersion
+inexistente ou conta do Jira sem acesso ao projeto). O pipeline chama esse método antes de
+qualquer chamada à IA e antes de gravar, então nada é persistido.
+
+**Consequências.**
+- ✅ Nenhuma chamada de IA paga para gerar texto sem base no Jira.
+- ✅ Credencial do Jira inválida aparece como erro claro, e não como comunicado falso.
+- ⚠️ Reprocessar uma Release cuja fixVersion ficou vazia no Jira também é recusado; o
+  conteúdo já gravado não muda.
+
+---
+
 ## Decisões em aberto
 
 ### P-02 — Desenho da autenticação

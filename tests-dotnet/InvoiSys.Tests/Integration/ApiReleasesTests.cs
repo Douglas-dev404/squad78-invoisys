@@ -139,6 +139,21 @@ public class ApiReleasesTests
     }
 
     [Fact]
+    public async Task Release_sem_historias_no_Jira_responde_422_explicando_a_causa()
+    {
+        var jira = new FakeJiraClient { Historias = [] };
+
+        using var app = CriarApp(jira, new FakeLlmProvider());
+        using var client = app.CriarClienteAutenticado();
+
+        var resposta = await client.PostAsync("/api/v1/releases/2099.1.0/processar", null);
+
+        resposta.StatusCode.Should().Be(HttpStatusCode.UnprocessableEntity);
+        var corpo = await resposta.Content.ReadFromJsonAsync<JsonElement>();
+        corpo.GetProperty("detail").GetString().Should().Contain("2099.1.0").And.Contain("acesso ao projeto");
+    }
+
+    [Fact]
     public async Task Sem_provider_de_LLM_configurado_a_API_responde_501()
     {
         var jira = new FakeJiraClient { Historias = [Historia("INV-1")] };

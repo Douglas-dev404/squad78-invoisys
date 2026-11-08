@@ -41,6 +41,7 @@ public static class ReleaseEndpoints
             .WithSummary("Roda o pipeline de IA completo sobre a Release.")
             .Produces<ReleaseProcessadaOut>()
             .ProducesProblem(StatusCodes.Status409Conflict)
+            .ProducesProblem(StatusCodes.Status422UnprocessableEntity)
             .ProducesProblem(StatusCodes.Status501NotImplemented)
             .ProducesProblem(StatusCodes.Status502BadGateway);
 
@@ -165,6 +166,10 @@ public static class ReleaseEndpoints
         catch (RevisaoHumanaObrigatoriaException exc)
         {
             return Results.Problem(detail: exc.Message, statusCode: StatusCodes.Status409Conflict);
+        }
+        catch (ReleaseSemHistoriasException exc)
+        {
+            return Results.Problem(detail: exc.Message, statusCode: StatusCodes.Status422UnprocessableEntity);
         }
         catch (Exception exc) when (MapearFalhaDeIntegracao(exc) is { } problema)
         {
