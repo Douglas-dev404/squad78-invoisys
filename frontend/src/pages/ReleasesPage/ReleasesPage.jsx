@@ -1,8 +1,8 @@
 import { useMemo, useState } from 'react';
-import { Link, useNavigate, useSearchParams } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { Layout } from '../../components/Layout/Layout';
 import { Button } from '../../components/Button/Button';
-import { ProcessarReleaseModal } from '../../components/ProcessarReleaseModal/ProcessarReleaseModal';
+import { ProcessarReleaseModal } from '../../components/ProcessReleaseModal/ProcessReleaseModal';
 import { useReleases } from '../../hooks/useReleases';
 import { UI_STRINGS } from '../../utils/constants';
 import {
@@ -144,8 +144,7 @@ function ReleasesTable({ itens, total, inicio, pagina, totalPaginas, onPageChang
   );
 }
 
-export function ReleasesPage({ onLogout, onProfileClick, onNavigate }) {
-  const navigate = useNavigate();
+export function ReleasesPage() {
   const [searchParams, setSearchParams] = useSearchParams();
 
   const statusParam = searchParams.get('status');
@@ -168,7 +167,10 @@ export function ReleasesPage({ onLogout, onProfileClick, onNavigate }) {
 
   const trocarAba = (valor) => setSearchParams(valor ? { status: valor } : {});
   const irParaPagina = (numero) => setPaginaSalva({ status, numero });
-  const aoProcessar = (chave) => navigate(`/releases/${encodeURIComponent(chave)}`);
+  const aoProcessar = () => {
+    setModalAberto(false);
+    recarregar();
+  };
 
   let conteudo;
   if (carregando) {
@@ -191,12 +193,7 @@ export function ReleasesPage({ onLogout, onProfileClick, onNavigate }) {
   }
 
   return (
-    <Layout
-      onLogout={onLogout}
-      onProfileClick={onProfileClick}
-      activeScreen="releases"
-      onNavigate={onNavigate}
-    >
+    <Layout>
       <div className="mx-auto w-full max-w-[1280px]">
         <header className="mb-lg flex flex-col gap-sm sm:flex-row sm:items-center sm:justify-between">
           <h2 className="font-headline-lg text-headline-lg text-primary">

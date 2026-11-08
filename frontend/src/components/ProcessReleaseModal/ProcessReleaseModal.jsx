@@ -42,7 +42,7 @@ export function ProcessarReleaseModal({ onClose, onSucesso }) {
     event.preventDefault();
     if (enviandoRef.current) return;
 
-    const chave = valor.trim().toUpperCase();
+    const chave = valor.trim();
     if (!chave) {
       setErroCampo(UI_STRINGS.PROCESS_MODAL_KEY_REQUIRED);
       return;

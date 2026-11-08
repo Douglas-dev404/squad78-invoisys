@@ -11,6 +11,7 @@ import { ProfilePage } from './pages/ProfilePage/ProfilePage';
 import { UserManagementPage } from './pages/UserManagementPage/UserManagementPage';
 import { CreateUserPage } from './pages/CreateUserPage/CreateUserPage';
 import { SentHistoryPage } from './pages/SentHistoryPage/SentHistoryPage';
+import { ReleasesPage } from './pages/ReleasesPage/ReleasesPage';
 
 function LoginRoute() {
   const navigate = useNavigate();
@@ -38,7 +39,7 @@ function ConfirmationRoute() {
 }
 
 function ReleaseRoute() {
-  return <Layout><h1 className="text-headline-lg text-primary">Releases</h1><p>Esta tela será disponibilizada na entrega de Releases.</p></Layout>;
+  return <Layout><h1 className="text-headline-lg text-primary">Detalhe da Release</h1><p>A revisão do comunicado chega na próxima entrega.</p><Link to="/releases" className="text-primary hover:underline">Voltar para Releases</Link></Layout>;
 }
 
 function App() {
@@ -55,7 +56,7 @@ function App() {
     <Route path="/redefinir-senha" element={<main className="p-lg"><h1>Redefinir senha</h1><p>Esta tela será disponibilizada na entrega de recuperação de senha.</p><Link to="/esqueci-senha">Pedir novo link</Link></main>} />
     <Route element={<RotaProtegida />}>
       <Route path="/dashboard" element={<DashboardPage />} />
-      <Route path="/releases" element={<ReleaseRoute />} />
+      <Route path="/releases" element={<ReleasesPage />} />
       <Route path="/releases/:chave" element={<ReleaseRoute />} />
       <Route path="/historico" element={<SentHistoryPage />} />
       <Route path="/perfil" element={<ProfilePage />} />

@@ -54,7 +54,7 @@ export const UI_STRINGS = {
   RELEASES_COL_CREATED: 'Criada em',
   PROCESS_MODAL_TITLE: 'Processar Release',
   PROCESS_MODAL_KEY_LABEL: 'Chave da Release (fixVersion do Jira)',
-  PROCESS_MODAL_KEY_PLACEHOLDER: 'INV-123',
+  PROCESS_MODAL_KEY_PLACEHOLDER: 'Ex.: 2026.10.0',
   PROCESS_MODAL_KEY_REQUIRED: 'Informe a chave da Release.',
   PROCESS_MODAL_SUBMIT: 'Processar',
   PROCESS_MODAL_SUBMITTING: 'Gerando comunicado…',

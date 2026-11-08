@@ -1,4 +1,4 @@
-import { api } from './api'; //
+import { api } from './http';
 
 const TIMEOUT_PROCESSAR_MS = 180000;
 
