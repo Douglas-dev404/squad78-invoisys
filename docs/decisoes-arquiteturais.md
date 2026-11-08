@@ -689,6 +689,47 @@ nasce o primeiro usuário.
 
 ---
 
+## ADR-028 — Validação de formato na borda com FluentValidation
+
+**Contexto.** A API recebe DTOs de revisão e os próximos endpoints de autenticação
+precisam do mesmo padrão de erros por campo. Exceções do domínio continuam adequadas
+para invariantes, mas não oferecem um contrato uniforme para erros de formato.
+
+**Opções consideradas.**
+1. Acrescentar condicionais em cada endpoint.
+2. Validar DTOs na API com FluentValidation e um filtro compartilhado.
+3. Levar FluentValidation para o domínio.
+
+**Decisão.** Opção 2, complementando a ADR-022.
+
+- `ValidacaoFiltro<T>` resolve `IValidator<T>` no escopo da requisição e executa
+  `ValidateAsync` com o cancelamento da requisição antes do handler. Falha de formato
+  devolve **422** em ProblemDetails, título `Dados inválidos`, detalhe
+  `Um ou mais campos são inválidos.` e `errors` com listas de mensagens por campo
+  em camelCase. Erros de campos diferentes são devolvidos juntos.
+- `AddValidacaoDeEntrada()` descobre os validators públicos do assembly da API com
+  `FluentValidation.DependencyInjectionExtensions`; `ComValidacao<T>()` aplica o filtro
+  explicitamente à rota. Não usamos o pacote obsoleto `FluentValidation.AspNetCore`.
+- Público obrigatório usa a conversão existente do domínio, preservando os valores
+  aceitos e sua normalização. A conversão no handler recebe um valor já validado,
+  sem novo `if` ou ProblemDetails duplicado no endpoint.
+- Os primeiros validators cobrem `AprovarIn`, `ReprovarIn`, `ReabrirIn` e `EditarItemIn`.
+  Motivo de reprovação e texto de edição recusam valores ausentes, vazios ou só espaços.
+- `RegraEmail.EmailValido()` oferece obrigatoriedade, limite de 320 caracteres e
+  `.EmailAddress()` para os futuros DTOs de autenticação, sem regex própria.
+- O domínio mantém todas as verificações de negócio, inclusive aprovação humana,
+  revisor obrigatório e bloqueio de edição de versão aprovada. Domain e Application
+  não recebem referência a FluentValidation. Erros 404/409 e exceções de domínio
+  convertidas em 422 permanecem nos mapeamentos existentes.
+
+**Consequências.** A tela pode associar mensagens aos campos sem interpretar texto
+livre. Cada novo DTO precisa de validator e aplicação explícita do filtro. JSON
+malformado e ausência do corpo obrigatório continuam sob responsabilidade do binder
+HTTP; não são redefinidos por esta decisão. Testes unitários verificam os validators,
+e testes de API cobrem o contrato 422 dos quatro DTOs e sua documentação OpenAPI.
+
+---
+
 ## Decisões em aberto
 
 ### P-02 — Desenho da autenticação

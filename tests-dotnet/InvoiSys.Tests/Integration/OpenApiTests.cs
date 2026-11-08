@@ -74,6 +74,24 @@ public class OpenApiTests
     }
 
     [Fact]
+    public async Task Rotas_com_validacao_de_entrada_continuam_documentando_422()
+    {
+        using var spec = await BuscarSpecAsync();
+        var caminhos = spec.RootElement.GetProperty("paths");
+
+        foreach (var acao in new[] { "aprovar", "reprovar", "reabrir" })
+        {
+            caminhos.GetProperty($"/api/v1/releases/{{chaveRelease}}/{acao}")
+                .GetProperty("post").GetProperty("responses").TryGetProperty("422", out _)
+                .Should().BeTrue();
+        }
+
+        caminhos.GetProperty("/api/v1/releases/{chaveRelease}/itens/{itemId}")
+            .GetProperty("patch").GetProperty("responses").TryGetProperty("422", out _)
+            .Should().BeTrue();
+    }
+
+    [Fact]
     public async Task Cada_rota_descreve_o_formato_da_resposta_de_sucesso()
     {
         using var spec = await BuscarSpecAsync();

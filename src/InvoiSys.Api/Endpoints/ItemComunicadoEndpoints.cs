@@ -1,4 +1,5 @@
 using InvoiSys.Api.Contracts;
+using InvoiSys.Api.Validacao;
 using InvoiSys.Application.Revisao;
 using InvoiSys.Domain.Entities;
 using InvoiSys.Domain.Enums;
@@ -14,6 +15,7 @@ public static class ItemComunicadoEndpoints
             .WithTags("itens");
 
         grupo.MapPatch("", EditarItemAsync)
+            .ComValidacao<EditarItemIn>()
             .WithName("EditarItem")
             .WithSummary("Troca o texto de um item pela versão revisada por um humano.")
             .Produces<ItemRevisaoOut>()
