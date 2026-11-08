@@ -149,3 +149,7 @@ AuthProvider restaura a sessão por GET /auth/me antes de mostrar rotas, mantém
 Dependências para integração: PR #93 (HTTP), F-02 (rotas), PR #97 (login/me/logout) e PR #58 (recuperação). Os dois PRs de autenticação ainda precisam ser integrados pelo responsável no backend.
 
 O mock de identidade continua apenas porque profile.mock.js ainda o importa. As credenciais, o token e a resposta de recuperação simulados foram removidos. Os erros por campo aceitam camelCase e PascalCase, como retornado pelo PR #97 atual. Os módulos de dashboard, histórico e administração mantêm seus dados simulados até as respectivas issues; o perfil autenticado usa /auth/me.
+
+## Destaques do login (F-05)
+
+GET /branding/highlights é público e usa o cliente HTTP da F-01 sem Bearer. O service converte titulo/descricao/icone em title/description/icon. Falha da API retorna os destaques locais sem alerta visual; o motivo é registrado por console.warn. Lista vazia do servidor é respeitada. O hook cancela atualizações de componentes desmontados e inicializa o estado de carregamento. getBrandInfo e MOCK_BRAND_INFO foram removidos após busca de referências. A integração com banco depende do PR #94 (B-04).
