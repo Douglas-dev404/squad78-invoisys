@@ -69,6 +69,32 @@ public class OpenAiProviderTests
         categoria.Should().Be(CategoriaAlteracao.NovaFuncionalidade);
     }
 
+    [Theory]
+    [InlineData("`correcao`")]
+    [InlineData("\"correcao\"")]
+    [InlineData("'correcao'")]
+    [InlineData(" `correcao` \n")]
+    public async Task Categoria_entre_crases_ou_aspas_e_aceita_como_os_modelos_reais_respondem(string resposta)
+    {
+        var (provider, _, _) = Criar(h => h.ResponderConteudoLlm(resposta));
+
+        var categoria = await provider.CategorizarAsync("Corrigido o cálculo do ICMS.");
+
+        categoria.Should().Be(CategoriaAlteracao.Correcao);
+    }
+
+    [Theory]
+    [InlineData("`financeiro`")]
+    [InlineData("correção de bug")]
+    public async Task Categoria_fora_do_enum_continua_recusada_mesmo_sem_o_invólucro(string resposta)
+    {
+        var (provider, _, _) = Criar(h => h.ResponderConteudoLlm(resposta));
+
+        var acao = async () => await provider.CategorizarAsync("qualquer coisa");
+
+        await acao.Should().ThrowAsync<LlmRespostaInvalidaException>();
+    }
+
     [Fact]
     public async Task Agrupamento_aceita_o_objeto_grupos_do_json_mode()
     {

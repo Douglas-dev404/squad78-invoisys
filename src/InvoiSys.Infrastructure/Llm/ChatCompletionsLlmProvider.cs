@@ -29,7 +29,8 @@ public abstract partial class ChatCompletionsLlmProvider(
         var prompt = prompts.Montar("02_categorizar.md", ("texto_fonte", textoFonte));
         var resposta = await ChamarAsync(prompt, jsonMode: false, cancellationToken);
 
-        var valor = resposta.Trim().Trim('"');
+        // Modelos reais imitam a formatação do exemplo (`correcao`): só o invólucro sai, o enum continua fechado.
+        var valor = resposta.Trim().Trim('"', '`', '\'').Trim();
 
         if (!CategoriaAlteracaoExtensions.TentarConverter(valor, out var categoria))
         {
