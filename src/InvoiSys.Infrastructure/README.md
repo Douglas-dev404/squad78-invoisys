@@ -1,6 +1,6 @@
 # InvoiSys.Infrastructure — adapters de saída
 
-Tudo o que fala com o mundo externo: **Jira**, **LLM (OpenRouter)** e **PostgreSQL**.
+Tudo o que fala com o mundo externo: **Jira**, **LLM (OpenRouter ou OpenAI)** e **PostgreSQL**.
 Cada classe aqui implementa uma **porta** de `InvoiSys.Domain.Ports`. Nenhuma outra
 camada instancia estas classes direto; elas chegam via DI, amarradas no
 **composition root**.
@@ -10,9 +10,11 @@ InvoiSys.Infrastructure/
 ├── DependencyInjection.cs      # composition root: porta → adapter, HttpClient, resiliência
 ├── Configuration/              # JiraOptions, OpenRouterOptions, AuthOptions (ligadas ao appsettings/env)
 ├── Email/                      # EnvioEmailPendente (só loga o link)
+
+├── Configuration/              # JiraOptions, OpenRouterOptions, OpenAiOptions, AuthOptions (ligadas ao appsettings/env)
 ├── Auth/                       # Argon2idHashSenha, JwtEmissorToken, AdminInicialSemeador
 ├── Jira/                       # JiraRestClient, JiraClientPendente
-├── Llm/                        # OpenRouterProvider, PromptLoader, ProviderPendente, ChatCompletionRequest
+├── Llm/                        # ChatCompletionsLlmProvider (base), OpenRouterProvider, OpenAiProvider, PromptLoader, ProviderPendente, ChatCompletionRequest
 └── Database/                   # InvoiSysDbContext, repositories, Configurations/, Migrations/
 ```
 
@@ -30,6 +32,10 @@ InvoiSys.Infrastructure/
 | `ILlmProvider` | `ProviderPendente` | chave vazia → **501** com instrução |
 | `IEnvioEmail` | `EnvioEmailPendente` | sempre, até existir adapter SMTP; **não lança**: loga o link de redefinição em `Warning` |
 | `ITokenRedefinicaoSenhaRepository` | `TokenRedefinicaoSenhaRepository` | sempre (Scoped) |
+
+| `ILlmProvider` | `OpenRouterProvider` | `Llm:Provedor` ausente ou `OpenRouter` **e** `OpenRouter:ApiKey` preenchida |
+| `ILlmProvider` | `OpenAiProvider` | `Llm:Provedor=OpenAi` **e** `OpenAi:ApiKey` preenchida |
+| `ILlmProvider` | `ProviderPendente` | chave do provedor escolhido vazia → **501** com instrução citando a variável desse provedor. `Llm:Provedor` desconhecido derruba o startup |
 | `IHashSenha` | `Argon2idHashSenha` | sempre (Singleton) |
 | `IEmissorToken` | `JwtEmissorToken` | sempre (Singleton); sem `Auth:Jwt:Chave` a API **não sobe** |
 | `IReleaseRepository`, `IHistoriaJiraRepository`, `IExecucaoPipelineRepository`, `IComunicadoExportadoRepository`, `IUsuarioRepository`, `IDestaqueHeroRepository` | `*Repository` em `Database/` | sempre (Scoped) |
@@ -40,6 +46,7 @@ Também é aqui que vivem as **políticas de transporte** (não no adapter):
 |---|---|---|---|
 | Jira | Basic (e-mail + API token) | 30 s | 3 tentativas, backoff exp. 1 s, 15 s/tentativa, 60 s total, circuit breaker 30 s |
 | OpenRouter | Bearer (API key) | 120 s | 3 tentativas, backoff exp. 2 s, 60 s/tentativa, 180 s total, circuit breaker 120 s |
+| OpenAI | Bearer (API key) | 120 s | mesma política do OpenRouter |
 
 Detalhes e motivos: [ADR-014](../../docs/decisoes-arquiteturais.md#adr-014--adapters-pendente-quando-falta-credencial-501-honesto)
 e [ADR-015](../../docs/decisoes-arquiteturais.md#adr-015--resiliência-http-no-composition-root).
@@ -66,9 +73,15 @@ usarem listas ou tabelas.
 
 ---
 
-## LLM: `OpenRouterProvider` + `PromptLoader`
+## LLM: `ChatCompletionsLlmProvider` + adapters + `PromptLoader`
 
-Implementa `ILlmProvider`. Cada método: **carrega o prompt** → **interpola** →
+`OpenRouterProvider` e `OpenAiProvider` herdam de `ChatCompletionsLlmProvider`, que
+concentra tudo o que é comum (prompts, request, JSON mode, parsing, validação, erro
+HTTP). Cada adapter só informa `NomeProvedor`, `Endpoint`, `Modelo` e, se houver,
+`ModelosFallback` (só o OpenRouter tem). O composition root escolhe qual atende a porta
+por `Llm:Provedor` ([ADR-029](../../docs/decisoes-arquiteturais.md#adr-029--adapter-openai-para-o-illmprovider-escolhido-por-configuração)).
+
+A base implementa `ILlmProvider`. Cada método: **carrega o prompt** → **interpola** →
 **chama o modelo** → **valida a resposta**.
 
 | Método da porta | Prompt | Modo | Validação |
@@ -85,7 +98,8 @@ Internos:
   `temperature = 0.2`, `models = [principal, ...fallback]` quando houver fallback, e
   `response_format = json_object` no modo JSON.
 - **`ParseJson`** remove cerca ```` ```json ```` antes de parsear.
-- **`PostAsync`**: erro HTTP → corpo só no log → `LlmApiException("OpenRouter retornou N.")`.
+- **`PostAsync`**: erro HTTP → corpo só no log (omitido em 401/403, porque pode ecoar a
+  credencial) → `LlmApiException("{Provedor} retornou N.")`.
 
 **`PromptLoader`**: único ponto que lê arquivo de prompt. Sobe a partir de
 `AppContext.BaseDirectory` até achar `prompts/` (funciona em `bin/Debug`, em teste e no
@@ -201,6 +215,15 @@ o índice único de e-mail faz a perdedora ignorar. A senha não vai para log.
 - `ValidarGrupos` valida a forma completa: um `[["INV-1", 42]]` passaria numa checagem
   rasa de "é array?" e sujaria `Origens`.
 
+**OpenAI**
+- Mesmo protocolo do OpenRouter; o adapter só não envia `models`, que é recurso do gateway.
+- O corpo de uma resposta 401/403 não vai para o log: o da OpenAI costuma citar um
+  trecho da chave.
+- `temperature = 0.2` é fixa. Modelos que só aceitam o valor padrão (família GPT-5 e
+  o-series) podem recusá-la; o padrão `gpt-4o-mini` não tem essa restrição.
+- Com `Llm:Provedor=OpenAi`, o modelo registrado no log de execução do pipeline vem de
+  `OpenAi:Modelo`.
+
 **Banco**
 - `snake_case` é o idiomático no PostgreSQL. O C# continua em PascalCase; a convenção só
   afeta o SQL.
@@ -250,7 +273,7 @@ o índice único de e-mail faz a perdedora ignorar. A senha não vai para log.
   corpo da resposta na mensagem.
 - Mudou entidade? `dotnet ef migrations add <Nome>` e revise o SQL gerado. Nada de
   migration destrutiva sem conversa.
-- Testes de referência: `OpenRouterProviderTests`, `JiraRestClientAdfTests` (unit, com
+- Testes de referência: `OpenRouterProviderTests`, `OpenAiProviderTests`, `JiraRestClientAdfTests` (unit, com
   `FakeHttpMessageHandler`), `*RepositoryTests` e `PersistenciaAgregadoReleaseTests`
   (integração, Postgres real).
 
