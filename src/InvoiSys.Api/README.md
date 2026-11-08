@@ -221,12 +221,14 @@ funcionar até com o token expirado).
 | `Cors__Origens__0..N` | nenhuma | origens que podem chamar a API pelo navegador (front: `http://localhost:5173`) |
 | `RateLimit__Login__Tentativas` | 5 | tentativas por janela, por IP |
 | `RateLimit__Login__JanelaSegundos` | 60 | tamanho da janela |
+| `Proxy__ConfiarCabecalhosEncaminhados` | false | atrás de proxy, usa o IP de `X-Forwarded-For` no rate limit ([deploy](../../docs/deploy-render.md)) |
 
 Sem nenhuma origem configurada o CORS **não libera ninguém**. No Docker o ambiente é
 Production, então `Cors__Origens__0` precisa estar no `.env`.
 
-O rate limit conta por IP. Atrás de proxy ou Docker, o IP visto pode ser o do proxy;
-`ForwardedHeaders` fica para quando houver proxy reverso na frente.
+O rate limit conta por IP. Atrás de proxy, o IP visto é o do proxy, e todos os clientes
+dividiriam o mesmo limite: no deploy, `Proxy__ConfiarCabecalhosEncaminhados=true` faz a API
+usar o último IP de `X-Forwarded-For`. Sem proxy, fica `false`, senão o cabeçalho forjado burla o limite.
 
 ## Contratos: por que são assim
 

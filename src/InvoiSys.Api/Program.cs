@@ -60,6 +60,7 @@ builder.Services.AddAuthorization();
 builder.Services.AddProblemDetails();
 builder.Services.AddCorsConfiguravel();
 builder.Services.AddLimiteDeLogin();
+builder.Services.AddProxyReverso();
 
 var app = builder.Build();
 
@@ -86,6 +87,7 @@ await using (var escopoAuth = app.Services.CreateAsyncScope())
 {
     await escopoAuth.ServiceProvider.GetRequiredService<AdminInicialSemeador>().SemearAsync();
 }
+app.UseProxyReverso();
 app.UseStatusCodePages();
 app.UseCors();
 app.UseRateLimiter();

@@ -1,0 +1,68 @@
+databases:
+  - name: invoisys-db
+    plan: free
+    databaseName: invoisys
+    user: invoisys
+    postgresMajorVersion: "16"
+
+services:
+  - type: web
+    name: invoisys-api
+    runtime: docker
+    plan: free
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    healthCheckPath: /health
+    autoDeploy: false
+    envVars:
+      - key: PORT
+        value: "8080"
+      - key: Database__MigrarAoIniciar
+        value: "true"
+      - key: Proxy__ConfiarCabecalhosEncaminhados
+        value: "true"
+      - key: Auth__Jwt__Chave
+        generateValue: true
+      - key: ConnectionStrings__Default
+        sync: false
+      - key: Auth__AdminInicial__Email
+        sync: false
+      - key: Auth__AdminInicial__Senha
+        sync: false
+      - key: Auth__AdminInicial__Nome
+        sync: false
+      - key: Auth__RecuperacaoSenha__UrlBase
+        sync: false
+      - key: Cors__Origens__0
+        sync: false
+      - key: Jira__BaseUrl
+        sync: false
+      - key: Jira__Email
+        sync: false
+      - key: Jira__ApiToken
+        sync: false
+      - key: Llm__Provedor
+        sync: false
+      - key: OpenRouter__ApiKey
+        sync: false
+      - key: OpenRouter__Modelo
+        sync: false
+      - key: OpenAi__ApiKey
+        sync: false
+      - key: OpenAi__Modelo
+        sync: false
+
+  - type: web
+    name: invoisys-front
+    runtime: static
+    rootDir: frontend
+    buildCommand: npm ci && npm run build
+    staticPublishPath: dist
+    autoDeploy: false
+    envVars:
+      - key: VITE_API_BASE_URL
+        sync: false
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html

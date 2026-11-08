@@ -1,5 +1,6 @@
 using System.Threading.RateLimiting;
 using Microsoft.AspNetCore.Cors.Infrastructure;
+using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.RateLimiting;
 
 namespace InvoiSys.Api.Auth;
@@ -76,5 +77,28 @@ public static class ConfiguracaoHttp
         });
 
         return services;
+    }
+
+    public static IServiceCollection AddProxyReverso(this IServiceCollection services)
+    {
+        services.Configure<ForwardedHeadersOptions>(opcoes =>
+        {
+            opcoes.ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto;
+            opcoes.ForwardLimit = 1;
+            opcoes.KnownIPNetworks.Clear();
+            opcoes.KnownProxies.Clear();
+        });
+
+        return services;
+    }
+
+    public static WebApplication UseProxyReverso(this WebApplication app)
+    {
+        if (app.Configuration.GetValue<bool>("Proxy:ConfiarCabecalhosEncaminhados"))
+        {
+            app.UseForwardedHeaders();
+        }
+
+        return app;
     }
 }

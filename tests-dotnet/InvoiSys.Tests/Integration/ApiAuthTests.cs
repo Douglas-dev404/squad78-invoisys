@@ -144,6 +144,33 @@ public class ApiAuthTests
         limitada.Content.Headers.ContentType!.MediaType.Should().Contain("problem+json");
     }
 
+    [Theory]
+    [InlineData("true", HttpStatusCode.Unauthorized)]
+    [InlineData("false", HttpStatusCode.TooManyRequests)]
+    public async Task Atras_de_proxy_o_limite_de_login_conta_o_ip_do_cliente_e_nao_o_do_proxy(
+        string confiarNoProxy, HttpStatusCode terceiroCliente)
+    {
+        using var app = CriarApp(
+            await UsuariosComAna(),
+            ("RateLimit:Login:Tentativas", "2"),
+            ("Proxy:ConfiarCabecalhosEncaminhados", confiarNoProxy));
+        using var client = app.CreateClient();
+
+        Task<HttpResponseMessage> LoginDe(string ip)
+        {
+            var requisicao = new HttpRequestMessage(HttpMethod.Post, "/api/v1/auth/login")
+            {
+                Content = JsonContent.Create(new { email = Email, senha = "errada" }),
+            };
+            requisicao.Headers.Add("X-Forwarded-For", ip);
+            return client.SendAsync(requisicao);
+        }
+
+        (await LoginDe("203.0.113.1")).StatusCode.Should().Be(HttpStatusCode.Unauthorized);
+        (await LoginDe("203.0.113.2")).StatusCode.Should().Be(HttpStatusCode.Unauthorized);
+        (await LoginDe("203.0.113.3")).StatusCode.Should().Be(terceiroCliente);
+    }
+
     [Fact]
     public async Task Me_com_token_devolve_o_usuario()
     {
