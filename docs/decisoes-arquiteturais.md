@@ -41,6 +41,10 @@ histórico também é documentação.
 | [022](#adr-022--endpoint-só-chama-caso-de-uso-erros-de-revisão-padronizados) | Endpoint só chama caso de uso; erros de revisão padronizados | Aceita | 2026-10-03 |
 | [023](#adr-023--o-porquê-mora-na-documentação-não-em-comentário) | O porquê mora na documentação, não em comentário | Aceita | 2026-10-03 |
 | [024](#adr-024--autenticação-jwt-stateless-argon2id-e-admin-inicial) | Autenticação: JWT stateless, Argon2id e admin inicial | Aceita | 2026-10-11 |
+| [025](#adr-025--recuperação-de-senha-token-opaco-de-uso-único-e-resposta-uniforme) | Recuperação de senha: token opaco de uso único e resposta uniforme | Aceita | 2026-10-26 |
+| [026](#adr-026--rotas-de-release-exigem-token-e-o-revisor-vem-dele) | Rotas de Release exigem token e o revisor vem dele | Aceita | 2026-10-27 |
+
+| [029](#adr-029--adapter-openai-para-o-illmprovider-escolhido-por-configuração) | Adapter OpenAI para o `ILlmProvider`, escolhido por configuração | Aceita | 2026-11-03 |
 | [P-02](#p-02--desenho-da-autenticação) | Desenho da autenticação | **Resolvida** → ADR-024 | 2026-10-11 |
 | [P-03](#p-03--onde-mora-o-render-da-exportação) | Onde mora o render da exportação | **Proposta** | — |
 
@@ -600,6 +604,9 @@ entrada inválida. Sem regra explícita, cada PR inventava a sua.
 - ✅ Contrato de erro previsível para o frontend: 404 / 409 / 422.
 - ⚠️ Mais uma classe na Application por grupo de casos de uso.
 - Coberto por `ApiRevisaoTests` (HTTP) e `VersaoComunicadoTests` (domínio).
+- Atualização ([ADR-026](#adr-026--rotas-de-release-exigem-token-e-o-revisor-vem-dele)): o
+  revisor deixou de vir do corpo; vem do usuário do token, e quem não existe ou está
+  desativado é 401.
 
 ---
 
@@ -681,11 +688,196 @@ nasce o primeiro usuário.
 **Consequências.**
 - ✅ Sem estado de sessão no servidor; a API escala sem tabela nova.
 - ✅ Domínio e Application seguem sem dependência de criptografia.
-- ⚠️ Token emitido vale até expirar: desativar usuário só bloqueia novos logins até lá
-  (a checagem de `Ativo` por requisição fica para o #50).
+- ⚠️ Token emitido vale até expirar, mas a API consulta `Ativo` a cada requisição
+  ([ADR-026](#adr-026--rotas-de-release-exigem-token-e-o-revisor-vem-dele)): desativar o
+  usuário derruba o acesso na hora.
 - ⚠️ Trocar a chave JWT invalida todos os tokens emitidos.
 - ⚠️ Argon2id consome ~19 MiB por verificação; o login concorrente em massa pesa na
   memória do container.
+
+---
+
+## ADR-025 — Recuperação de senha: token opaco de uso único e resposta uniforme
+
+**Contexto.** O épico #47 prevê "esqueci a senha". O front espera `{ mensagem,
+expiraEmMinutos }`. Faltava decidir como guardar o token, como garantir uso único, o que
+a API revela e como limitar abuso.
+
+**Decisão.**
+
+- **Token opaco, não JWT:** 32 bytes aleatórios em base64url. No banco vai só o hash
+  SHA-256 em hex (`tokens_redefinicao_senha.token_hash`, único). SHA-256 e não Argon2id
+  porque o token tem 256 bits de entropia (não há dicionário a atacar) e a busca é por
+  igualdade no índice.
+- **Validade de 30 minutos** (`TokenRedefinicaoSenha.ValidadeMinutos`). `usado_em` serve
+  para "consumido" e para "invalidado" (reenvio ou troca de senha); a tabela não distingue
+  os dois.
+- **Uso único atômico:** `ConsumirAsync` faz `UPDATE ... WHERE usado_em IS NULL AND
+  expira_em > agora` e só quem afeta uma linha segue. Trocar a senha invalida todos os
+  outros tokens pendentes do usuário. A troca não é uma transação única: se salvar a
+  senha falhar depois de consumir o token, o usuário pede outro link.
+- **Resposta uniforme:** `forgot-password` e `resend-forgot-password` devolvem o mesmo 200
+  e o mesmo corpo para e-mail existente, inexistente ou de usuário desativado. `resend` é
+  a mesma regra de `forgot` (emitir já invalida o anterior). Token inválido, expirado e já
+  usado são o mesmo 422 com a mesma mensagem.
+- **Rate limit** (nenhum existia): `RateLimiter` nativo do ASP.NET, uma política
+  (`esqueci-senha`) compartilhada pelos dois endpoints de envio, janela fixa por IP
+  (`Auth__RecuperacaoSenha__LimiteRequisicoes`, `__JanelaMinutos`; padrão 5 por 15 min),
+  resposta 429 com `Retry-After`. Mais um **cooldown por usuário** no caso de uso
+  (`__CooldownSegundos`, padrão 60): dentro dele não se emite nem se envia outro e-mail,
+  e a resposta continua igual. Isso impede mail-bomb contra um e-mail alheio.
+- **E-mail:** porta `IEnvioEmail` no domínio. O adapter `EnvioEmailPendente` **não lança**
+  (diferente de [ADR-014](#adr-014--adapters-pendente-quando-falta-credencial-501-honesto)):
+  escreve o link no log em `Warning`, porque sem ele o fluxo ficaria inutilizável até o
+  SMTP existir. SMTP real é issue futura.
+- **Link:** `{Auth__RecuperacaoSenha__UrlBase}#token=<token>`. O fragmento não vai ao
+  servidor nem a logs de proxy ou `Referer`. `UrlBase` é obrigatória: sem ela a API não sobe.
+- **Política de senha nova:** 8 a 128 caracteres (`Usuario.ValidarSenhaNova`); o teto evita
+  custo abusivo no Argon2id.
+
+**Consequências.**
+- ✅ Vazamento do banco não entrega tokens utilizáveis.
+- ✅ Não dá para descobrir cadastros pelas respostas.
+- ⚠️ Com o adapter pendente, o link (um segredo) fica no log: só serve para desenvolvimento.
+- ⚠️ O limite é em memória, por instância e por IP; atrás de proxy é preciso configurar
+  `ForwardedHeaders`, senão todos caem no IP do proxy. Redis só quando houver réplicas.
+- ⚠️ A resposta para e-mail inexistente é um pouco mais rápida. Com SMTP real, o envio deve
+  sair da requisição (fila) para fechar esse canal de tempo.
+- ⚠️ Trocar a senha não derruba JWTs já emitidos (até 8 h), conforme a
+  [ADR-024](#adr-024--autenticação-jwt-stateless-argon2id-e-admin-inicial).
+
+---
+
+## ADR-026 — Rotas de Release exigem token e o revisor vem dele
+
+**Contexto.** Qualquer um chamava `/api/v1/releases/**` e o revisor (`aprovadoPor`,
+`revisadoPor`) era texto livre no corpo: a trilha de auditoria da revisão humana
+([ADR-007](#adr-007--revisão-humana-como-invariante-do-domínio-entidades-ricas)) dependia da
+palavra do cliente. A pendência 1 da modelagem pedia FK para `usuarios`.
+
+**Decisão.**
+
+- **Autenticação obrigatória:** todo o grupo `/api/v1/releases` (consulta, processar,
+  revisão, itens) usa `RequireAuthorization()`. Ficam públicos `/health` e
+  `/api/v1/auth/*` (esqueci-senha). Um teste percorre o `EndpointDataSource` e falha se
+  uma rota de negócio nova ficar sem autorização.
+- **Revisor vem do token:** `aprovadoPor` e `revisadoPor` saem de `AprovarIn` e
+  `ReprovarIn`. O endpoint lê o claim `sub`; `RevisaoComunicado` carrega o `Usuario` e o
+  domínio (`VersaoComunicado.Aprovar/Reprovar(Usuario, ...)`) exige revisor identificado e
+  ativo. Campo antigo enviado no corpo é ignorado.
+- **FK para usuários:** `versoes_comunicado.revisado_por_id` e
+  `comunicados_exportados.gerado_por_id`, anuláveis, `ON DELETE RESTRICT`. As colunas de
+  texto continuam e guardam o **nome exibido** no momento da decisão (histórico legível
+  mesmo se o cadastro mudar). Usuário nunca é apagado, só desativado.
+- **Registros antigos:** ficam com o id nulo e o texto preservado, sem backfill: o texto
+  era livre e não dá para ligá-lo a um usuário com segurança.
+- **Usuário desativado:** `OnTokenValidated` consulta o usuário a cada requisição e rejeita
+  token de quem não existe ou está inativo (401). Custa uma consulta por requisição.
+- **Exportação (#24):** `POST /releases/{chave}/exportar` exige o token; o gerador vem do usuário
+  autenticado (`gerado_por_id` e o nome em `gerado_por`), e `geradoPor` saiu do corpo.
+
+**Consequências.**
+- ✅ Revisão e exportação ficam atribuídas a um usuário real, com integridade referencial.
+- ✅ Migration só adiciona (colunas anuláveis, índices, FKs): sem `DROP` no `Up`.
+- ⚠️ Uma consulta ao banco por requisição autenticada.
+- ⚠️ Qualquer usuário autenticado revisa: não há RBAC por papel nesta fatia.
+- ⚠️ Edição, exclusão e reinclusão de itens ainda não registram quem agiu (#53).
+
+## ADR-028 — Validação de formato na borda com FluentValidation
+
+**Contexto.** A API recebe DTOs de revisão e os próximos endpoints de autenticação
+precisam do mesmo padrão de erros por campo. Exceções do domínio continuam adequadas
+para invariantes, mas não oferecem um contrato uniforme para erros de formato.
+
+**Opções consideradas.**
+1. Acrescentar condicionais em cada endpoint.
+2. Validar DTOs na API com FluentValidation e um filtro compartilhado.
+3. Levar FluentValidation para o domínio.
+
+**Decisão.** Opção 2, complementando a ADR-022.
+
+- `ValidacaoFiltro<T>` resolve `IValidator<T>` no escopo da requisição e executa
+  `ValidateAsync` com o cancelamento da requisição antes do handler. Falha de formato
+  devolve **422** em ProblemDetails, título `Dados inválidos`, detalhe
+  `Um ou mais campos são inválidos.` e `errors` com listas de mensagens por campo
+  em camelCase. Erros de campos diferentes são devolvidos juntos.
+- `AddValidacaoDeEntrada()` descobre os validators públicos do assembly da API com
+  `FluentValidation.DependencyInjectionExtensions`; `ComValidacao<T>()` aplica o filtro
+  explicitamente à rota. Não usamos o pacote obsoleto `FluentValidation.AspNetCore`.
+- Público obrigatório usa a conversão existente do domínio, preservando os valores
+  aceitos e sua normalização. A conversão no handler recebe um valor já validado,
+  sem novo `if` ou ProblemDetails duplicado no endpoint.
+- Os primeiros validators cobrem `AprovarIn`, `ReprovarIn`, `ReabrirIn` e `EditarItemIn`.
+  Motivo de reprovação e texto de edição recusam valores ausentes, vazios ou só espaços.
+- `RegraEmail.EmailValido()` oferece obrigatoriedade, limite de 320 caracteres e
+  `.EmailAddress()` para os futuros DTOs de autenticação, sem regex própria.
+- O domínio mantém todas as verificações de negócio, inclusive aprovação humana,
+  revisor obrigatório e bloqueio de edição de versão aprovada. Domain e Application
+  não recebem referência a FluentValidation. Erros 404/409 e exceções de domínio
+  convertidas em 422 permanecem nos mapeamentos existentes.
+
+**Consequências.** A tela pode associar mensagens aos campos sem interpretar texto
+livre. Cada novo DTO precisa de validator e aplicação explícita do filtro. JSON
+malformado e ausência do corpo obrigatório continuam sob responsabilidade do binder
+HTTP; não são redefinidos por esta decisão. Testes unitários verificam os validators,
+e testes de API cobrem o contrato 422 dos quatro DTOs e sua documentação OpenAPI.
+
+## ADR-029 — Adapter OpenAI para o `ILlmProvider`, escolhido por configuração
+
+**Contexto.** A chave da OpenRouter limita o teste do fluxo completo (Jira → IA →
+comunicado) e existe uma chave da OpenAI com limite maior. A porta `ILlmProvider` já é
+agnóstica de provedor, e OpenRouter e OpenAI falam o mesmo protocolo
+(`POST /chat/completions`, `response_format: json_object`, campo `usage`).
+
+**Opções consideradas.**
+1. Porta nova só para a OpenAI.
+2. Adapter novo copiando o `OpenRouterProvider`.
+3. Adapter novo sobre uma base comum, escolhido por configuração.
+
+**Decisão.** Opção 3.
+- `ChatCompletionsLlmProvider` (base abstrata) concentra o que é comum: montagem do
+  request, JSON mode, parsing defensivo, validação e tradução de erro HTTP.
+  `OpenRouterProvider` e `OpenAiProvider` só informam nome, endpoint, modelo e fallback.
+- `Llm:Provedor` (`OpenRouter`, padrão, ou `OpenAi`, sem diferenciar maiúsculas) decide
+  qual adapter atende o `ILlmProvider`. Valor desconhecido derruba o startup com mensagem
+  citando `Llm__Provedor`.
+- Sem a chave do provedor escolhido, o provider é o `ProviderPendente` (501, como na
+  [ADR-014](#adr-014--adapters-pendente-quando-falta-credencial-501-honesto)), com a
+  mensagem citando a variável certa. A chave do outro provedor não vale.
+- O adapter da OpenAI não envia `models`: o fallback entre modelos é recurso da OpenRouter.
+- O corpo de respostas 401 e 403 não vai para o log: o da OpenAI costuma citar um trecho
+  da chave.
+- Custo (`usage.cost`) não existe na OpenAI; calculá-lo fica fora desta decisão.
+
+**Consequências.**
+- ✅ Nenhuma porta, caso de uso ou prompt muda; trocar de provedor é configuração.
+- ✅ Corrigir parsing ou tradução de erro vale para os dois provedores.
+- ⚠️ Trocar `Llm:Provedor` exige reiniciar a API.
+- ⚠️ `temperature = 0.2` é fixa: modelos que só aceitam o valor padrão (família GPT-5 e
+  o-series) podem recusá-la. O padrão `gpt-4o-mini` não tem essa restrição.
+- ⚠️ Com `Llm:Provedor=OpenAi`, o log de execução do pipeline registra `OpenAi:Modelo`.
+
+---
+
+## ADR-030 — Release sem histórias no Jira é recusada antes da IA
+
+**Contexto.** Desde o port para .NET, uma Release sem histórias seguia o pipeline: a IA
+recebia uma lista vazia, inventava título e resumo, e a Release ficava em
+`aguardando_revisao` sem itens. A aprovação já era bloqueada
+(`ReleaseSemItensProcessadosException`), então nada era publicado, mas a validação real de
+08/11 mostrou o custo: a busca do Jira responde **200 com lista vazia** quando o token é
+inválido (acesso anônimo), e o resultado foi um comunicado inventado em vez de um erro.
+
+**Decisão.** `Release.MarcarProcessando()` recusa Release sem histórias com
+`ReleaseSemHistoriasException`, e a API responde **422** com a causa provável (fixVersion
+inexistente ou conta do Jira sem acesso ao projeto). O pipeline chama esse método antes de
+qualquer chamada à IA e antes de gravar, então nada é persistido.
+
+**Consequências.**
+- ✅ Nenhuma chamada de IA paga para gerar texto sem base no Jira.
+- ✅ Credencial do Jira inválida aparece como erro claro, e não como comunicado falso.
+- ⚠️ Reprocessar uma Release cuja fixVersion ficou vazia no Jira também é recusado; o
+  conteúdo já gravado não muda.
 
 ---
 

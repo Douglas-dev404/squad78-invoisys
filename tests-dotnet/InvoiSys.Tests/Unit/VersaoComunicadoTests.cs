@@ -1,4 +1,5 @@
 using FluentAssertions;
+using static InvoiSys.Tests.Fakes.AutenticacaoDeTeste;
 using InvoiSys.Domain.Entities;
 using InvoiSys.Domain.Enums;
 
@@ -57,7 +58,7 @@ public class VersaoComunicadoTests
     {
         var release = UmaReleaseProcessada(PublicoAlvo.Cliente, PublicoAlvo.Suporte);
 
-        release.Aprovar("darth.code", DateTimeOffset.UtcNow, PublicoAlvo.Cliente);
+        release.Aprovar(UmRevisor("darth.code"), DateTimeOffset.UtcNow, PublicoAlvo.Cliente);
 
         release.VersaoPara(PublicoAlvo.Cliente)!.ProntaParaExportar.Should().BeTrue();
         release.VersaoPara(PublicoAlvo.Suporte)!.ProntaParaExportar.Should().BeFalse();
@@ -69,12 +70,12 @@ public class VersaoComunicadoTests
         var agora = DateTimeOffset.UtcNow;
         var release = UmaReleaseProcessada(PublicoAlvo.Cliente, PublicoAlvo.Suporte);
 
-        release.Aprovar("darth.code", agora, PublicoAlvo.Cliente);
+        release.Aprovar(UmRevisor("darth.code"), agora, PublicoAlvo.Cliente);
         release.Status.Should().Be(
             StatusPipeline.AguardandoRevisao,
             "o Suporte ainda não foi revisado");
 
-        release.Aprovar("darth.code", agora, PublicoAlvo.Suporte);
+        release.Aprovar(UmRevisor("darth.code"), agora, PublicoAlvo.Suporte);
         release.Status.Should().Be(StatusPipeline.Aprovado);
     }
 
@@ -97,7 +98,7 @@ public class VersaoComunicadoTests
     public void Exportar_versao_aprovada_registra_publico_e_versao_de_origem()
     {
         var release = UmaReleaseProcessada(PublicoAlvo.Comercial);
-        release.Aprovar("darth.code", DateTimeOffset.UtcNow, PublicoAlvo.Comercial);
+        release.Aprovar(UmRevisor("darth.code"), DateTimeOffset.UtcNow, PublicoAlvo.Comercial);
         var versao = release.VersaoPara(PublicoAlvo.Comercial)!;
 
         var exportado = new ComunicadoExportado(
@@ -117,7 +118,7 @@ public class VersaoComunicadoTests
     {
         var release = UmaReleaseProcessada();
 
-        release.Reprovar("darth.code", "Texto genérico demais", DateTimeOffset.UtcNow);
+        release.Reprovar(UmRevisor("darth.code"), "Texto genérico demais", DateTimeOffset.UtcNow);
 
         var versao = release.VersaoCliente!;
         versao.Status.Should().Be(StatusRevisao.Reprovado);
@@ -130,26 +131,56 @@ public class VersaoComunicadoTests
     {
         var release = UmaReleaseProcessada();
 
-        var acao = () => release.Reprovar("darth.code", "   ", DateTimeOffset.UtcNow);
+        var acao = () => release.Reprovar(UmRevisor("darth.code"), "   ", DateTimeOffset.UtcNow);
 
         acao.Should().Throw<ArgumentException>();
         release.VersaoCliente!.Status.Should().Be(StatusRevisao.AguardandoRevisao);
     }
 
-    [Theory]
-    [InlineData("")]
-    [InlineData("   ")]
-    [InlineData(null)]
-    public void Aprovar_ou_reprovar_sem_revisor_falha(string? revisor)
+    [Fact]
+    public void Aprovar_ou_reprovar_sem_revisor_falha()
     {
         var release = UmaReleaseProcessada();
 
-        var aprovar = () => release.Aprovar(revisor!, DateTimeOffset.UtcNow);
-        var reprovar = () => release.Reprovar(revisor!, "Precisa refazer", DateTimeOffset.UtcNow);
+        var aprovar = () => release.Aprovar(null!, DateTimeOffset.UtcNow);
+        var reprovar = () => release.Reprovar(null!, "Precisa refazer", DateTimeOffset.UtcNow);
 
         aprovar.Should().Throw<ArgumentException>();
         reprovar.Should().Throw<ArgumentException>();
         release.VersaoCliente!.Status.Should().Be(StatusRevisao.AguardandoRevisao);
+        release.VersaoCliente.RevisadoPor.Should().BeNull();
+        release.VersaoCliente.RevisadoPorId.Should().BeNull();
+    }
+
+    [Fact]
+    public void Revisor_desativado_nao_aprova_nem_reprova()
+    {
+        var release = UmaReleaseProcessada();
+        var revisor = UmRevisor();
+        revisor.Desativar();
+
+        var aprovar = () => release.Aprovar(revisor, DateTimeOffset.UtcNow);
+        var reprovar = () => release.Reprovar(revisor, "Precisa refazer", DateTimeOffset.UtcNow);
+
+        aprovar.Should().Throw<ArgumentException>();
+        reprovar.Should().Throw<ArgumentException>();
+        release.VersaoCliente!.RevisadoPorId.Should().BeNull();
+    }
+
+    [Fact]
+    public void Aprovar_grava_o_id_e_o_nome_do_revisor_e_reabrir_limpa_os_dois()
+    {
+        var release = UmaReleaseProcessada();
+        var revisor = UmRevisor("Ana Revisora");
+
+        release.Aprovar(revisor, DateTimeOffset.UtcNow);
+
+        release.VersaoCliente!.RevisadoPorId.Should().Be(revisor.Id);
+        release.VersaoCliente.RevisadoPor.Should().Be("Ana Revisora");
+
+        release.Reabrir();
+
+        release.VersaoCliente.RevisadoPorId.Should().BeNull();
         release.VersaoCliente.RevisadoPor.Should().BeNull();
     }
 
@@ -175,9 +206,9 @@ public class VersaoComunicadoTests
     public void Versao_reprovada_nao_pode_ser_aprovada_sem_reprocessar()
     {
         var release = UmaReleaseProcessada();
-        release.Reprovar("darth.code", "Precisa refazer", DateTimeOffset.UtcNow);
+        release.Reprovar(UmRevisor("darth.code"), "Precisa refazer", DateTimeOffset.UtcNow);
 
-        var acao = () => release.Aprovar("darth.code", DateTimeOffset.UtcNow);
+        var acao = () => release.Aprovar(UmRevisor("darth.code"), DateTimeOffset.UtcNow);
 
         acao.Should().Throw<RevisaoHumanaObrigatoriaException>();
     }
@@ -186,7 +217,7 @@ public class VersaoComunicadoTests
     public void Reabrir_versao_aprovada_bloqueia_a_exportacao_de_novo()
     {
         var release = UmaReleaseProcessada();
-        release.Aprovar("darth.code", DateTimeOffset.UtcNow);
+        release.Aprovar(UmRevisor("darth.code"), DateTimeOffset.UtcNow);
 
         release.Reabrir();
 
@@ -212,7 +243,7 @@ public class VersaoComunicadoTests
     {
         var agora = DateTimeOffset.UtcNow;
         var release = UmaReleaseProcessada(PublicoAlvo.Cliente, PublicoAlvo.Suporte);
-        release.Aprovar("darth.code", agora, PublicoAlvo.Cliente);
+        release.Aprovar(UmRevisor("darth.code"), agora, PublicoAlvo.Cliente);
 
         release.ConcluirProcessamento(
             [UmItem("Texto refeito")],
@@ -229,7 +260,7 @@ public class VersaoComunicadoTests
     public void Reprocessar_versao_aprovada_sem_reabrir_falha_e_preserva_o_conteudo_aprovado()
     {
         var release = UmaReleaseProcessada();
-        release.Aprovar("revisora@invoisys.com", DateTimeOffset.UtcNow);
+        release.Aprovar(UmRevisor("revisora@invoisys.com"), DateTimeOffset.UtcNow);
         var textosAprovados = release.VersaoCliente!.Itens.Select(i => i.Texto).ToList();
 
         var acao = () => release.ConcluirProcessamento(
@@ -247,7 +278,7 @@ public class VersaoComunicadoTests
     public void Reprocessar_depois_de_reabrir_substitui_o_conteudo()
     {
         var release = UmaReleaseProcessada();
-        release.Aprovar("revisora@invoisys.com", DateTimeOffset.UtcNow);
+        release.Aprovar(UmRevisor("revisora@invoisys.com"), DateTimeOffset.UtcNow);
         release.Reabrir();
 
         release.ConcluirProcessamento([UmItem("Texto refeito")], "Novo título", "Novo resumo");
@@ -260,7 +291,7 @@ public class VersaoComunicadoTests
     public void Versao_aprovada_recusa_conteudo_novo_mesmo_chamada_direto()
     {
         var release = UmaReleaseProcessada();
-        release.Aprovar("revisora@invoisys.com", DateTimeOffset.UtcNow);
+        release.Aprovar(UmRevisor("revisora@invoisys.com"), DateTimeOffset.UtcNow);
 
         var acao = () => release.VersaoCliente!.PreencherConteudo([UmItem()], "T", "R");
 
@@ -286,7 +317,7 @@ public class VersaoComunicadoTests
         var release = UmaReleaseProcessada();
         release.VersaoCliente!.Itens[0].Excluir("Interno");
 
-        var acao = () => release.Aprovar("darth.code", DateTimeOffset.UtcNow);
+        var acao = () => release.Aprovar(UmRevisor("darth.code"), DateTimeOffset.UtcNow);
 
         acao.Should().Throw<ReleaseSemItensProcessadosException>();
     }

@@ -47,15 +47,10 @@ export function ForgotPasswordPage({ onNavigateToLogin, onNavigateToConfirmation
     }
 
     try {
-      await requestReset({ email });
-      // Avança para a tela de confirmação passando o e-mail
-      if (onNavigateToConfirmation) {
-        onNavigateToConfirmation(email);
-      }
-      // TODO: Se react-router-dom estiver configurado:
-      // navigate('/email-confirmacao', { state: { email } });
-    } catch (err) {
-      console.error('Falha na solicitação de recuperação de senha:', err);
+      const response = await requestReset({ email });
+      onNavigateToConfirmation?.(email, response);
+    } catch {
+      // O hook mantém a mensagem exibida no formulário.
     }
   };
 

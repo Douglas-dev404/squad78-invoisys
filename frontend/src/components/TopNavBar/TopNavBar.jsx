@@ -1,4 +1,8 @@
+import { useAuth } from '../../hooks/useAuth';
+import { ROLE_LABELS } from '../../data/users.mock';
 export function TopNavBar({ onLogout, onProfileClick, isMinimized = false }) {
+  const { usuario } = useAuth();
+  const initials = usuario?.name?.split(/\s+/).slice(0, 2).map(word => word[0]).join('');
   const handleLogout = () => {
     if (onLogout) {
       onLogout();
@@ -27,7 +31,7 @@ export function TopNavBar({ onLogout, onProfileClick, isMinimized = false }) {
             <span className="material-symbols-outlined">help_outline</span>
           </button>
           <button className="bg-primary text-on-primary px-sm py-xs rounded-lg font-label-md text-label-md hover:bg-primary/90 transition-colors ml-sm">
-            Formalize
+            Formalizar
           </button>
           <button
             onClick={handleLogout}
@@ -44,11 +48,10 @@ export function TopNavBar({ onLogout, onProfileClick, isMinimized = false }) {
               aria-label="Ver meu perfil"
               title="Meu perfil"
             >
-              <img
-                className="w-8 h-8 rounded-full object-cover border border-surface-variant/50"
-                alt="Foto de perfil"
-                src="https://lh3.googleusercontent.com/aida-public/AB6AXuCKLcr-v89KoV9oSKV-9JPg_L-t1F-Sv8gJoP3E8f2mTajVf5NcsZVIjTJqB6HA9JzmG8r-v-LjiUp4GBRW_unG63RYRCjo38mRKsAxg-X4UmEBuOH72pM4xvWZcnZH19QUkCALyNgW_7oxl7JCsjtSTe471M2QlRoAVzaNV-mXUPFV5osGBDCwAmmops2g1TuYf8geKxyqWvZpGmKjsiG15IWDEoX6tHpMXRmV-g1hyz8ZCNzczIU69A"
-              />
+              <span className="flex items-center gap-xs">
+                <span className="text-right"><span className="block">{usuario?.name}</span><span className="block text-xs">{ROLE_LABELS[usuario?.role] || usuario?.role}</span></span>
+                {usuario?.avatarUrl ? <img className="w-8 h-8 rounded-full object-cover" alt={usuario.name} src={usuario.avatarUrl} /> : <span className="w-8 h-8 rounded-full bg-primary text-on-primary flex items-center justify-center">{initials}</span>}
+              </span>
             </button>
           </div>
         </div>

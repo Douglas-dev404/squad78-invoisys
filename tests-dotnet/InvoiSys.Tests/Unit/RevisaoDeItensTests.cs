@@ -1,4 +1,5 @@
 using FluentAssertions;
+using static InvoiSys.Tests.Fakes.AutenticacaoDeTeste;
 using InvoiSys.Domain.Entities;
 using InvoiSys.Domain.Enums;
 
@@ -114,7 +115,7 @@ public class RevisaoDeItensTests
     {
         var release = UmaReleaseProcessada();
         var item = release.VersaoCliente!.Itens[0];
-        release.Aprovar("revisora@invoisys.com", Agora);
+        release.Aprovar(UmRevisor("revisora@invoisys.com"), Agora);
 
         var editar = () => release.EditarItem(item.Id, "Texto depois da aprovação");
         var excluir = () => release.ExcluirItem(item.Id, "Depois da aprovação");
@@ -133,7 +134,7 @@ public class RevisaoDeItensTests
     {
         var release = UmaReleaseProcessada();
         var itemId = release.VersaoCliente!.Itens[0].Id;
-        release.Aprovar("revisora@invoisys.com", Agora);
+        release.Aprovar(UmRevisor("revisora@invoisys.com"), Agora);
 
         release.Reabrir();
         var item = release.EditarItem(itemId, "Correção depois de reabrir");
@@ -146,7 +147,7 @@ public class RevisaoDeItensTests
     public void Aprovar_um_publico_nao_trava_os_itens_de_outro()
     {
         var release = UmaReleaseProcessada();
-        release.Aprovar("revisora@invoisys.com", Agora);
+        release.Aprovar(UmRevisor("revisora@invoisys.com"), Agora);
         var itemSuporte = release.VersaoPara(PublicoAlvo.Suporte)!.Itens[0];
 
         release.EditarItem(itemSuporte.Id, "Texto do suporte revisado");
