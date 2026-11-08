@@ -1,15 +1,12 @@
+import { useNavigate } from 'react-router-dom';
 import { useUserManagement } from '../../hooks/useUserManagement';
 import { Layout } from '../../components/Layout/Layout';
 import { UserListItem } from '../../components/UserListItem/UserListItem';
 import { UserProfilePanel } from '../../components/UserProfilePanel/UserProfilePanel';
 import { AlertError } from '../../components/AlertError/AlertError';
 
-export function UserManagementPage({
-  onLogout,
-  onProfileClick,
-  onNavigate,
-  onCreateUser,
-}) {
+export function UserManagementPage() {
+  const navigate = useNavigate();
   const {
     users,
     loading,
@@ -29,10 +26,7 @@ export function UserManagementPage({
 
   return (
     <Layout
-      onLogout={onLogout}
-      onProfileClick={onProfileClick}
-      activeScreen="user-management"
-      onNavigate={onNavigate}
+
       fullBleed
     >
       {/* Left Side: User List */}
@@ -47,7 +41,7 @@ export function UserManagementPage({
             </p>
           </div>
           <button
-            onClick={onCreateUser}
+            onClick={() => navigate('/usuarios/novo')}
             className="bg-primary text-on-primary font-label-md text-label-md py-sm px-md rounded-lg flex items-center justify-center gap-xs hover:bg-primary/90 transition-colors shadow-sm flex-shrink-0 whitespace-nowrap self-start lg:self-auto"
           >
             <span className="material-symbols-outlined text-[18px]">
