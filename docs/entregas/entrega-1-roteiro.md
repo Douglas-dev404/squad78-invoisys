@@ -10,7 +10,7 @@ Duração: ~10 min. Detalhes do que cada um entregou: [entrega-1.md](entrega-1.m
 
 O backend já fazia o fluxo principal: ler a Release no Jira, a IA gerar o comunicado e a API de revisão humana. Faltavam três coisas: **login**, **telas ligadas à API** e o sistema **rodando fora da máquina de quem desenvolve**.
 
-## 2. O que entrou desde então (3 min)
+## 2. O que entrou desde então (4 min)
 
 **Sistema publicado, sempre ligado**
 - API na **Azure** (App Service, plano que não hiberna) e banco PostgreSQL gerenciado, pelo pacote de estudante do GitHub.
@@ -30,17 +30,7 @@ O backend já fazia o fluxo principal: ler a Release no Jira, a IA gerar o comun
 **IA**
 - Dá para trocar de provedor (OpenRouter ↔ OpenAI) só por configuração. Hoje roda com a **OpenAI**.
 
-## 3. O que aprendemos testando com dados reais (1 min)
-
-Rodamos o fluxo completo com o **Jira real e a OpenAI real**, e apareceram bugs que nenhum teste simulado pegava:
-
-- Com credencial do Jira errada, a busca voltava vazia e a **IA inventava um comunicado**. Agora o sistema recusa antes de chamar a IA.
-- A IA **imitava a formatação dos exemplos** do prompt: crases e aspas apareciam no texto final. Corrigido no prompt e na leitura da resposta.
-- Na nuvem, todo mundo chega com o IP do servidor intermediário: **5 logins no mesmo minuto travariam a equipe inteira**. Corrigido.
-
-> Mensagem: testar com dado real faz parte da entrega, não é etapa extra.
-
-## 4. Demo (3 min)
+## 3. Demo (3 min)
 
 1. Abrir o link: os destaques da tela de login vêm do banco.
 2. Errar a senha → "E-mail ou senha inválidos." (não revela se o e-mail existe)
@@ -54,7 +44,7 @@ Rodamos o fluxo completo com o **Jira real e a OpenAI real**, e apareceram bugs 
 
 **Não clicar:** Dashboard e Histórico usam **dados de exemplo** (os reais vêm na Entrega 3); Notificações, Ajuda e Formalizar ainda não têm função.
 
-## 5. Pronto, mas ainda fora do ar (1 min)
+## 4. Pronto, mas ainda fora do ar (1 min)
 
 - **Trava contra processamento duplicado:** dois cliques em "Processar" faziam a IA rodar duas vezes, pagando o dobro. Implementamos uma trava no próprio banco: a segunda chamada é recusada na hora, antes de gastar IA. Está pronta e testada; entra no ar na próxima rodada.
 - **Observabilidade escolhida:**
@@ -62,7 +52,7 @@ Rodamos o fluxo completo com o **Jira real e a OpenAI real**, e apareceram bugs 
   - **Prometheus + Grafana**, para as métricas do sistema.
   - Está implementada, mas precisa de servidores próprios que o plano gratuito não comporta. A meta é subir na **Entrega 4**.
 
-## 6. Próximos passos — Entrega 2, 16/11 (1 min)
+## 5. Próximos passos — Entrega 2, 16/11 (1 min)
 
 - **Telas de revisão:** ver o comunicado gerado, editar e excluir itens, aprovar ou reprovar, e exportar o Markdown. **A API de tudo isso já está pronta e validada com dados reais**; falta só a tela.
 - Redefinir senha pelo link do e-mail.
@@ -76,7 +66,7 @@ Rodamos o fluxo completo com o **Jira real e a OpenAI real**, e apareceram bugs 
 **Produto e IA**
 
 - **E se a IA escrever algo errado?** Nada sai sem revisão humana. Cada público (cliente, suporte…) tem a própria aprovação, e a API recusa exportar antes de aprovar (409). Na próxima entrega, o revisor edita ou exclui o item pela tela.
-- **A IA pode inventar coisa?** Ela só recebe o texto das histórias do Jira. Se a Release não tem histórias (fixVersion errada, credencial sem acesso), o sistema recusa **antes** de chamar a IA. Esse caso aconteceu de verdade no nosso teste e foi corrigido (ADR-030).
+- **A IA pode inventar coisa?** Ela só recebe o texto das histórias do Jira. Se a Release não tem histórias (fixVersion errada, credencial sem acesso), o sistema recusa **antes** de chamar a IA.
 - **De onde vem o texto que a IA usa?** Da subtarefa "Release Note" da história, quando ela existe; senão, da descrição técnica. A Release Note tem prioridade porque é o texto que o time já escreveu pensando no cliente.
 - **Como trata histórias repetidas?** A IA agrupa as que falam do mesmo assunto. No teste, INV-3 e INV-4 (o mesmo bug de ICMS-ST) viraram um item só.
 - **Quanto tempo leva?** 16 a 20 s para uma Release de 9 histórias com o `gpt-4o-mini`.
