@@ -57,9 +57,7 @@ export function CreateUserPage() {
   };
 
   return (
-    <Layout
-
-    >
+    <Layout>
       <div className="max-w-4xl mx-auto space-y-lg">
         {/* Page Header */}
         <div>

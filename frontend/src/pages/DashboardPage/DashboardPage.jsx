@@ -26,9 +26,7 @@ export function DashboardPage() {
   };
 
   return (
-    <Layout
-
-    >
+    <Layout>
       {/* Header */}
         <header className="mb-lg">
           <h2 className="font-headline-lg text-headline-lg text-primary">

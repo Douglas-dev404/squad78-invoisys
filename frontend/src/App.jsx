@@ -1,6 +1,6 @@
 import { useEffect } from 'react';
 import { Link, Navigate, Route, Routes, useLocation, useNavigate } from 'react-router-dom';
-import { getSession } from './utils/session';
+import { useAuth } from './hooks/useAuth';
 import { RotaProtegida, RotaAdmin } from './components/RotaProtegida/RotaProtegida';
 import { Layout } from './components/Layout/Layout';
 import { LoginPage } from './pages/LoginPage/LoginPage';
@@ -15,7 +15,8 @@ import { SentHistoryPage } from './pages/SentHistoryPage/SentHistoryPage';
 function LoginRoute() {
   const navigate = useNavigate();
   const location = useLocation();
-  if (getSession()) return <Navigate to={location.state?.from || '/dashboard'} replace />;
+  const { isAuthenticated } = useAuth();
+  if (isAuthenticated) return <Navigate to={location.state?.from || '/dashboard'} replace />;
   return <LoginPage
     onNavigateToForgotPassword={() => navigate('/esqueci-senha')}
     onLoginSuccess={() => navigate(location.state?.from || '/dashboard', { replace: true })}
@@ -26,14 +27,14 @@ function RecoveryRoute() {
   const navigate = useNavigate();
   return <ForgotPasswordPage
     onNavigateToLogin={() => navigate('/login')}
-    onNavigateToConfirmation={(email) => navigate('/email-enviado', { state: { email } })}
+    onNavigateToConfirmation={(email, response) => navigate('/email-enviado', { state: { email, ...response } })}
   />;
 }
 
 function ConfirmationRoute() {
   const navigate = useNavigate();
   const location = useLocation();
-  return <EmailConfirmationPage email={location.state?.email || ''} onNavigateToLogin={() => navigate('/login')} />;
+  return <EmailConfirmationPage email={location.state?.email || ''} mensagem={location.state?.mensagem} expiraEmMinutos={location.state?.expiraEmMinutos} onNavigateToLogin={() => navigate('/login')} />;
 }
 
 function ReleaseRoute() {

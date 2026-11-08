@@ -141,3 +141,11 @@ Testes do cliente e da sessão (sem dependências novas): `node --test tests/*.t
 ## Roteamento (F-02)
 
 BrowserRouter mantém URLs, voltar/avançar e links diretos. Rotas protegidas consultam a sessão da F-01; /usuarios e /usuarios/novo exigem papel admin e mostram Sem permissão para os demais. O controle definitivo de autorização permanece na API. As rotas de Releases e redefinição reservam espaço para F-04/F-06 e F-13. O servidor estático deve servir index.html para rotas da SPA; public/_redirects registra a regra para a configuração do Render (B-03).
+
+## Autenticação real (F-03)
+
+AuthProvider restaura a sessão por GET /auth/me antes de mostrar rotas, mantém o token Bearer da F-01 e encerra a sessão no logout, 401, expiração ou remoção em outra aba. Falha de rede na restauração oferece nova tentativa sem autorizar telas privadas. Login traduz usuario para o formato visual, envia senha e trata 401, 422 por campo e 429. Recuperação usa respostas uniformes, mensagem e validade retornadas pela API. Não há credenciais fixas no frontend. Perfil e barra superior mostram a identidade autenticada.
+
+Dependências para integração: PR #93 (HTTP), F-02 (rotas), PR #97 (login/me/logout) e PR #58 (recuperação). Os dois PRs de autenticação ainda precisam ser integrados pelo responsável no backend.
+
+O mock de identidade continua apenas porque profile.mock.js ainda o importa. As credenciais, o token e a resposta de recuperação simulados foram removidos. Os erros por campo aceitam camelCase e PascalCase, como retornado pelo PR #97 atual. Os módulos de dashboard, histórico e administração mantêm seus dados simulados até as respectivas issues; o perfil autenticado usa /auth/me.

@@ -1,11 +1,11 @@
 import { NavLink, useNavigate } from 'react-router-dom';
-import { getSession } from '../../utils/session';
+import { useAuth } from '../../hooks/useAuth';
 export function SideNavBar({
   isMinimized = false,
   onToggleMinimize,
 }) {
   const navigate = useNavigate();
-  const isAdmin = getSession()?.usuario?.papel === 'admin';
+  const { isAdmin } = useAuth();
   const navItems = [
     { icon: 'dashboard', label: 'Dashboard', to: '/dashboard' },
     { icon: 'rate_review', label: 'Releases', to: '/releases' },

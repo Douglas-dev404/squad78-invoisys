@@ -10,6 +10,7 @@ import {
  *          requestReset, resendReset, resetState, clearError }.
  */
 export function usePasswordRecovery() {
+  const [expiraEmMinutos, setExpiraEmMinutos] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [isSuccess, setIsSuccess] = useState(false);
@@ -26,7 +27,8 @@ export function usePasswordRecovery() {
     try {
       const response = await requestPasswordResetService({ email });
       setIsSuccess(true);
-      setMessage(response.message);
+      setMessage(response.mensagem);
+      setExpiraEmMinutos(response.expiraEmMinutos);
       return response;
     } catch (err) {
       const errMsg =
@@ -46,7 +48,9 @@ export function usePasswordRecovery() {
     setError(null);
 
     try {
-      await resendPasswordResetService({ email });
+      const response = await resendPasswordResetService({ email });
+      setMessage(response.mensagem);
+      setExpiraEmMinutos(response.expiraEmMinutos);
       setResendSuccess(true);
     } catch (err) {
       const errMsg =
@@ -77,6 +81,7 @@ export function usePasswordRecovery() {
     error,
     isSuccess,
     message,
+    expiraEmMinutos,
     isResending,
     resendSuccess,
     requestReset,
