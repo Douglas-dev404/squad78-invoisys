@@ -1,3 +1,4 @@
+using Npgsql;
 using FluentAssertions;
 using InvoiSys.Domain.Entities;
 using InvoiSys.Domain.Enums;
@@ -90,7 +91,7 @@ public class RevisorForeignKeyTests(PostgresContainerFixture fixture)
         var acao = () => contexto.Database.ExecuteSqlInterpolatedAsync(
             $"DELETE FROM usuarios WHERE id = {revisor.Id}");
 
-        await acao.Should().ThrowAsync<DbUpdateException>();
+        (await acao.Should().ThrowAsync<PostgresException>()).Which.SqlState.Should().Be("23503");
     }
 
     [Fact]
@@ -120,7 +121,7 @@ public class RevisorForeignKeyTests(PostgresContainerFixture fixture)
 
         var apagar = () => leitura.Database.ExecuteSqlInterpolatedAsync(
             $"DELETE FROM usuarios WHERE id = {revisor.Id}");
-        await apagar.Should().ThrowAsync<DbUpdateException>();
+        (await apagar.Should().ThrowAsync<PostgresException>()).Which.SqlState.Should().Be("23503");
     }
 
     private static Usuario AutenticacaoDeTesteUsuarioNaoPersistido() =>

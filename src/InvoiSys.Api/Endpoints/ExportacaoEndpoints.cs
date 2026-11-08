@@ -1,5 +1,5 @@
 using System.Security.Claims;
-using InvoiSys.Api.Autenticacao;
+using InvoiSys.Api.Auth;
 using InvoiSys.Api.Contracts;
 using InvoiSys.Application.Exportacao;
 using InvoiSys.Application.Revisao;

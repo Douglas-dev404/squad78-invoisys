@@ -17,6 +17,7 @@ public class ApiValidacaoTests
             builder.ConfigureServices(services =>
             {
                 services.RemoveAll<IReleaseRepository>();
+                services.ComUsuarios(AutenticacaoDeTeste.Revisor);
                 services.AddScoped<IReleaseRepository>(_ => new FakeReleaseRepository());
             }));
 
@@ -34,7 +35,7 @@ public class ApiValidacaoTests
         string acao, string json, string campo)
     {
         using var app = CriarApp();
-        using var client = app.CreateClient();
+        using var client = app.CriarClienteAutenticado();
         var rota = acao == "editar"
             ? "/api/v1/releases/INEXISTENTE/itens/10000000-0000-0000-0000-000000000001"
             : $"/api/v1/releases/INEXISTENTE/{acao}";
@@ -61,7 +62,7 @@ public class ApiValidacaoTests
     public async Task Reprovar_devolve_todos_os_campos_invalidos_em_uma_resposta()
     {
         using var app = CriarApp();
-        using var client = app.CreateClient();
+        using var client = app.CriarClienteAutenticado();
 
         var resposta = await client.PostAsync("/api/v1/releases/INEXISTENTE/reprovar",
             new StringContent("{}", Encoding.UTF8, "application/json"));

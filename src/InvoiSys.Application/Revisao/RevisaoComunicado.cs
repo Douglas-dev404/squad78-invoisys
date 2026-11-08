@@ -9,6 +9,18 @@ public sealed record ItemRevisado(ItemComunicado Item, PublicoAlvo Publico);
 public sealed class RevisorInvalidoException()
     : Exception("O usuário do token não existe ou está desativado.");
 
+public static class UsuarioResponsavel
+{
+    public static async Task<Usuario> ObterAtivoAsync(
+        IUsuarioRepository usuarios,
+        Guid usuarioId,
+        CancellationToken cancellationToken)
+    {
+        var usuario = await usuarios.BuscarPorIdAsync(usuarioId, cancellationToken);
+        return usuario is { Ativo: true } ? usuario : throw new RevisorInvalidoException();
+    }
+}
+
 public sealed class RevisaoComunicado(IReleaseRepository releases, IUsuarioRepository usuarios)
 {
     public Task AprovarAsync(
@@ -81,11 +93,7 @@ public sealed class RevisaoComunicado(IReleaseRepository releases, IUsuarioRepos
         Action<Release, Usuario> revisao,
         CancellationToken cancellationToken)
     {
-        var revisor = await usuarios.BuscarPorIdAsync(revisorId, cancellationToken);
-        if (revisor is null || !revisor.Ativo)
-        {
-            throw new RevisorInvalidoException();
-        }
+        var revisor = await UsuarioResponsavel.ObterAtivoAsync(usuarios, revisorId, cancellationToken);
 
         await RevisarAsync(chaveRelease, release => revisao(release, revisor), cancellationToken);
     }

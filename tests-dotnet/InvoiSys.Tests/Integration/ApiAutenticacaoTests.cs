@@ -143,7 +143,11 @@ public class ApiAutenticacaoTests
             var exigeAuth = endpoint.Metadata.GetOrderedMetadata<IAuthorizeData>().Count > 0;
             var anonimo = endpoint.Metadata.GetMetadata<IAllowAnonymous>() is not null;
 
-            if (rota.StartsWith("/api/v1/auth/", StringComparison.Ordinal) || rota == "/health")
+            if (rota == "/api/v1/auth/me")
+            {
+                (exigeAuth && !anonimo).Should().BeTrue($"{rota} identifica o usuário do token");
+            }
+            else if (rota.StartsWith("/api/v1/auth/", StringComparison.Ordinal) || rota == "/health")
             {
                 (exigeAuth && !anonimo).Should().BeFalse($"{rota} deve ser pública");
             }

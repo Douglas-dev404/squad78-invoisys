@@ -103,7 +103,7 @@ public class PersistenciaAgregadoReleaseTests(PostgresContainerFixture fixture)
         var cliente = recarregada.VersaoCliente!;
 
         cliente.Status.Should().Be(StatusRevisao.Aprovado);
-        cliente.RevisadoPor.Should().Be("revisora@invoisys.com");
+        cliente.RevisadoPor.Should().Be(revisor.Nome);
         cliente.RevisadoEm.Should().Be(Agora);
         cliente.ItensPublicaveis.Should().ContainSingle()
             .Which.TextoFinal.Should().Be("Texto revisado");
