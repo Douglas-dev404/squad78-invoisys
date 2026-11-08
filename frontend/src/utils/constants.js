@@ -41,6 +41,26 @@ export const UI_STRINGS = {
   RESEND_LINK_LABEL: 'Reenviar link',
   RESENDING_LINK_LABEL: 'Reenviando...',
   RESEND_SUCCESS_MESSAGE: 'Novo link enviado! Verifique sua caixa de entrada.',
+
+    // Releases
+  RELEASES_TITLE: 'Releases',
+  RELEASES_PROCESS_BUTTON: 'Processar Release',
+  RELEASES_LOADING: 'Carregando Releases…',
+  RELEASES_EMPTY: 'Nenhuma Release ainda. Clique em Processar Release.',
+  RELEASES_LOAD_ERROR: 'Não foi possível carregar as Releases.',
+  RELEASES_RETRY: 'Tentar de novo',
+  RELEASES_COL_KEY: 'Chave',
+  RELEASES_COL_STATUS: 'Status',
+  RELEASES_COL_CREATED: 'Criada em',
+  PROCESS_MODAL_TITLE: 'Processar Release',
+  PROCESS_MODAL_KEY_LABEL: 'Chave da Release (fixVersion do Jira)',
+  PROCESS_MODAL_KEY_PLACEHOLDER: 'INV-123',
+  PROCESS_MODAL_KEY_REQUIRED: 'Informe a chave da Release.',
+  PROCESS_MODAL_SUBMIT: 'Processar',
+  PROCESS_MODAL_SUBMITTING: 'Gerando comunicado…',
+  PROCESS_MODAL_CANCEL: 'Cancelar',
+  PROCESS_MODAL_WAIT: 'Isso pode levar até 2 minutos. Não feche esta janela.',
+  PROCESS_MODAL_GENERIC_ERROR: 'Não foi possível processar a Release.',
 };
 
 export const MIN_PASSWORD_LENGTH = 6;
