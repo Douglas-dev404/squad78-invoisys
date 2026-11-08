@@ -129,6 +129,19 @@ public class OpenAiProviderTests
         texto.Should().Be("Emissão mais rápida.");
     }
 
+    [Theory]
+    [InlineData("\"Agora você emite em lote.\"", "Agora você emite em lote.")]
+    [InlineData("“Agora você emite em lote.”", "Agora você emite em lote.")]
+    [InlineData("O campo \"CFOP\" agora é validado.", "O campo \"CFOP\" agora é validado.")]
+    public async Task Reescrita_tira_aspas_que_envolvem_o_paragrafo_e_mantem_as_internas(string resposta, string esperado)
+    {
+        var (provider, _, _) = Criar(h => h.ResponderConteudoLlm(resposta));
+
+        var texto = await provider.ReescreverLinguagemNegocioAsync(["texto"], CategoriaAlteracao.Melhoria);
+
+        texto.Should().Be(esperado);
+    }
+
     [Fact]
     public async Task Json_malformado_vira_resposta_invalida()
     {

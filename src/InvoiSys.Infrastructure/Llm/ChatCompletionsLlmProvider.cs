@@ -89,8 +89,13 @@ public abstract partial class ChatCompletionsLlmProvider(
             ("textos_fonte", string.Join("\n", textosFonte.Select(t => $"- {t}"))));
 
         var resposta = await ChamarAsync(prompt, jsonMode: false, cancellationToken);
-        return resposta.Trim();
+        return SemAspasEmVolta(resposta.Trim());
     }
+
+    private static string SemAspasEmVolta(string texto) =>
+        texto.Length >= 2 && texto[0] is ('"' or '“') && texto[^1] is ('"' or '”')
+            ? texto[1..^1].Trim()
+            : texto;
 
     public async Task<(string Titulo, string Resumo)> GerarTituloEResumoAsync(
         IReadOnlyList<string> itensTexto,
