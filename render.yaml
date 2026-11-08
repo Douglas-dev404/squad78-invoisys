@@ -1,0 +1,16 @@
+services:
+  - type: web
+    name: invoisys-front
+    runtime: static
+    rootDir: frontend
+    buildCommand: npm ci && npm run build
+    staticPublishPath: dist
+    autoDeployTrigger: commit
+    branch: main
+    envVars:
+      - key: VITE_API_BASE_URL
+        value: https://invoisys-api-squad78.azurewebsites.net/api/v1
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html

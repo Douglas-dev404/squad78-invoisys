@@ -24,3 +24,6 @@ Thumbs.db
 
 # Material de estudo pessoal — não é artefato do projeto
 docs/roteiro-apresentacao.md
+
+# Artefatos do Playwright MCP (snapshots e logs de navegador)
+.playwright-mcp/

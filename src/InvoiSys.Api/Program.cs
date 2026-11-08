@@ -1,6 +1,8 @@
 using InvoiSys.Api.Endpoints;
+using InvoiSys.Api.Validacao;
 using InvoiSys.Application;
 using System.Text;
+using InvoiSys.Domain.Ports;
 using InvoiSys.Infrastructure;
 using InvoiSys.Infrastructure.Auth;
 using InvoiSys.Infrastructure.Configuration;
@@ -8,6 +10,8 @@ using InvoiSys.Infrastructure.Database;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
+using InvoiSys.Api.Auth;
+
 
 if (args.Contains("--healthcheck"))
 {
@@ -16,9 +20,10 @@ if (args.Contains("--healthcheck"))
 
 var builder = WebApplication.CreateBuilder(args);
 
-builder.Services.AddOpenApi();
+builder.Services.AddOpenApi(o => o.AddDocumentTransformer<BearerSecuritySchemeTransformer>());
 builder.Services.AddInfrastructure(builder.Configuration);
 builder.Services.AddApplication(builder.Configuration);
+builder.Services.AddValidacaoDeEntrada();
 
 var auth = builder.Configuration.GetSection(AuthOptions.SecaoConfig).Get<AuthOptions>()!;
 builder.Services
@@ -36,8 +41,26 @@ builder.Services
             NameClaimType = "name",
             RoleClaimType = "role",
         };
+        opcoes.Events = new JwtBearerEvents
+        {
+            OnTokenValidated = async contexto =>
+            {
+                var usuarios = contexto.HttpContext.RequestServices.GetRequiredService<IUsuarioRepository>();
+                var ativo = Guid.TryParse(contexto.Principal?.FindFirst("sub")?.Value, out var id)
+                    && await usuarios.BuscarPorIdAsync(id, contexto.HttpContext.RequestAborted) is { Ativo: true };
+
+                if (!ativo)
+                {
+                    contexto.Fail("Usuário inexistente ou desativado.");
+                }
+            },
+        };
     });
 builder.Services.AddAuthorization();
+builder.Services.AddProblemDetails();
+builder.Services.AddCorsConfiguravel();
+builder.Services.AddLimiteDeLogin();
+builder.Services.AddProxyReverso();
 
 var app = builder.Build();
 
@@ -64,7 +87,10 @@ await using (var escopoAuth = app.Services.CreateAsyncScope())
 {
     await escopoAuth.ServiceProvider.GetRequiredService<AdminInicialSemeador>().SemearAsync();
 }
-
+app.UseProxyReverso();
+app.UseStatusCodePages();
+app.UseCors();
+app.UseRateLimiter();
 app.UseAuthentication();
 app.UseAuthorization();
 
@@ -72,10 +98,12 @@ app.MapGet("/health", () => Results.Ok(new StatusSaude("ok")))
     .WithName("Health")
     .WithSummary("Verificação de que a API está no ar.")
     .Produces<StatusSaude>();
+app.MapAuthEndpoints();
 app.MapReleaseEndpoints();
 app.MapRevisaoEndpoints();
 app.MapItemComunicadoEndpoints();
 app.MapExportacaoEndpoints();
+app.MapBrandingEndpoints();
 
 app.Run();
 return 0;

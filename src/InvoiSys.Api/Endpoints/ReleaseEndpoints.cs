@@ -12,7 +12,9 @@ public static class ReleaseEndpoints
 {
     public static IEndpointRouteBuilder MapReleaseEndpoints(this IEndpointRouteBuilder rotas)
     {
-        var grupo = rotas.MapGroup("/api/v1/releases").WithTags("releases");
+        var grupo = rotas.MapGroup("/api/v1/releases").WithTags("releases")
+            .RequireAuthorization()
+            .ProducesProblem(StatusCodes.Status401Unauthorized);
 
         // Sem .Produces/.ProducesProblem o OpenAPI publica "200" sem schema (OpenApiTests cobre).
         grupo.MapGet("/", ListarReleasesAsync)
@@ -39,6 +41,7 @@ public static class ReleaseEndpoints
             .WithSummary("Roda o pipeline de IA completo sobre a Release.")
             .Produces<ReleaseProcessadaOut>()
             .ProducesProblem(StatusCodes.Status409Conflict)
+            .ProducesProblem(StatusCodes.Status422UnprocessableEntity)
             .ProducesProblem(StatusCodes.Status501NotImplemented)
             .ProducesProblem(StatusCodes.Status502BadGateway);
 
@@ -102,6 +105,7 @@ public static class ReleaseEndpoints
                 v.TituloExecutivo,
                 v.ResumoExecutivo,
                 [.. v.Itens.Select(i => ItemRevisaoOut.De(i, v.Publico))],
+                v.RevisadoPorId,
                 v.RevisadoPor,
                 v.RevisadoEm,
                 v.MotivoReprovacao))],
@@ -162,6 +166,10 @@ public static class ReleaseEndpoints
         catch (RevisaoHumanaObrigatoriaException exc)
         {
             return Results.Problem(detail: exc.Message, statusCode: StatusCodes.Status409Conflict);
+        }
+        catch (ReleaseSemHistoriasException exc)
+        {
+            return Results.Problem(detail: exc.Message, statusCode: StatusCodes.Status422UnprocessableEntity);
         }
         catch (Exception exc) when (MapearFalhaDeIntegracao(exc) is { } problema)
         {

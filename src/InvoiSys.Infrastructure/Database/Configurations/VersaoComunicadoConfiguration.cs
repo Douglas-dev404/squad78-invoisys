@@ -46,6 +46,11 @@ public sealed class VersaoComunicadoConfiguration : IEntityTypeConfiguration<Ver
         builder.Property(v => v.ResumoExecutivo).HasColumnType("text");
 
         builder.Property(v => v.RevisadoPor).HasMaxLength(200);
+        builder.HasOne<Usuario>()
+            .WithMany()
+            .HasForeignKey(v => v.RevisadoPorId)
+            .OnDelete(DeleteBehavior.Restrict);
+        builder.HasIndex(v => v.RevisadoPorId);
         builder.Property(v => v.RevisadoEm);
         builder.Property(v => v.MotivoReprovacao).HasColumnType("text");
         builder.Property(v => v.CriadoEm).IsRequired();

@@ -66,16 +66,12 @@ export function LoginPage({ onNavigateToForgotPassword, onLoginSuccess }) {
     try {
       await login({ email, password });
 
-      // Redirecionar para o dashboard imediatamente após login bem-sucedido
-      if (onLoginSuccess) {
-        onLoginSuccess();
-      } else {
-        // TODO: Integrar com react-router-dom para navegação definitiva
-        window.location.href = '/dashboard';
-      }
+      onLoginSuccess?.();
     } catch (err) {
-      // O erro já é tratado e armazenado no estado do hook useAuth
-      console.error('Falha ao autenticar usuário:', err);
+      if (err.status === 422) setFieldErrors({
+        email: (err.errors?.email ?? err.errors?.Email)?.join(' '),
+        password: (err.errors?.senha ?? err.errors?.Senha)?.join(' '),
+      });
     }
   };
 

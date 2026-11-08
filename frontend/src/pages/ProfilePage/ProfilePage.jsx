@@ -1,7 +1,8 @@
-import { useProfile } from '../../hooks/useProfile';
+import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../../hooks/useAuth';
+import { ROLE_LABELS } from '../../data/users.mock';
 import { Layout } from '../../components/Layout/Layout';
 import { ProfileField } from '../../components/ProfileField/ProfileField';
-import { AlertError } from '../../components/AlertError/AlertError';
 
 function formatDate(isoDate) {
   if (!isoDate) return '—';
@@ -14,20 +15,17 @@ function formatDate(isoDate) {
   });
 }
 
-export function ProfilePage({ onLogout, onProfileClick, onBack, onNavigate }) {
-  const { profile, loading, error, clearError, refetch } = useProfile();
+export function ProfilePage() {
+  const navigate = useNavigate();
+  const { usuario } = useAuth();
+  const profile = usuario ? { ...usuario, roleLabel: ROLE_LABELS[usuario.role] } : null;
 
   return (
-    <Layout
-      onLogout={onLogout}
-      onProfileClick={onProfileClick}
-      activeScreen="profile"
-      onNavigate={onNavigate}
-    >
+    <Layout>
       <header className="mb-lg">
-        {onBack && (
+        {(
           <button
-            onClick={onBack}
+            onClick={() => navigate(-1)}
             className="flex items-center gap-1 text-on-surface-variant hover:text-primary font-label-md text-label-md mb-sm transition-colors"
           >
             <span className="material-symbols-outlined text-[18px]">
@@ -44,37 +42,11 @@ export function ProfilePage({ onLogout, onProfileClick, onBack, onNavigate }) {
         </p>
       </header>
 
-      {error && (
-        <AlertError message={error} onDismiss={clearError} onRetry={refetch} />
-      )}
-
-      {loading && (
-        <div className="bg-surface-container-lowest rounded-xl border border-surface-variant/50 shadow-[0px_4px_12px_rgba(27,67,50,0.08)] p-lg">
-          <div className="flex items-center gap-md mb-lg">
-            <div className="w-20 h-20 rounded-full bg-surface-container animate-pulse" />
-            <div className="flex-1 space-y-2">
-              <div className="h-4 w-40 bg-surface-container animate-pulse rounded" />
-              <div className="h-3 w-56 bg-surface-container animate-pulse rounded" />
-            </div>
-          </div>
-          {[...Array(5)].map((_, i) => (
-            <div
-              key={i}
-              className="h-12 bg-surface-container animate-pulse rounded-lg mb-2"
-            />
-          ))}
-        </div>
-      )}
-
-      {!loading && !error && profile && (
+      {profile && (
         <section className="bg-surface-container-lowest rounded-xl border border-surface-variant/50 shadow-[0px_4px_12px_rgba(27,67,50,0.08)] p-lg max-w-2xl">
           {/* Cabeçalho do perfil */}
           <div className="flex items-center gap-md mb-lg pb-lg border-b border-surface-variant/30">
-            <img
-              src={profile.avatarUrl}
-              alt={`Foto de perfil de ${profile.name}`}
-              className="w-20 h-20 rounded-full object-cover border border-surface-variant/50"
-            />
+            {profile.avatarUrl ? <img src={profile.avatarUrl} alt={profile.name} className="w-20 h-20 rounded-full object-cover" /> : <span className="w-20 h-20 rounded-full bg-primary text-on-primary flex items-center justify-center text-xl">{profile.name?.split(/\s+/).slice(0, 2).map(word => word[0]).join('')}</span>}
             <div>
               <h3 className="font-headline-sm text-headline-sm text-on-surface">
                 {profile.name}
@@ -89,25 +61,9 @@ export function ProfilePage({ onLogout, onProfileClick, onBack, onNavigate }) {
           <div>
             <ProfileField icon="mail" label="E-mail" value={profile.email} />
             <ProfileField
-              icon="apartment"
-              label="Departamento"
-              value={profile.department}
-            />
-            <ProfileField icon="call" label="Telefone" value={profile.phone} />
-            <ProfileField
-              icon="location_on"
-              label="Localização"
-              value={profile.location}
-            />
-            <ProfileField
               icon="calendar_today"
               label="Conta criada em"
               value={formatDate(profile.createdAt)}
-            />
-            <ProfileField
-              icon="schedule"
-              label="Último acesso"
-              value={formatDate(profile.lastAccessAt)}
             />
           </div>
         </section>

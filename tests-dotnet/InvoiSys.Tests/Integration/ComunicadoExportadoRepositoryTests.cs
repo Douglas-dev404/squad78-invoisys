@@ -19,8 +19,9 @@ public class ComunicadoExportadoRepositoryTests(PostgresContainerFixture fixture
         var release = new Release($"RELEASE-TESTE-{Guid.NewGuid():N}", []);
         release.ConcluirProcessamento(UmItem(), "Título", "Resumo");
         release.ConcluirProcessamento(UmItem(), "Título S", "Resumo S", PublicoAlvo.Suporte);
-        release.Aprovar("revisora@invoisys.com", Agora);
-        release.Aprovar("revisora@invoisys.com", Agora, PublicoAlvo.Suporte);
+        var revisor = await fixture.SalvarRevisorAsync();
+        release.Aprovar(revisor, Agora);
+        release.Aprovar(revisor, Agora, PublicoAlvo.Suporte);
 
         await using var contexto = fixture.CriarContexto();
         await new ReleaseRepository(contexto).SalvarAsync(release);

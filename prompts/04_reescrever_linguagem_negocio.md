@@ -22,18 +22,19 @@ Textos técnicos fonte (já agrupados por tratarem do mesmo assunto):
 
 ## Tarefa
 Funda os textos técnicos acima em um único parágrafo de comunicado em linguagem de
-negócio, coerente com a categoria informada.
+negócio, coerente com a categoria informada. Responda só com o parágrafo, sem aspas em
+volta.
 
 ## Few-shot examples (placeholder — substituir por exemplos reais da InvoiSys)
 
 **Entrada:** categoria=`correcao`, textos=["Corrigido cálculo de ICMS interestadual que
 estava aplicando alíquota incorreta para operações entre MG e SP.", "Corrigido
 arredondamento no mesmo cálculo."]
-**Saída:** "Corrigimos um problema no cálculo do ICMS em operações entre Minas Gerais e
+**Saída:** Corrigimos um problema no cálculo do ICMS em operações entre Minas Gerais e
 São Paulo que podia gerar valores incorretos na nota fiscal. Agora o cálculo está
-correto em todos os cenários."
+correto em todos os cenários.
 
 **Entrada:** categoria=`nova_funcionalidade`, textos=["Adicionado suporte a emissão de
 NFC-e em lote, permitindo emitir até 500 notas de uma vez."]
-**Saída:** "Agora é possível emitir até 500 notas fiscais de consumidor (NFC-e) de uma
-só vez, economizando tempo em operações de grande volume."
+**Saída:** Agora é possível emitir até 500 notas fiscais de consumidor (NFC-e) de uma
+só vez, economizando tempo em operações de grande volume.

@@ -1,3 +1,6 @@
+using InvoiSys.Application.Acesso;
+
+using InvoiSys.Application.Autenticacao;
 using InvoiSys.Application.Consulta;
 using InvoiSys.Application.Exportacao;
 using InvoiSys.Application.Pipeline;
@@ -19,11 +22,34 @@ public static class DependencyInjection
             provider.GetRequiredService<IJiraClient>(),
             provider.GetRequiredService<ILlmProvider>(),
             provider.GetRequiredService<IReleaseRepository>(),
-            configuration["OpenRouter:Modelo"]));
+            string.Equals(configuration["Llm:Provedor"]?.Trim(), "OpenAi", StringComparison.OrdinalIgnoreCase)
+                ? configuration["OpenAi:Modelo"]
+                : configuration["OpenRouter:Modelo"]));
+
+        services.AddScoped(provider =>
+        {
+            var config = provider.GetRequiredService<IConfiguration>();
+            var cooldown = int.TryParse(config["Auth:RecuperacaoSenha:CooldownSegundos"], out var segundos)
+                ? segundos
+                : 60;
+            var opcoes = new OpcoesRecuperacaoSenha(
+                config["Auth:RecuperacaoSenha:UrlBase"] ?? string.Empty,
+                TimeSpan.FromSeconds(cooldown));
+
+            return new RecuperacaoSenha(
+                provider.GetRequiredService<IUsuarioRepository>(),
+                provider.GetRequiredService<ITokenRedefinicaoSenhaRepository>(),
+                provider.GetRequiredService<IHashSenha>(),
+                provider.GetRequiredService<IEnvioEmail>(),
+                opcoes,
+                provider.GetRequiredService<TimeProvider>());
+        });
 
         services.AddScoped<RevisaoComunicado>();
         services.AddScoped<ConsultaReleases>();
+        services.AddScoped<ConsultaDestaques>();
         services.AddScoped<ExportacaoComunicado>();
+        services.AddScoped<Acesso.Autenticacao>();
 
         return services;
     }

@@ -6,14 +6,24 @@ e o resultado em DTO. **Nenhuma regra de negócio mora aqui.**
 ```
 InvoiSys.Api/
 ├── Program.cs              # bootstrap: DI, migração opt-in, /health, modo --healthcheck
+├── Auth/
+│   ├── ConfiguracaoHttp.cs                 # CORS configurável e rate limit do login (por IP)
+│   └── BearerSecuritySchemeTransformer.cs  # esquema Bearer no OpenAPI (botão Authorize)
 ├── Endpoints/
+│   ├── AuthEndpoints.cs           # sessão: login, me, logout
+
+│   ├── AuthEndpoints.cs           # rotas /api/v1/auth (esqueci a senha, redefinir)
 │   ├── ReleaseEndpoints.cs        # rotas /api/v1/releases (listar, detalhe, historias, processar)
 │   ├── RevisaoEndpoints.cs        # revisão humana por público (aprovar, reprovar, reabrir)
 │   └── ItemComunicadoEndpoints.cs # revisão de item (editar, excluir, reincluir)
 ├── Contracts/
+│   ├── AuthContracts.cs           # DTOs de sessão (LoginIn, LoginOut, UsuarioOut)
 │   ├── ReleaseContracts.cs        # DTOs (records) — nunca expor entidade de domínio
 │   ├── RevisaoContracts.cs        # DTOs de entrada da revisão
 │   └── ItemComunicadoContracts.cs # DTOs de item (ItemRevisaoOut: detalhe e rotas de item)
+├── Validation/
+│   ├── LoginInValidator.cs        # regras de entrada do login (FluentValidation)
+│   └── ValidacaoFiltro.cs         # filtro de endpoint: valida o corpo e devolve 422
 └── appsettings*.json
 ```
 
@@ -21,9 +31,20 @@ InvoiSys.Api/
 
 ## Endpoints atuais
 
+> **Autenticação:** todas as rotas `/api/v1/releases/**` exigem `Authorization: Bearer <token>` (401 sem ele, com token inválido/expirado ou de usuário inexistente/desativado). Públicas: `/health` e `/api/v1/auth/*`.
+
 | Método | Rota | Handler | Resposta | Erros |
 |---|---|---|---|---|
 | `GET` | `/health` | inline em `Program.cs` | `{ "status": "ok" }` | — |
+| `POST` | `/api/v1/auth/login` | `LoginAsync` → `Autenticacao` | `LoginOut` · corpo `{ "email": "...", "senha": "..." }` | 401, 422, 429 |
+| `GET` | `/api/v1/auth/me` | `MeAsync` → `Autenticacao` | `UsuarioOut` (exige Bearer) | 401 |
+| `POST` | `/api/v1/auth/logout` | inline | 204 (não há o que revogar no servidor) | — |
+
+| `POST` | `/api/v1/auth/forgot-password` | `EsqueciSenhaAsync` → `RecuperacaoSenha` | `{ mensagem, expiraEmMinutos: 30 }` · corpo `{ "email" }` · mesma resposta para e-mail existente ou não | 422, 429 |
+| `POST` | `/api/v1/auth/resend-forgot-password` | `ReenviarEsqueciSenhaAsync` → `RecuperacaoSenha` | igual ao `forgot-password`; invalida o token anterior | 422, 429 |
+| `POST` | `/api/v1/auth/reset-password` | `RedefinirSenhaAsync` → `RecuperacaoSenha` | 204 · corpo `{ "token", "novaSenha" }` | 422 (token inválido, expirado ou já usado; senha fora da política) |
+
+| `GET` | `/api/v1/branding/highlights` | `ListarDestaquesAsync` → `ConsultaDestaques` | `DestaqueOut[]` (ativos, por ordem de exibição; público) | — |
 | `GET` | `/api/v1/releases?status=` | `ListarReleasesAsync` → `ConsultaReleases` | `ReleaseResumoOut[]` (mais recente primeiro) | 422 (status desconhecido) |
 | `GET` | `/api/v1/releases/{chaveRelease}` | `BuscarReleaseAsync` → `ConsultaReleases` | `ReleaseDetalheOut` (todas as versões por público; itens como `ItemRevisaoOut`, com `id`) | 404 |
 | `GET` | `/api/v1/releases/{chaveRelease}/historias` | `BuscarHistoriasAsync` → `IJiraClient` | `ReleaseOut` | 501, 502 |
@@ -36,6 +57,26 @@ InvoiSys.Api/
 | `POST` | `/api/v1/releases/{chaveRelease}/itens/{itemId}/reincluir` | `ReincluirItemAsync` → `RevisaoComunicado` | `ItemRevisaoOut` | 404, 409 |
 | `GET` | `/openapi/v1.json` | gerado (só em Development) | spec OpenAPI 3.1 | — |
 | `GET` | `/swagger` | Swagger UI (só em Development) | tela para explorar e testar as rotas | — |
+
+### Destaques públicos da tela de login
+
+`GET /api/v1/branding/highlights` não exige token, inclusive quando houver política
+de autenticação por padrão. Retorna apenas `id`, `titulo`, `descricao` e `icone`;
+sem destaques ativos, retorna `200` com `[]`. O endpoint chama `ConsultaDestaques`,
+que consulta a porta `IDestaqueHeroRepository`; a implementação lê o PostgreSQL
+sem tracking, filtra os ativos e ordena por `ordem`.
+
+A migration `DestaquesIniciais` insere os três textos de
+`frontend/src/data/branding.mock.js` com `WHERE NOT EXISTS` por id ou título.
+Não atualiza nem remove registros existentes. Reaplicar o SQL não duplica os
+destaques nem restaura títulos editados ou itens desativados. O rollback preserva
+os dados inseridos. A integração da tela com esta rota pertence à F-05 (#68).
+
+Com a API configurada e as migrations aplicadas:
+
+```sh
+curl http://localhost:8080/api/v1/branding/highlights
+```
 
 ### Exemplo de resposta de `/processar`
 
@@ -54,6 +95,15 @@ InvoiSys.Api/
   ]
 }
 ```
+
+## Rate limit
+
+`/auth/forgot-password` e `/auth/resend-forgot-password` dividem a política `esqueci-senha`
+(`AddRateLimiter`, janela fixa por IP, padrão 5 por 15 min, 429 com `Retry-After`). Contador
+em memória por instância; atrás de proxy, configurar `ForwardedHeaders` para enxergar o IP
+real ([ADR-025](../../docs/decisoes-arquiteturais.md#adr-025--recuperação-de-senha-token-opaco-de-uso-único-e-resposta-uniforme)).
+
+---
 
 ## Tradução de erro → HTTP
 
@@ -74,6 +124,10 @@ Nas rotas de revisão, `MapearFalhaDeRevisao` (em `RevisaoEndpoints`):
 | `ReleaseNaoEncontradaException` | **404** | não há Release persistida com essa chave |
 | `ReleaseSemItensProcessadosException`, `RevisaoHumanaObrigatoriaException`, `TransicaoDeStatusInvalidaException` | **409** | o estado atual impede a operação (sem comunicado, já aprovada, reabrir o que não foi aprovado) |
 | `ArgumentException` | **422** | revisor ou motivo vazio |
+| público ausente ou desconhecido | **422** | validado pelo filtro de entrada, com `errors.publico`, sem default para Cliente |
+
+| `RevisorInvalidoException` | **401** | o usuário do token não existe mais ou está desativado |
+| `ArgumentException` | **422** | motivo vazio |
 | público ausente ou desconhecido | **422** | validado na conversão do DTO, sem default para Cliente |
 
 Nas rotas de item, `MapearFalhaDeRevisaoDeItem` (em `ItemComunicadoEndpoints`), mesmo
@@ -87,6 +141,95 @@ contrato ([ADR-022](../../docs/decisoes-arquiteturais.md#adr-022--endpoint-só-c
 
 Respostas de erro seguem `ProblemDetails` (`Results.Problem`).
 
+## Validação de entrada
+
+FluentValidation fica somente na API, com o pacote oficial
+`FluentValidation.DependencyInjectionExtensions` para descoberta automática dos
+validators. Não usamos `FluentValidation.AspNetCore`. A decisão está na
+[ADR-028](../../docs/decisoes-arquiteturais.md#adr-028--validação-de-formato-na-borda-com-fluentvalidation).
+
+`AprovarIn`, `ReprovarIn` e `ReabrirIn` exigem público válido; `ReprovarIn` também
+exige motivo. `EditarItemIn` exige texto que não seja vazio ou só espaços. O filtro
+executa antes do caso de uso, com validação assíncrona e cancelamento da requisição.
+Público mantém a normalização já aceita pelo domínio, sem default para Cliente.
+
+Exemplo: `POST /api/v1/releases/INV-1/aprovar` com `{ "publico": "xpto" }`:
+
+```json
+{
+  "title": "Dados inválidos",
+  "status": 422,
+  "detail": "Um ou mais campos são inválidos.",
+  "errors": { "publico": ["Use cliente, comercial, suporte ou interno."] }
+}
+```
+
+O corpo também inclui o `type` de ProblemDetails. Todos os campos inválidos são
+retornados juntos, com nomes em camelCase e mensagens em listas. Regras de negócio
+continuam no domínio; a validação de formato não aprova, edita ou publica nada.
+JSON malformado e corpo obrigatório ausente continuam sendo tratados pelo binder.
+
+### Como adicionar a validação de um DTO novo
+
+1. Criar `XxxValidator : AbstractValidator<Xxx>` público em `Validacao/`.
+2. Declarar regras de formato com `RuleFor`; invariantes de negócio ficam no domínio.
+   Para e-mail, usar `RuleFor(x => x.Email).EmailValido()` de `RegraEmail`: obrigatório,
+   até 320 caracteres e `.EmailAddress()` do FluentValidation, sem regex própria.
+3. Aplicar `.ComValidacao<Xxx>()` ao mapear o endpoint e manter
+   `.ProducesProblem(StatusCodes.Status422UnprocessableEntity)`.
+4. `Program.cs` já chama `AddValidacaoDeEntrada()`, que registra automaticamente os
+   validators do assembly. Não é necessário registrar cada validator à mão.
+5. Testar o validator isoladamente e a rota com 422, incluindo `errors` por campo;
+   conferir também sucesso, regras de negócio e OpenAPI.
+
+## Autenticação (sessão)
+
+Decisão em [ADR-024](../../docs/decisoes-arquiteturais.md#adr-024--autenticação-jwt-stateless-argon2id-e-admin-inicial).
+
+### Exemplo de resposta de `/auth/login`
+
+```json
+{
+  "usuario": {
+    "id": "0b6a8d3e-4c1f-4a52-9d8e-7f3b2a1c9e10",
+    "nome": "Ana Revisora",
+    "email": "ana@invoisys.com",
+    "papel": "release_manager",
+    "avatarUrl": null,
+    "criadoEm": "2026-10-11T12:00:00+00:00"
+  },
+  "token": "eyJhbGciOi...",
+  "expiraEm": "2026-10-11T20:00:00+00:00"
+}
+```
+
+O token vai no cabeçalho `Authorization: Bearer <token>`. Logout é o cliente descartar o
+token, e por isso `POST /auth/logout` não faz nada no servidor (e fica anônimo, para
+funcionar até com o token expirado).
+
+| Situação | Status |
+|---|---|
+| e-mail inexistente, senha errada **ou** usuário desativado | **401**, sempre a mesma mensagem |
+| e-mail ou senha ausentes, ou longos demais | **422**, com `errors` por campo (FluentValidation) |
+| mais de N tentativas de login por minuto, por IP | **429**, com `Retry-After` |
+| `/auth/me` sem token, com token inválido ou expirado, ou de usuário desativado | **401** |
+
+### Configuração
+
+| Variável | Padrão | Para quê |
+|---|---|---|
+| `Cors__Origens__0..N` | nenhuma | origens que podem chamar a API pelo navegador (front: `http://localhost:5173`) |
+| `RateLimit__Login__Tentativas` | 5 | tentativas por janela, por IP |
+| `RateLimit__Login__JanelaSegundos` | 60 | tamanho da janela |
+| `Proxy__ConfiarCabecalhosEncaminhados` | false | atrás de proxy, usa o IP de `X-Forwarded-For` no rate limit ([deploy](../../docs/deploy.md)) |
+
+Sem nenhuma origem configurada o CORS **não libera ninguém**. No Docker o ambiente é
+Production, então `Cors__Origens__0` precisa estar no `.env`.
+
+O rate limit conta por IP. Atrás de proxy, o IP visto é o do proxy, e todos os clientes
+dividiriam o mesmo limite: no deploy, `Proxy__ConfiarCabecalhosEncaminhados=true` faz a API
+usar o último IP de `X-Forwarded-For`. Sem proxy, fica `false`, senão o cabeçalho forjado burla o limite.
+
 ## Contratos: por que são assim
 
 - DTO sempre, nunca entidade de domínio na resposta: o contrato HTTP fica estável mesmo
@@ -94,10 +237,14 @@ Respostas de erro seguem `ProblemDetails` (`Results.Problem`).
   (`nova_funcionalidade`, `aguardando_revisao`), e quem consome a API não precisa saber
   que o backend trocou de linguagem.
 - Os campos dos DTOs de entrada da revisão são **anuláveis** porque é isso que o binder
-  JSON entrega quando o campo falta. A obrigatoriedade (revisor, motivo, texto) é
-  validada no domínio, não pela anotação do tipo.
-- `aprovadoPor`/`revisadoPor` são texto livre enquanto não há autenticação. Quando houver,
-  saem do corpo e passam a vir do usuário autenticado.
+  JSON entrega quando o campo falta. O filtro valida público, motivo e texto antes
+  do caso de uso; o domínio preserva suas próprias verificações de invariantes,
+  incluindo a obrigatoriedade do revisor, não substituídas por anotações do DTO.
+- O revisor **não vem do corpo**: `AprovarIn` e `ReprovarIn` não têm mais `aprovadoPor` nem
+  `revisadoPor` (se um cliente antigo enviar, o campo é ignorado). O endpoint lê o claim `sub`
+  do token e o caso de uso grava `revisado_por_id` (FK) e o nome do usuário
+  ([ADR-026](../../docs/decisoes-arquiteturais.md#adr-026--rotas-de-release-exigem-token-e-o-revisor-vem-dele)).
+  `ReleaseDetalheOut` traz `revisadoPorId` e `revisadoPor` em cada versão.
 - `ItemRevisaoOut` traz o `id` (alvo das rotas de item), o texto da IA e a edição humana
   lado a lado, o `textoFinal` e se o item está incluído: o bastante para a tela atualizar
   a linha sem buscar a Release inteira de novo.
@@ -105,10 +252,23 @@ Respostas de erro seguem `ProblemDetails` (`Results.Problem`).
   dona do item. Item de outra Release dá 404.
 - `GET .../historias` só consulta o Jira, nunca roda o pipeline, então o `status` da
   resposta é sempre `pendente`.
+- **O contrato HTTP é definido pelo backend**: campos em português, vocabulário do
+  domínio. O front se adapta; o mock do front (`name`, `role`, `password`, `user`) não é
+  referência de contrato. As rotas técnicas genéricas (`login`, `me`, `logout`) seguem em
+  inglês.
+- O login responde **o mesmo 401** para e-mail inexistente, senha errada e usuário
+  desativado, e roda `IHashSenha.Verificar` **uma vez em todos os casos**: quando o e-mail
+  não existe, verifica contra um hash fictício com os mesmos parâmetros do hash real.
+  Assim o tempo de resposta não revela quais e-mails estão cadastrados.
 
 ## Detalhes do `Program.cs`
 
-- **Ordem de registro:** `AddOpenApi` → `AddInfrastructure` → `AddApplication`.
+- **Ordem de registro:** `AddOpenApi` → `AddInfrastructure` → `AddApplication` →
+  autenticação JWT → `AddProblemDetails` → validadores → CORS → rate limit.
+- **Ordem do pipeline:** `UseStatusCodePages` → `UseCors` → `UseRateLimiter` →
+  `UseAuthentication` → `UseAuthorization`. O CORS vem antes do rate limit para o 429
+  também sair com os cabeçalhos CORS, e `UseStatusCodePages` faz o 401 sem corpo virar
+  `ProblemDetails`.
 - **Swagger UI** (`Swashbuckle.AspNetCore.SwaggerUI`): só a interface. Lê o mesmo
   `/openapi/v1.json` gerado pelo `Microsoft.AspNetCore.OpenApi`, então nunca diverge do
   contrato. Em Development apenas; `OpenApiTests` garante que não aparece em produção.
@@ -132,6 +292,8 @@ Respostas de erro seguem `ProblemDetails` (`Results.Problem`).
   revisão passa por `RevisaoComunicado`; nunca setar status direto.
 - Um arquivo de endpoints por recurso (`ReleaseEndpoints`, `RevisaoEndpoints`...), não
   todas as rotas num arquivo só.
+- Validação de **formato** do corpo (campo vazio, tamanho) fica em `Validation/`, com
+  FluentValidation e `ValidacaoFiltro<T>` no endpoint. Regra de negócio continua no domínio.
 
 ## O que ainda falta neste módulo
 
@@ -139,7 +301,11 @@ Respostas de erro seguem `ProblemDetails` (`Results.Problem`).
 |---|---|
 | Paginação de `GET /api/v1/releases` (hoje lista tudo) | quando o volume pedir |
 | ~~Exportar Markdown~~ feito: `POST /{chaveRelease}/exportar` (201; `ReleaseNaoAprovadaException` → 409; público/formato inválido ou html/pdf → 422) | #24 |
-| `/auth/login`, `/auth/me`, `/auth/logout`, `/auth/forgot-password` + JWT + `[Authorize]` nas rotas de revisão | Fase 3 |
+| ~~`/auth/login`, `/auth/me`, `/auth/logout`~~ feito (CORS e rate limit do login incluídos). Falta `/auth/forgot-password` e `[Authorize]` nas rotas de revisão | #49 feito; #52 e #50 |
+
+| `/auth/login`, `/auth/me`, `/auth/logout` + JWT + `[Authorize]` nas rotas de revisão | Fase 3 |
 | `GET /api/v1/branding/highlights` (repository já existe) | Fase 3 |
+
+| `/auth/login`, `/auth/me`, `/auth/logout`, `/auth/forgot-password` + JWT + `[Authorize]` nas rotas de revisão | Fase 3 |
 | **CORS** para o frontend (hoje não configurado) | Fase 3 |
 | Endpoint de histórico de execuções (`IExecucaoPipelineRepository`) e de exportações | Fase 4 |

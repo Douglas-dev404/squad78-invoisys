@@ -1,16 +1,16 @@
+import { NavLink, useNavigate } from 'react-router-dom';
+import { useAuth } from '../../hooks/useAuth';
 export function SideNavBar({
   isMinimized = false,
   onToggleMinimize,
-  activeScreen = 'dashboard',
-  onNavigate,
 }) {
+  const navigate = useNavigate();
+  const { isAdmin } = useAuth();
   const navItems = [
-    { icon: 'dashboard', label: 'Dashboard', screenKey: 'dashboard' },
-    { icon: 'rate_review', label: 'Review Queue', screenKey: 'review-queue' },
-    { icon: 'history', label: 'Sent History', screenKey: 'sent-history' },
-    { icon: 'receipt_long', label: 'System Logs', screenKey: 'system-logs' },
-    { icon: 'group', label: 'User Management', screenKey: 'user-management' },
-    { icon: 'settings', label: 'Technical Settings', screenKey: 'technical-settings' },
+    { icon: 'dashboard', label: 'Dashboard', to: '/dashboard' },
+    { icon: 'rate_review', label: 'Releases', to: '/releases' },
+    { icon: 'history', label: 'Histórico de envios', to: '/historico' },
+    ...(isAdmin ? [{ icon: 'group', label: 'Usuários', to: '/usuarios' }] : []),
   ];
 
   return (
@@ -37,7 +37,7 @@ export function SideNavBar({
                   Invoisys
                 </h1>
                 <p className="font-label-sm text-label-sm text-on-surface-variant">
-                  Task Formalization
+                  Comunicados de Release
                 </p>
               </div>
             </div>
@@ -80,16 +80,10 @@ export function SideNavBar({
         {/* Navigation Links */}
         <ul className={`flex flex-col flex-1 gap-xs transition-all duration-300 ${isMinimized ? 'px-1' : 'px-sm'}`}>
           {navItems.map((item) => {
-            const isActive = item.screenKey === activeScreen;
             return (
-              <li key={item.screenKey}>
-                <a
-                  href="#"
-                  onClick={(e) => {
-                    e.preventDefault();
-                    onNavigate?.(item.screenKey);
-                  }}
-                  className={`flex items-center gap-sm py-sm rounded-lg transition-colors duration-200 active:scale-[0.98] ${
+              <li key={item.to}>
+                <NavLink to={item.to}
+                  className={({ isActive }) => `flex items-center gap-sm py-sm rounded-lg transition-colors duration-200 active:scale-[0.98] ${
                     isMinimized ? 'px-2 justify-center' : 'px-sm justify-start'
                   } ${
                     isActive
@@ -106,7 +100,7 @@ export function SideNavBar({
                       {item.label}
                     </span>
                   )}
-                </a>
+                </NavLink>
               </li>
             );
           })}
@@ -114,14 +108,13 @@ export function SideNavBar({
 
         {/* CTA */}
         <div className={`transition-all duration-300 ${isMinimized ? 'px-1' : 'px-gutter'}`}>
-          <button
-            className="w-full bg-primary-container text-on-primary rounded-lg py-sm font-label-md text-label-md hover:opacity-90 transition-opacity active:scale-[0.98] shadow-[0px_4px_12px_rgba(27,67,50,0.08)] flex items-center justify-center gap-xs"
-            title={isMinimized ? 'New Formalization' : undefined}
+          <button onClick={() => navigate('/releases?nova=1')} className="w-full bg-primary-container text-on-primary rounded-lg py-sm font-label-md text-label-md hover:opacity-90 transition-opacity active:scale-[0.98] shadow-[0px_4px_12px_rgba(27,67,50,0.08)] flex items-center justify-center gap-xs"
+            title={isMinimized ? 'Nova Release' : undefined}
           >
             <span className="material-symbols-outlined text-[18px] flex-shrink-0">
               add
             </span>
-            {!isMinimized && <span className="whitespace-nowrap">New Formalization</span>}
+            {!isMinimized && <span className="whitespace-nowrap">Nova Release</span>}
           </button>
         </div>
       </div>
