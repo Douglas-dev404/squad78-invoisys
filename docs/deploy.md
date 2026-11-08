@@ -1,84 +1,86 @@
-# Deploy no Render
+# Deploy
 
-O `render.yaml` na raiz descreve os três recursos do ambiente público:
+| Peça | Onde | Nome | Por quê |
+|---|---|---|---|
+| API | Azure App Service (Linux, plano B1, *Always On*) | `invoisys-api-squad78` | não hiberna; deploy de imagem Docker |
+| Banco | Azure Database for PostgreSQL Flexible Server (B1MS, PG 16) | `invoisys-pg-squad78` | gratuito por 12 meses no Azure for Students |
+| Imagem da API | GitHub Container Registry | `ghcr.io/douglas-dev404/invoisys-api` | pública: não contém segredo, os segredos são App Settings |
+| Front | Render, static site | `invoisys-front` (`render.yaml`) | estático não hiberna; deploy a cada commit na `main` |
 
-| Recurso | Tipo | O que roda |
-|---|---|---|
-| `invoisys-db` | Postgres 16 gerenciado (free) | banco da aplicação |
-| `invoisys-api` | Web service Docker (free) | a API, com o `Dockerfile` da raiz |
-| `invoisys-front` | Static site | o build do `frontend/` (`dist/`) |
+Grupo de recursos na Azure: `rg-invoisys`, região `chilecentral` (Chile Central: a mais próxima do Brasil entre as permitidas na assinatura de estudante).
 
-Nenhum segredo fica no repositório. Toda variável sensível está como `sync: false` no
-`render.yaml`, e o valor é preenchido no painel do Render. A única exceção é a chave do JWT,
-que o próprio Render gera (`generateValue: true`).
+Nenhum segredo fica no repositório. Os da API são **App Settings** do App Service. O único
+segredo do GitHub é `AZURE_WEBAPP_PUBLISH_PROFILE`, que o workflow usa para fazer o deploy.
 
-## Criar do zero
+## Como o deploy acontece
 
-1. No Render: **New → Blueprint**, escolha este repositório e a branch `main`.
-2. O Render lê o `render.yaml` e pede os valores das variáveis `sync: false`. Preencha
-   conforme a tabela abaixo. Nessa hora a URL do front ainda não existe: use
-   `https://invoisys-front.onrender.com` (é o nome do serviço). Se o Render der outro
-   nome, corrija depois em **Environment**.
-3. Espere o banco ficar **Available**. Em `invoisys-db → Connections`, copie *Hostname*
-   (o interno), *Port*, *Database*, *Username* e *Password*, e monte a connection string
-   no formato do Npgsql (não use a URL `postgresql://…`, que o Npgsql não aceita):
+- **API:** merge na `main` que toque em `src/`, `prompts/`, `Dockerfile` ou no próprio workflow
+  dispara o [deploy-api.yml](../.github/workflows/deploy-api.yml). Ele builda a imagem,
+  publica no GHCR com a tag do commit, troca a imagem do App Service e espera o
+  `/health` responder. Também roda manualmente: **Actions → Deploy API (Azure) → Run workflow**.
+- **Front:** o Render observa a `main` e refaz o build a cada commit.
+- **Migrations:** `Database__MigrarAoIniciar=true`, aplicadas no boot da API.
+  Migration destrutiva não entra sem plano próprio: o rollback da imagem não desfaz schema.
 
-   ```
-   Host=<hostname>;Port=5432;Database=invoisys;Username=invoisys;Password=<password>;SSL Mode=Prefer
-   ```
-
-   Cole em `invoisys-api → Environment → ConnectionStrings__Default`.
-4. Faça **Manual Deploy** da API. No primeiro boot ela aplica as migrations e cria o admin
-   inicial. O log mostra `Applying migration ...`.
-5. Faça **Manual Deploy** do front **depois** de preencher `VITE_API_BASE_URL`. O Vite
-   embute essa URL no build, então trocar a variável exige rodar o build de novo.
-
-## Variáveis
-
-### API (`invoisys-api`)
+## App Settings da API
 
 | Variável | Valor |
 |---|---|
-| `ConnectionStrings__Default` | montada no passo 3 |
-| `Auth__AdminInicial__Email` / `__Senha` / `__Nome` | admin criado no primeiro boot (só se não existir nenhum usuário) |
+| `ConnectionStrings__Default` | `Host=invoisys-pg-squad78.postgres.database.azure.com;Port=5432;Database=invoisys;Username=<admin>;Password=<senha>;SSL Mode=Require` |
+| `Auth__Jwt__Chave` | aleatória, 48+ caracteres |
+| `Auth__AdminInicial__Email` / `__Senha` / `__Nome` | admin criado no primeiro boot (só se não houver nenhum usuário) |
 | `Auth__RecuperacaoSenha__UrlBase` | `<url do front>/redefinir-senha` (obrigatória: sem ela a API não sobe) |
-| `Cors__Origens__0` | `<url do front>`, sem barra no fim. Só essa origem é liberada |
-| `Jira__BaseUrl` / `__Email` / `__ApiToken` | credenciais do Jira |
-| `Llm__Provedor` | `OpenRouter` ou `OpenAi` |
-| `OpenRouter__ApiKey` / `OpenRouter__Modelo` | se o provedor for OpenRouter |
-| `OpenAi__ApiKey` / `OpenAi__Modelo` | se o provedor for OpenAI |
+| `Cors__Origens__0` | `<url do front>`, sem barra no fim |
+| `Jira__BaseUrl` / `Jira__Email` / `Jira__ApiToken` | credenciais do Jira (o token só vale para a conta do e-mail) |
+| `Llm__Provedor` / `OpenAi__ApiKey` / `OpenAi__Modelo` | `OpenAi` / chave de platform.openai.com / `gpt-4o-mini` |
+| `Database__MigrarAoIniciar` | `true` |
+| `Proxy__ConfiarCabecalhosEncaminhados` | `true` (o App Service tem proxy na frente; sem isso o rate limit do login vale para todos juntos) |
+| `WEBSITES_PORT` | `8080` (porta do container) |
 
-Já vêm fixas no `render.yaml`: `PORT=8080` (a porta do container),
-`Database__MigrarAoIniciar=true` e `Proxy__ConfiarCabecalhosEncaminhados=true`. Esta última
-existe porque o Render coloca um proxy na frente da API: sem ela, todo login chegaria com o
-IP do proxy, e o rate limit (5 por minuto) valeria para todo mundo junto.
+Trocar um App Setting reinicia a API sozinho.
 
-Sem a chave do provedor de IA, `/processar` responde 501. Isso é esperado (`ProviderPendente`).
+## Recriar do zero (Azure CLI)
 
-### Front (`invoisys-front`)
+```bash
+az group create -n rg-invoisys -l chilecentral
+az postgres flexible-server create -g rg-invoisys -n invoisys-pg-squad78 -l chilecentral \
+  --tier Burstable --sku-name Standard_B1ms --storage-size 32 --version 16 \
+  --admin-user <admin> --admin-password '<senha>' --public-access 0.0.0.0
+az postgres flexible-server db create -g rg-invoisys -s invoisys-pg-squad78 -d invoisys
+az appservice plan create -g rg-invoisys -n plan-invoisys -l chilecentral --is-linux --sku B1
+az webapp create -g rg-invoisys -p plan-invoisys -n invoisys-api-squad78 \
+  -i ghcr.io/douglas-dev404/invoisys-api:latest
+az webapp config set -g rg-invoisys -n invoisys-api-squad78 --always-on true
+az webapp config appsettings set -g rg-invoisys -n invoisys-api-squad78 --settings <variáveis acima>
+```
 
-| Variável | Valor |
-|---|---|
-| `VITE_API_BASE_URL` | `https://<url da api>/api/v1` |
+`--public-access 0.0.0.0` libera o acesso a partir de serviços da Azure (a API), não da
+internet inteira.
 
-O rewrite `/* → /index.html` está no `render.yaml`, e por isso F5 em `/releases` não dá 404.
+Para o deploy pelo GitHub, o publish profile precisa de autenticação básica ligada no SCM:
+
+```bash
+az resource update -g rg-invoisys --namespace Microsoft.Web --resource-type basicPublishingCredentialsPolicies \
+  --name scm --parent sites/invoisys-api-squad78 --set properties.allow=true
+az webapp deployment list-publishing-profiles -g rg-invoisys -n invoisys-api-squad78 --xml \
+  | gh secret set AZURE_WEBAPP_PUBLISH_PROFILE
+```
+
+Front: no Render, **New → Blueprint**, este repositório, branch `main`.
 
 ## Conferir
 
-- `GET https://<api>/health` → `200 {"status":"ok"}`
-- `https://<api>/swagger` → `404` (o Swagger só existe em Development)
-- Abrir o front em aba anônima, logar com o admin inicial e chegar no Dashboard.
-- `git grep -nE "sk-|ApiKey=[^$]"` no repositório não encontra nada.
+- `GET https://invoisys-api-squad78.azurewebsites.net/health` → `200 {"status":"ok"}`
+- `/swagger` → `404` (só existe em Development)
+- Front em aba anônima: login → Releases → Processar Release.
 
-## Antes da apresentação
+## Voltar versão
 
-O plano free **hiberna** a API depois de ~15 minutos sem requisição, e o primeiro acesso
-seguinte leva cerca de 1 minuto. Uns 5 minutos antes, abra `https://<api>/health` e espere
-o `200`. O banco free expira 30 dias depois de criado.
+- **API:** rodar o workflow de novo a partir do commit anterior, ou
+  `az webapp config container set ... --container-image-name ghcr.io/douglas-dev404/invoisys-api:<sha anterior>`.
+- **Front:** no Render, **Events → (deploy anterior) → Rollback**.
 
-## Atualizar e voltar versão
+## Custos
 
-- Atualizar: merge na `main` → **Manual Deploy → Deploy latest commit** na API e no front
-  (`autoDeploy` está desligado de propósito: nada vai para o ar sem alguém mandar).
-- Voltar versão: em cada serviço, **Events → (deploy anterior) → Rollback**. Migration não
-  volta sozinha no rollback. Por isso migration destrutiva não entra sem plano próprio.
+O Flexible Server B1MS é gratuito por 12 meses no Azure for Students. O plano B1 do App
+Service consome o crédito de estudante. O static site do Render é gratuito.
