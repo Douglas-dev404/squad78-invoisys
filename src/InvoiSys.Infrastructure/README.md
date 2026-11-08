@@ -253,4 +253,4 @@ o índice único de e-mail faz a perdedora ignorar. A senha não vai para log.
 - Validar `JiraRestClient` e `OpenRouterProvider` contra as instâncias reais (Fase 5).
 - Adapter de renderização/exportação (Markdown; depois HTML/PDF), conforme
   [P-03](../../docs/decisoes-arquiteturais.md#p-03--onde-mora-o-render-da-exportação).
-- Endpoints de login/`me` (#49), proteção das rotas (#50) e recuperação de senha (#52).
+- Proteção das rotas (#50) e recuperação de senha (#52). Login, `me` e logout já existem (#49).

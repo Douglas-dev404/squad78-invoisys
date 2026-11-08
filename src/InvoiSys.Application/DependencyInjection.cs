@@ -1,3 +1,4 @@
+using InvoiSys.Application.Acesso;
 using InvoiSys.Application.Consulta;
 using InvoiSys.Application.Exportacao;
 using InvoiSys.Application.Pipeline;
@@ -24,6 +25,7 @@ public static class DependencyInjection
         services.AddScoped<RevisaoComunicado>();
         services.AddScoped<ConsultaReleases>();
         services.AddScoped<ExportacaoComunicado>();
+        services.AddScoped<Autenticacao>();
 
         return services;
     }
