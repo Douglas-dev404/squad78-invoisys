@@ -221,7 +221,7 @@ funcionar até com o token expirado).
 | `Cors__Origens__0..N` | nenhuma | origens que podem chamar a API pelo navegador (front: `http://localhost:5173`) |
 | `RateLimit__Login__Tentativas` | 5 | tentativas por janela, por IP |
 | `RateLimit__Login__JanelaSegundos` | 60 | tamanho da janela |
-| `Proxy__ConfiarCabecalhosEncaminhados` | false | atrás de proxy, usa o IP de `X-Forwarded-For` no rate limit ([deploy](../../docs/deploy-render.md)) |
+| `Proxy__ConfiarCabecalhosEncaminhados` | false | atrás de proxy, usa o IP de `X-Forwarded-For` no rate limit ([deploy](../../docs/deploy.md)) |
 
 Sem nenhuma origem configurada o CORS **não libera ninguém**. No Docker o ambiente é
 Production, então `Cors__Origens__0` precisa estar no `.env`.
