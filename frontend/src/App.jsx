@@ -12,6 +12,7 @@ import { UserManagementPage } from './pages/UserManagementPage/UserManagementPag
 import { CreateUserPage } from './pages/CreateUserPage/CreateUserPage';
 import { SentHistoryPage } from './pages/SentHistoryPage/SentHistoryPage';
 import { ReleasesPage } from './pages/ReleasesPage/ReleasesPage';
+import { ResetPasswordPage } from './pages/ResetPasswordPage/ResetPasswordPage';
 
 function LoginRoute() {
   const navigate = useNavigate();
@@ -53,7 +54,7 @@ function App() {
     <Route path="/login" element={<LoginRoute />} />
     <Route path="/esqueci-senha" element={<RecoveryRoute />} />
     <Route path="/email-enviado" element={<ConfirmationRoute />} />
-    <Route path="/redefinir-senha" element={<main className="p-lg"><h1>Redefinir senha</h1><p>Esta tela será disponibilizada na entrega de recuperação de senha.</p><Link to="/esqueci-senha">Pedir novo link</Link></main>} />
+    <Route path="/redefinir-senha" element={<ResetPasswordPage />} />
     <Route element={<RotaProtegida />}>
       <Route path="/dashboard" element={<DashboardPage />} />
       <Route path="/releases" element={<ReleasesPage />} />
