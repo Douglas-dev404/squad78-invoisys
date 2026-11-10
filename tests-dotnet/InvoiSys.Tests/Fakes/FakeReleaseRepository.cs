@@ -44,4 +44,9 @@ public sealed class FakeReleaseRepository : IReleaseRepository
             .Select(r => new ReleaseResumo(r.ChaveJira, r.Status, _criadoEm[r.Id]))
             .OrderByDescending(r => r.CriadoEm)]);
     }
+
+    public Task<DashboardDados> BuscarDashboardAsync(
+        DateOnly hojeUtc,
+        CancellationToken cancellationToken = default) =>
+        Task.FromResult(new DashboardDados(0, 0, 0, 0, 0, 0, 0, [], []));
 }
