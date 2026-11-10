@@ -47,6 +47,7 @@ public static class DependencyInjection
 
         services.AddScoped<RevisaoComunicado>();
         services.AddScoped<ConsultaReleases>();
+        services.AddScoped<ConsultaDashboard>();
         services.AddScoped<ConsultaDestaques>();
         services.AddScoped<ExportacaoComunicado>();
         services.AddScoped<Acesso.Autenticacao>();
