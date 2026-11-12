@@ -1,4 +1,7 @@
+using System.Security.Claims;
+using InvoiSys.Api.Auth;
 using InvoiSys.Api.Contracts;
+using InvoiSys.Api.Validacao;
 using InvoiSys.Application.Revisao;
 using InvoiSys.Domain.Entities;
 using InvoiSys.Domain.Enums;
@@ -10,9 +13,12 @@ public static class RevisaoEndpoints
 {
     public static IEndpointRouteBuilder MapRevisaoEndpoints(this IEndpointRouteBuilder rotas)
     {
-        var grupo = rotas.MapGroup("/api/v1/releases").WithTags("revisao");
+        var grupo = rotas.MapGroup("/api/v1/releases").WithTags("revisao")
+            .RequireAuthorization()
+            .ProducesProblem(StatusCodes.Status401Unauthorized);
 
         grupo.MapPost("/{chaveRelease}/aprovar", AprovarAsync)
+            .ComValidacao<AprovarIn>()
             .WithName("AprovarRelease")
             .WithSummary("Aprova o comunicado de uma Release para um público.")
             .Produces(StatusCodes.Status204NoContent)
@@ -21,6 +27,7 @@ public static class RevisaoEndpoints
             .ProducesProblem(StatusCodes.Status422UnprocessableEntity);
 
         grupo.MapPost("/{chaveRelease}/reprovar", ReprovarAsync)
+            .ComValidacao<ReprovarIn>()
             .WithName("ReprovarRelease")
             .WithSummary("Reprova o comunicado de uma Release para um público.")
             .Produces(StatusCodes.Status204NoContent)
@@ -29,6 +36,7 @@ public static class RevisaoEndpoints
             .ProducesProblem(StatusCodes.Status422UnprocessableEntity);
 
         grupo.MapPost("/{chaveRelease}/reabrir", ReabrirAsync)
+            .ComValidacao<ReabrirIn>()
             .WithName("ReabrirRelease")
             .WithSummary("Reabre a revisão de uma Release para um público.")
             .Produces(StatusCodes.Status204NoContent)
@@ -42,27 +50,31 @@ public static class RevisaoEndpoints
     private static Task<IResult> AprovarAsync(
         string chaveRelease,
         [FromBody] AprovarIn corpo,
+        ClaimsPrincipal usuario,
         [FromServices] RevisaoComunicado revisao,
         CancellationToken cancellationToken) =>
         RevisarAsync(
             corpo.Publico,
-            publico => revisao.AprovarAsync(
+            usuario,
+            (publico, revisorId) => revisao.AprovarAsync(
                 chaveRelease,
                 publico,
-                corpo.AprovadoPor ?? string.Empty,
+                revisorId,
                 cancellationToken));
 
     private static Task<IResult> ReprovarAsync(
         string chaveRelease,
         [FromBody] ReprovarIn corpo,
+        ClaimsPrincipal usuario,
         [FromServices] RevisaoComunicado revisao,
         CancellationToken cancellationToken) =>
         RevisarAsync(
             corpo.Publico,
-            publico => revisao.ReprovarAsync(
+            usuario,
+            (publico, revisorId) => revisao.ReprovarAsync(
                 chaveRelease,
                 publico,
-                corpo.RevisadoPor ?? string.Empty,
+                revisorId,
                 corpo.Motivo ?? string.Empty,
                 cancellationToken));
 
@@ -73,23 +85,25 @@ public static class RevisaoEndpoints
         CancellationToken cancellationToken) =>
         RevisarAsync(
             corpo.Publico,
-            publico => revisao.ReabrirAsync(chaveRelease, publico, cancellationToken));
+            null,
+            (publico, _) => revisao.ReabrirAsync(chaveRelease, publico, cancellationToken));
 
     private static async Task<IResult> RevisarAsync(
         string? publicoInformado,
-        Func<PublicoAlvo, Task> revisao)
+        ClaimsPrincipal? usuario,
+        Func<PublicoAlvo, Guid, Task> revisao)
     {
-        if (!PublicoAlvoExtensions.TentarConverter(publicoInformado, out var publico))
+        var revisorId = Guid.Empty;
+        if (usuario is not null && !UsuarioAutenticado.TentarObterId(usuario, out revisorId))
         {
-            return Results.Problem(
-                detail: $"Público inválido ou ausente: '{publicoInformado}'. "
-                    + "Use cliente, comercial, suporte ou interno.",
-                statusCode: StatusCodes.Status422UnprocessableEntity);
+            return Results.Unauthorized();
         }
+
+        PublicoAlvoExtensions.TentarConverter(publicoInformado, out var publico);
 
         try
         {
-            await revisao(publico);
+            await revisao(publico, revisorId);
             return Results.NoContent();
         }
         catch (Exception exc) when (MapearFalhaDeRevisao(exc) is { } problema)
@@ -100,6 +114,7 @@ public static class RevisaoEndpoints
 
     private static IResult? MapearFalhaDeRevisao(Exception exc) => exc switch
     {
+        RevisorInvalidoException => Results.Unauthorized(),
         ReleaseNaoEncontradaException =>
             Results.Problem(detail: exc.Message, statusCode: StatusCodes.Status404NotFound),
         ReleaseSemItensProcessadosException

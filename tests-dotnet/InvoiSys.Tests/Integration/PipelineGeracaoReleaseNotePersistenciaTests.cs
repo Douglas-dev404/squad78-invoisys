@@ -113,6 +113,7 @@ public class PipelineGeracaoReleaseNotePersistenciaTests(
     [Fact]
     public async Task Versao_aprovada_so_volta_a_ser_gerada_depois_de_reaberta()
     {
+        var revisor = await fixture.SalvarRevisorAsync();
         var chaveRelease = ChaveJiraUnica();
         var jira = new FakeJiraClient { Historias = [Historia("INV-1")] };
         var llm = new FakeLlmProvider { TextoReescrito = "Texto que o revisor aprovou." };
@@ -125,7 +126,7 @@ public class PipelineGeracaoReleaseNotePersistenciaTests(
         }
 
         Etapa("2. Revisor aprova a versão Cliente: UPDATE em versoes_comunicado e releases");
-        await Revisar(chaveRelease, r => r.Aprovar("revisora@invoisys.com", DateTimeOffset.UtcNow));
+        await Revisar(chaveRelease, r => r.Aprovar(revisor, DateTimeOffset.UtcNow));
 
         jira.Historias = [Historia("INV-2")];
         llm.TextoReescrito = "Texto novo da IA.";

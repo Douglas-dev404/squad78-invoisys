@@ -93,3 +93,63 @@ O formato exato esperado está nos mocks de [`src/data/`](src/data/).
 - Textos de UI em `UI_STRINGS`, não literais espalhados.
 - Categorias e status chegam da API como `snake_case` (`nova_funcionalidade`,
   `aguardando_revisao`). Mapeie para rótulo de exibição num lugar só.
+
+## Como chamar a API
+
+Novos serviços usam `api` de `src/services/http.js`. Passe caminhos relativos à base
+`VITE_API_BASE_URL`, começando com `/` (não passe os valores absolutos de `ENDPOINTS`).
+Não chame `fetch` em telas: o cliente centraliza JSON, token, timeout e ProblemDetails.
+A integração dos serviços e telas que ainda usam mocks fica nas respectivas issues.
+
+```js
+import { api } from './services/http.js';
+
+const releases = await api.get('/releases');
+```
+
+```js
+import { api, ApiError } from './services/http.js';
+
+try {
+  const releases = await api.get('/releases?status=aguardando_revisao');
+  setReleases(releases);
+} catch (err) {
+  if (err instanceof ApiError) {
+    setErro(err.detail);
+    setErrosPorCampo(err.errors);
+  } else {
+    throw err;
+  }
+}
+```
+
+`api.post(path, body, opts)`, `api.patch(path, body, opts)` e
+`api.delete(path, opts)` seguem o mesmo tratamento. Resposta 204 retorna `null`.
+As opções são `{ auth: true, timeoutMs: API_TIMEOUT_MS, signal }` por padrão.
+Use `{ auth: false }` no login e na recuperação de senha. Cancelamento pelo `signal`
+propaga o motivo original; timeout e falha de rede geram `ApiError` com status 0.
+
+A sessão é gravada por `saveSession({ token, expiraEm, usuario })`, de
+`src/utils/session.js`, na chave `invoisys.session`. `expiraEm` é uma data ISO;
+`getSession()` descarta sessões expiradas e `clearSession()` remove a sessão.
+Falhas de acesso ao localStorage são toleradas. Em 401 autenticado o cliente limpa a
+sessão e emite `invoisys:unauthorized`; o roteamento trata a navegação para login.
+A aprovação humana continua obrigatória no backend antes de qualquer exportação.
+
+Testes do cliente e da sessão (sem dependências novas): `node --test tests/*.test.js`.
+
+## Roteamento (F-02)
+
+BrowserRouter mantém URLs, voltar/avançar e links diretos. Rotas protegidas consultam a sessão da F-01; /usuarios e /usuarios/novo exigem papel admin e mostram Sem permissão para os demais. O controle definitivo de autorização permanece na API. As rotas de Releases e redefinição reservam espaço para F-04/F-06 e F-13. O servidor estático deve servir index.html para rotas da SPA; public/_redirects registra a regra para a configuração do Render (B-03).
+
+## Autenticação real (F-03)
+
+AuthProvider restaura a sessão por GET /auth/me antes de mostrar rotas, mantém o token Bearer da F-01 e encerra a sessão no logout, 401, expiração ou remoção em outra aba. Falha de rede na restauração oferece nova tentativa sem autorizar telas privadas. Login traduz usuario para o formato visual, envia senha e trata 401, 422 por campo e 429. Recuperação usa respostas uniformes, mensagem e validade retornadas pela API. Não há credenciais fixas no frontend. Perfil e barra superior mostram a identidade autenticada.
+
+Dependências para integração: PR #93 (HTTP), F-02 (rotas), PR #97 (login/me/logout) e PR #58 (recuperação). Os dois PRs de autenticação ainda precisam ser integrados pelo responsável no backend.
+
+O mock de identidade continua apenas porque profile.mock.js ainda o importa. As credenciais, o token e a resposta de recuperação simulados foram removidos. Os erros por campo aceitam camelCase e PascalCase, como retornado pelo PR #97 atual. Os módulos de dashboard, histórico e administração mantêm seus dados simulados até as respectivas issues; o perfil autenticado usa /auth/me.
+
+## Destaques do login (F-05)
+
+GET /branding/highlights é público e usa o cliente HTTP da F-01 sem Bearer. O service converte titulo/descricao/icone em title/description/icon. Falha da API retorna os destaques locais sem alerta visual; o motivo é registrado por console.warn. Lista vazia do servidor é respeitada. O hook cancela atualizações de componentes desmontados e inicializa o estado de carregamento. getBrandInfo e MOCK_BRAND_INFO foram removidos após busca de referências. A integração com banco depende do PR #94 (B-04).

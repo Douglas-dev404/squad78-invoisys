@@ -16,6 +16,7 @@ import { UI_STRINGS } from '../../utils/constants';
  */
 export function EmailConfirmationCard({
   email,
+  expiraEmMinutos,
   isResending = false,
   resendSuccess = false,
   resendError = null,
@@ -38,6 +39,8 @@ export function EmailConfirmationCard({
 
       {/* Textos e ação de reenvio */}
       <div className="text-center space-y-xs">
+        {email && <p>{email}</p>}
+        {expiraEmMinutos != null && <p>O link vale por {expiraEmMinutos} minutos.</p>}
         <p className="font-body-sm text-body-sm text-on-surface-variant">
           {UI_STRINGS.DIDNT_RECEIVE_EMAIL}
         </p>
@@ -50,7 +53,7 @@ export function EmailConfirmationCard({
           <button
             type="button"
             onClick={onResend}
-            disabled={isResending}
+            disabled={isResending || !email}
             aria-busy={isResending}
             className="font-label-md text-label-md text-primary-container hover:text-tertiary-container transition-colors underline underline-offset-4 disabled:opacity-60 disabled:cursor-not-allowed"
           >

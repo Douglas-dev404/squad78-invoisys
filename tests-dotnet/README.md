@@ -13,6 +13,15 @@ dotnet test InvoiSys.slnx                                   # tudo (Docker preci
 dotnet test InvoiSys.slnx --filter "FullyQualifiedName~Unit" # só unitários, sem Docker
 ```
 
+### Autenticação nos testes de API
+
+`Fakes/AutenticacaoDeTeste.cs` é o helper compartilhado: `CriarToken(usuario)` emite um JWT
+com `JwtEmissorToken` e a chave de `ConfiguracaoDeTestes`; `services.ComUsuarios(...)`
+registra o `FakeUsuarioRepository` (a API consulta o usuário a cada requisição, então todo
+teste de API precisa dele); `app.CriarClienteAutenticado()` devolve um `HttpClient` com o
+Bearer do revisor padrão. Testes de persistência usam `fixture.SalvarRevisorAsync()`, porque
+`revisado_por_id` é FK para `usuarios`.
+
 ### Vendo o EF Core persistir
 
 `PipelineGeracaoReleaseNotePersistenciaTests` imprime cada comando SQL que o EF Core
@@ -56,6 +65,12 @@ reprocessamento recusado → UPDATE ao reabrir → DELETE + INSERT ao reprocessa
 
 ### Unit
 
+`ValidacaoEntradaTests` cobre os quatro validators de revisão e a regra reutilizável
+de e-mail, incluindo campos ausentes, espaços, público desconhecido, normalização e
+o limite de 320 caracteres. `ApiValidacaoTests` verifica o 422 com mensagens por campo
+antes de procurar a Release. Os testes existentes continuam verificando as mutações
+válidas e os erros do domínio; `OpenApiTests` preserva o 422 nas quatro rotas.
+
 | Arquivo | Cobre |
 |---|---|
 | `RevisaoDeItensTests` | Editar/excluir/reincluir pela Release, item de versão aprovada bloqueado ([ADR-021](../docs/decisoes-arquiteturais.md#adr-021--item-de-versão-aprovada-não-é-editado-sem-reabrir)) |
@@ -64,6 +79,8 @@ reprocessamento recusado → UPDATE ao reabrir → DELETE + INSERT ao reprocessa
 | `HistoriaJiraTests` | Prioridade da Release Note sobre a descrição técnica (`TextoFonte`) |
 | `PipelineGeracaoReleaseNoteTests` | Orquestração dos 5 estágios, limpeza, chave alucinada, falha marca Release/execução |
 | `OpenRouterProviderTests` | Foco no parsing defensivo (o que quebra em produção é resposta fora do formato). Corpo da request, fallback de modelos, JSON em code fence, validação de grupos, categoria inválida, erros HTTP → exceção de domínio |
+| `OpenAiProviderTests` | Mesmos casos do OpenRouter para o adapter da OpenAI (resposta válida, JSON malformado, 401, 429, timeout), mais: corpo sem o campo `models`, 401 sem corpo nem chave no log e `ProviderPendente` citando a variável certa |
+| `EscolhaDoProvedorLlmTests` | `Llm:Provedor` no composition root: padrão OpenRouter, OpenAi com chave, sem chave cai no `ProviderPendente`, chave do outro provedor não vale, valor desconhecido derruba o startup |
 | `JiraRestClientAdfTests` | Achatamento de ADF em texto. Isolado porque, se falhar, o pipeline recebe texto vazio e o comunicado sai oco sem erro nenhum |
 
 ### Integration
@@ -77,6 +94,7 @@ reprocessamento recusado → UPDATE ao reabrir → DELETE + INSERT ao reprocessa
 | `ComunicadoExportadoRepositoryTests` | Cada reexportação vira linha nova, filtro por público, apagar versão já exportada é barrado pelo banco (`RESTRICT`) |
 | `UsuarioRepositoryTests` | Busca por id/e-mail, salvar de novo atualiza sem duplicar, e-mail repetido viola o unique |
 | `DestaqueHeroRepositoryTests` | Só ativos, ordenados |
+| `ApiBrandingTests`, `DestaquesIniciaisTests` | Rota pública mesmo com autenticação por padrão, DTO, ativos e ordem com Postgres real; seed com os textos do frontend, reaplicação sem duplicar ou sobrescrever dados |
 | `ApiReleasesTests` | Endpoints via `WebApplicationFactory<Program>` com as portas trocadas por fakes; 200/501/502 |
 | `ApiRevisaoTests` | Contrato HTTP de aprovar/reprovar/reabrir: 204/404/409/422, ProblemDetails, efeito na Release (as transições em si são cobertas no domínio) |
 | `ApiItensTests` | Contrato HTTP de editar/excluir/reincluir item (a persistência real fica em `PersistenciaAgregadoReleaseTests`) |

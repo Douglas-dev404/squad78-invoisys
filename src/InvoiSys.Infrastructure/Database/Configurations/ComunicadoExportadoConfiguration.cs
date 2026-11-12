@@ -51,6 +51,11 @@ public sealed class ComunicadoExportadoConfiguration : IEntityTypeConfiguration<
         builder.Property(c => c.Conteudo).HasColumnType("text");
         builder.Property(c => c.CaminhoArquivo).HasColumnType("text");
         builder.Property(c => c.GeradoPor).HasMaxLength(200);
+        builder.HasOne<Usuario>()
+            .WithMany()
+            .HasForeignKey(c => c.GeradoPorId)
+            .OnDelete(DeleteBehavior.Restrict);
+        builder.HasIndex(c => c.GeradoPorId);
         builder.Property(c => c.GeradoEm).IsRequired();
     }
 

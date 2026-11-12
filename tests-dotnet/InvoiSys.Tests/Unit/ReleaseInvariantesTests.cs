@@ -1,4 +1,5 @@
 using FluentAssertions;
+using static InvoiSys.Tests.Fakes.AutenticacaoDeTeste;
 using InvoiSys.Domain.Entities;
 using InvoiSys.Domain.Enums;
 
@@ -46,7 +47,7 @@ public class ReleaseInvariantesTests
     {
         var release = new Release("RELEASE-2026-08", [UmaHistoria()]);
 
-        var acao = () => release.Aprovar("darth.code", DateTimeOffset.UtcNow);
+        var acao = () => release.Aprovar(UmRevisor("darth.code"), DateTimeOffset.UtcNow);
 
         acao.Should().Throw<ReleaseSemItensProcessadosException>();
         release.Status.Should().Be(StatusPipeline.Pendente);
@@ -57,9 +58,9 @@ public class ReleaseInvariantesTests
     {
         var release = new Release("RELEASE-2026-08", [UmaHistoria()]);
         release.ConcluirProcessamento([UmItem()], "Título", "Resumo");
-        release.Aprovar("darth.code", DateTimeOffset.UtcNow);
+        release.Aprovar(UmRevisor("darth.code"), DateTimeOffset.UtcNow);
 
-        var acao = () => release.Aprovar("outro.revisor", DateTimeOffset.UtcNow);
+        var acao = () => release.Aprovar(UmRevisor("outro.revisor"), DateTimeOffset.UtcNow);
 
         acao.Should().Throw<RevisaoHumanaObrigatoriaException>();
         release.AprovadoPor.Should().Be("darth.code");
@@ -72,7 +73,7 @@ public class ReleaseInvariantesTests
         var release = new Release("RELEASE-2026-08", [UmaHistoria()]);
         release.ConcluirProcessamento([UmItem()], "Título", "Resumo");
 
-        release.Aprovar("darth.code", agora);
+        release.Aprovar(UmRevisor("darth.code"), agora);
 
         release.Status.Should().Be(StatusPipeline.Aprovado);
         release.AprovadoPor.Should().Be("darth.code");
@@ -87,7 +88,7 @@ public class ReleaseInvariantesTests
         release.ConcluirProcessamento([UmItem()], "Título", "Resumo");
         release.MarcarFalha();
 
-        var acao = () => release.Aprovar("darth.code", DateTimeOffset.UtcNow);
+        var acao = () => release.Aprovar(UmRevisor("darth.code"), DateTimeOffset.UtcNow);
 
         acao.Should().Throw<RevisaoHumanaObrigatoriaException>();
     }

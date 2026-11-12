@@ -1,144 +1,73 @@
-import { useState } from 'react';
+import { useEffect } from 'react';
+import { Link, Navigate, Route, Routes, useLocation, useNavigate } from 'react-router-dom';
+import { useAuth } from './hooks/useAuth';
+import { RotaProtegida, RotaAdmin } from './components/RotaProtegida/RotaProtegida';
+import { Layout } from './components/Layout/Layout';
 import { LoginPage } from './pages/LoginPage/LoginPage';
 import { ForgotPasswordPage } from './pages/ForgotPasswordPage/ForgotPasswordPage';
 import { EmailConfirmationPage } from './pages/EmailConfirmationPage/EmailConfirmationPage';
 import { DashboardPage } from './pages/DashboardPage/DashboardPage';
 import { ProfilePage } from './pages/ProfilePage/ProfilePage';
-import { UnderConstructionPage } from './pages/UnderConstructionPage/UnderConstructionPage';
 import { UserManagementPage } from './pages/UserManagementPage/UserManagementPage';
 import { CreateUserPage } from './pages/CreateUserPage/CreateUserPage';
 import { SentHistoryPage } from './pages/SentHistoryPage/SentHistoryPage';
+import { ReleasesPage } from './pages/ReleasesPage/ReleasesPage';
 
-const UNDER_CONSTRUCTION_SCREENS = {
-  'review-queue': 'Review Queue',
-  'system-logs': 'System Logs',
-  'technical-settings': 'Technical Settings',
-};
+function LoginRoute() {
+  const navigate = useNavigate();
+  const location = useLocation();
+  const { isAuthenticated } = useAuth();
+  if (isAuthenticated) return <Navigate to={location.state?.from || '/dashboard'} replace />;
+  return <LoginPage
+    onNavigateToForgotPassword={() => navigate('/esqueci-senha')}
+    onLoginSuccess={() => navigate(location.state?.from || '/dashboard', { replace: true })}
+  />;
+}
 
-/**
- * Componente raiz da aplicação.
- * Gerencia a navegação entre as telas do fluxo de autenticação:
- * Login → Recuperação de Senha → Confirmação de Envio → Login
- */
+function RecoveryRoute() {
+  const navigate = useNavigate();
+  return <ForgotPasswordPage
+    onNavigateToLogin={() => navigate('/login')}
+    onNavigateToConfirmation={(email, response) => navigate('/email-enviado', { state: { email, ...response } })}
+  />;
+}
+
+function ConfirmationRoute() {
+  const navigate = useNavigate();
+  const location = useLocation();
+  return <EmailConfirmationPage email={location.state?.email || ''} mensagem={location.state?.mensagem} expiraEmMinutos={location.state?.expiraEmMinutos} onNavigateToLogin={() => navigate('/login')} />;
+}
+
+function ReleaseRoute() {
+  return <Layout><h1 className="text-headline-lg text-primary">Detalhe da Release</h1><p>A revisão do comunicado chega na próxima entrega.</p><Link to="/releases" className="text-primary hover:underline">Voltar para Releases</Link></Layout>;
+}
+
 function App() {
-  const [currentScreen, setCurrentScreen] = useState('login');
-  const [previousScreen, setPreviousScreen] = useState('dashboard');
-  const [recoveryEmail, setRecoveryEmail] = useState('');
-
-  const navigateToProfile = () => {
-    setPreviousScreen(currentScreen);
-    setCurrentScreen('profile');
-  };
-
-  const handleSidebarNavigate = (screenKey) => {
-    setCurrentScreen(screenKey);
-  };
-
-  // TODO: Substituir controle de estado local por roteamento definitivo via react-router-dom:
-  // <Routes>
-  //   <Route path="/login" element={<LoginPage />} />
-  //   <Route path="/dashboard" element={<DashboardPage />} />
-  //   <Route path="/perfil" element={<ProfilePage />} />
-  //   <Route path="/recuperar-senha" element={<ForgotPasswordPage />} />
-  //   <Route path="/email-confirmacao" element={<EmailConfirmationPage />} />
-  // </Routes>
-
-  if (currentScreen === 'profile') {
-    return (
-      <ProfilePage
-        onLogout={() => setCurrentScreen('login')}
-        onProfileClick={navigateToProfile}
-        onNavigate={handleSidebarNavigate}
-        onBack={() => setCurrentScreen(previousScreen)}
-      />
-    );
-  }
-
-  if (currentScreen === 'dashboard') {
-    return (
-      <DashboardPage
-        onLogout={() => setCurrentScreen('login')}
-        onProfileClick={navigateToProfile}
-        onNavigate={handleSidebarNavigate}
-      />
-    );
-  }
-
-  if (currentScreen === 'create-user') {
-    return (
-      <CreateUserPage
-        onLogout={() => setCurrentScreen('login')}
-        onProfileClick={navigateToProfile}
-        onNavigate={handleSidebarNavigate}
-        onCancel={() => setCurrentScreen('user-management')}
-        onCreated={() => setCurrentScreen('user-management')}
-      />
-    );
-  }
-
-  if (currentScreen === 'user-management') {
-    return (
-      <UserManagementPage
-        onLogout={() => setCurrentScreen('login')}
-        onProfileClick={navigateToProfile}
-        onNavigate={handleSidebarNavigate}
-        onCreateUser={() => setCurrentScreen('create-user')}
-      />
-    );
-  }
-
-  if (currentScreen === 'sent-history') {
-    return (
-      <SentHistoryPage
-        onLogout={() => setCurrentScreen('login')}
-        onProfileClick={navigateToProfile}
-        onNavigate={handleSidebarNavigate}
-      />
-    );
-  }
-
-  if (UNDER_CONSTRUCTION_SCREENS[currentScreen]) {
-    return (
-      <UnderConstructionPage
-        title={UNDER_CONSTRUCTION_SCREENS[currentScreen]}
-        activeScreen={currentScreen}
-        onNavigate={handleSidebarNavigate}
-        onLogout={() => setCurrentScreen('login')}
-        onProfileClick={navigateToProfile}
-      />
-    );
-  }
-
-  if (currentScreen === 'email-confirmation') {
-    return (
-      <EmailConfirmationPage
-        email={recoveryEmail}
-        onNavigateToLogin={() => {
-          setCurrentScreen('login');
-          setRecoveryEmail('');
-        }}
-      />
-    );
-  }
-
-  if (currentScreen === 'forgot-password') {
-    return (
-      <ForgotPasswordPage
-        onNavigateToLogin={() => setCurrentScreen('login')}
-        onNavigateToConfirmation={(email) => {
-          setRecoveryEmail(email);
-          setCurrentScreen('email-confirmation');
-        }}
-      />
-    );
-  }
-
-  return (
-    <LoginPage
-      onNavigateToForgotPassword={() => setCurrentScreen('forgot-password')}
-      onLoginSuccess={() => setCurrentScreen('dashboard')}
-    />
-  );
+  const navigate = useNavigate();
+  useEffect(() => {
+    const unauthorized = () => navigate('/login', { replace: true });
+    window.addEventListener('invoisys:unauthorized', unauthorized);
+    return () => window.removeEventListener('invoisys:unauthorized', unauthorized);
+  }, [navigate]);
+  return <Routes>
+    <Route path="/login" element={<LoginRoute />} />
+    <Route path="/esqueci-senha" element={<RecoveryRoute />} />
+    <Route path="/email-enviado" element={<ConfirmationRoute />} />
+    <Route path="/redefinir-senha" element={<main className="p-lg"><h1>Redefinir senha</h1><p>Esta tela será disponibilizada na entrega de recuperação de senha.</p><Link to="/esqueci-senha">Pedir novo link</Link></main>} />
+    <Route element={<RotaProtegida />}>
+      <Route path="/dashboard" element={<DashboardPage />} />
+      <Route path="/releases" element={<ReleasesPage />} />
+      <Route path="/releases/:chave" element={<ReleaseRoute />} />
+      <Route path="/historico" element={<SentHistoryPage />} />
+      <Route path="/perfil" element={<ProfilePage />} />
+      <Route element={<RotaAdmin />}>
+        <Route path="/usuarios" element={<UserManagementPage />} />
+        <Route path="/usuarios/novo" element={<CreateUserPage />} />
+      </Route>
+    </Route>
+    <Route path="/" element={<Navigate to="/dashboard" replace />} />
+    <Route path="*" element={<main className="p-lg"><h1>Página não encontrada</h1><Link to="/dashboard">Ir para o Dashboard</Link></main>} />
+  </Routes>;
 }
 
 export default App;

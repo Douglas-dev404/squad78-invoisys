@@ -20,18 +20,18 @@ em exatamente uma categoria de negócio.
 ## Tarefa
 Classifique o texto acima em uma das quatro categorias. Responda **apenas** com o
 valor da categoria (`nova_funcionalidade`, `melhoria`, `correcao` ou `outros`), sem
-explicação adicional.
+explicação adicional e sem crases, aspas ou formatação.
 
 ## Few-shot examples (placeholder — substituir por exemplos reais da InvoiSys)
 
 **Entrada:** "Corrigido cálculo de ICMS interestadual que estava aplicando alíquota
 incorreta para operações entre MG e SP."
-**Saída:** `correcao`
+**Saída:** correcao
 
 **Entrada:** "Adicionado suporte a emissão de NFC-e em lote, permitindo emitir até 500
 notas de uma vez."
-**Saída:** `nova_funcionalidade`
+**Saída:** nova_funcionalidade
 
 **Entrada:** "Otimizado o tempo de geração de relatório de notas emitidas, reduzindo de
 12s para 2s em bases com mais de 100 mil notas."
-**Saída:** `melhoria`
+**Saída:** melhoria
