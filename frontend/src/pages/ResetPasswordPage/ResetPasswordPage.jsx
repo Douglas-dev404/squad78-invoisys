@@ -46,7 +46,8 @@ export function ResetPasswordPage() {
       await resetPassword({ token, novaSenha: senha });
       setSucesso(true);
     } catch (error) {
-      setErros(error?.errors ?? {});
+      const camposComErro = error?.errors ?? {};
+      setErros({ novaSenha: (camposComErro.novaSenha ?? camposComErro.NovaSenha)?.join(' ') });
       setErro(error?.detail ?? error?.message ?? 'Não foi possível alterar a senha.');
     } finally {
       setEnviando(false);
