@@ -27,8 +27,9 @@ public static class UsuarioEndpoints
     {
         try
         {
-            var usuario = await administracao.CadastrarAsync(entrada.Nome, entrada.Email, entrada.Papel,
-                entrada.SenhaInicial, cancellationToken);
+            // ComValidacao<CadastrarUsuarioIn> já recusou campos nulos com 422.
+            var usuario = await administracao.CadastrarAsync(entrada.Nome!, entrada.Email!, entrada.Papel!,
+                entrada.SenhaInicial!, cancellationToken);
             return Results.Created($"/api/v1/usuarios/{usuario.Id}", ParaOut(usuario));
         }
         catch (EmailUsuarioDuplicadoException exc)
