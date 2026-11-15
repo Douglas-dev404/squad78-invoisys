@@ -1,79 +1,46 @@
-import {
-  dashboardKPIMock,
-  dashboardChartMock,
-  dashboardCardsMock,
-} from '../data/dashboard.mock';
-import { API_BASE_URL } from '../config/api.config';
+import { api } from './http.js';
 
-const ENDPOINTS = {
-  DASHBOARD_KPI: '/dashboard/kpi',
-  DASHBOARD_CHART: '/dashboard/chart',
-  DASHBOARD_CARDS: '/dashboard/cards',
-};
+const porcentagem = (parte, total) => (total > 0 ? Math.round((parte / total) * 100) : null);
 
-export async function fetchDashboardKPI() {
-  // TODO: Descomente a chamada real quando a API estiver pronta
-  // const response = await fetch(`${API_BASE_URL}${ENDPOINTS.DASHBOARD_KPI}`);
-  // if (!response.ok) throw new Error('Failed to fetch KPI data');
-  // return response.json();
+// `data` é DateOnly em UTC ("2026-11-15"): formatar em UTC, senão no Brasil o rótulo cai no dia anterior.
+const diaDaSemana = (data) =>
+  new Date(`${data}T00:00:00Z`).toLocaleDateString('pt-BR', { weekday: 'short', timeZone: 'UTC' });
 
-  // Simulação com latência de rede
-  return new Promise((resolve) => {
-    setTimeout(() => {
-      resolve(dashboardKPIMock);
-    }, 800);
-  });
-}
+/**
+ * Dashboard em uma chamada (`GET /dashboard`), já no formato de KPICard, ProductivityChart e CardsTable.
+ * @returns {Promise<{ kpi: Object, chart: { data: Array }, cards: { data: Array }, qualidade: Object, vazio: boolean }>}
+ */
+export async function getDashboard() {
+  const { totais, ultimos7Dias = [], recentes = [], qualidade } = await api.get('/dashboard');
 
-export async function fetchDashboardChart() {
-  // TODO: Descomente a chamada real quando a API estiver pronta
-  // const response = await fetch(`${API_BASE_URL}${ENDPOINTS.DASHBOARD_CHART}`);
-  // if (!response.ok) throw new Error('Failed to fetch chart data');
-  // return response.json();
-
-  return new Promise((resolve) => {
-    setTimeout(() => {
-      resolve(dashboardChartMock);
-    }, 1000);
-  });
-}
-
-export async function fetchDashboardCards(page = 1, limit = 10) {
-  // TODO: Descomente a chamada real quando a API estiver pronta
-  // const response = await fetch(`${API_BASE_URL}${ENDPOINTS.DASHBOARD_CARDS}?page=${page}&limit=${limit}`);
-  // if (!response.ok) throw new Error('Failed to fetch cards');
-  // return response.json();
-
-  return new Promise((resolve) => {
-    setTimeout(() => {
-      resolve({
-        data: dashboardCardsMock,
-        total: dashboardCardsMock.length,
-        page,
-        limit,
-      });
-    }, 900);
-  });
-}
-
-export async function searchDashboardCards(query) {
-  // TODO: Implementar busca real na API
-  // const response = await fetch(`${API_BASE_URL}${ENDPOINTS.DASHBOARD_CARDS}?search=${query}`);
-  // if (!response.ok) throw new Error('Failed to search cards');
-  // return response.json();
-
-  return new Promise((resolve) => {
-    setTimeout(() => {
-      const filtered = dashboardCardsMock.filter(
-        (card) =>
-          card.jiraId.toLowerCase().includes(query.toLowerCase()) ||
-          card.title.toLowerCase().includes(query.toLowerCase()) ||
-          card.responsible.toLowerCase().includes(query.toLowerCase())
-      );
-      resolve({
-        data: filtered,
-        total: filtered.length,
-      });
-    }, 600);
-  });
+  return {
+    kpi: {
+      formalizados: totais.aprovadas,
+      emRevisao: totais.aguardandoRevisao,
+      exportados: totais.exportacoes,
+    },
+    chart: {
+      data: ultimos7Dias.map((dia) => ({
+        chave: dia.data,
+        dia: diaDaSemana(dia.data),
+        aprovadas: dia.aprovadas,
+        geradas: dia.geradas,
+      })),
+    },
+    cards: {
+      data: recentes.map((release) => ({
+        id: release.chaveJira,
+        chave: release.chaveJira,
+        titulo: release.tituloExecutivo ?? '—',
+        status: release.status,
+        criadoEm: release.criadoEm,
+      })),
+    },
+    qualidade: {
+      ...qualidade,
+      pctEditados: porcentagem(qualidade.itensEditados, qualidade.itensGerados),
+      pctExcluidos: porcentagem(qualidade.itensExcluidos, qualidade.itensGerados),
+    },
+    vazio: recentes.length === 0 && Object.values(totais).every((valor) => valor === 0),
+  };
 }
