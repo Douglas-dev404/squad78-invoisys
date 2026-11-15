@@ -75,6 +75,8 @@ public class OpenApiTests
             "/api/v1/releases/{chaveRelease}/itens/{itemId}/excluir",
             "/api/v1/releases/{chaveRelease}/itens/{itemId}/reincluir",
             "/api/v1/releases/{chaveRelease}/exportar",
+            "/api/v1/exportacoes",
+            "/api/v1/exportacoes/{id}",
             "/api/v1/auth/login",
             "/api/v1/auth/me",
             "/api/v1/auth/logout",
@@ -98,6 +100,10 @@ public class OpenApiTests
 
         caminhos.GetProperty("/api/v1/releases/{chaveRelease}/itens/{itemId}")
             .GetProperty("patch").GetProperty("responses").TryGetProperty("422", out _)
+            .Should().BeTrue();
+
+        caminhos.GetProperty("/api/v1/exportacoes")
+            .GetProperty("get").GetProperty("responses").TryGetProperty("422", out _)
             .Should().BeTrue();
     }
 
