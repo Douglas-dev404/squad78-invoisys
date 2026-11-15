@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { Alert } from '../../components/Alert/Alert';
 import { BrandLogoCard } from '../../components/BrandLogoCard/BrandLogoCard';
 import { Button } from '../../components/Button/Button';
@@ -9,8 +9,10 @@ import { BRAND_LOGO_URL, UI_STRINGS } from '../../utils/constants';
 
 export function ResetPasswordPage() {
   const navigate = useNavigate();
+  const location = useLocation();
   const [searchParams] = useSearchParams();
-  const [token] = useState(() => searchParams.get('token'));
+  // O e-mail traz o token no fragmento (#token=, ADR da recuperação de senha); ?token= fica como fallback.
+  const [token] = useState(() => new URLSearchParams(location.hash.slice(1)).get('token') ?? searchParams.get('token'));
   const [senha, setSenha] = useState('');
   const [confirmacao, setConfirmacao] = useState('');
   const [mostrarSenha, setMostrarSenha] = useState(false);
