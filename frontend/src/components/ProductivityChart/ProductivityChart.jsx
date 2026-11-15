@@ -7,9 +7,7 @@ export function ProductivityChart({ data, isLoading }) {
     );
   }
 
-  const maxValue = Math.max(
-    ...data.data.flatMap((d) => [d.formalized, d.inReview])
-  );
+  const maxValue = Math.max(1, ...data.data.flatMap((d) => [d.aprovadas, d.geradas]));
 
   return (
     <section className="bg-surface-container-lowest rounded-xl p-lg shadow-[0px_4px_12px_rgba(27,67,50,0.08)] mb-lg border border-surface-variant/50">
@@ -20,11 +18,11 @@ export function ProductivityChart({ data, isLoading }) {
         <div className="flex gap-sm">
           <span className="flex items-center gap-xs font-body-sm text-body-sm text-on-surface-variant">
             <div className="w-3 h-3 rounded-full bg-primary-container"></div>
-            Formalizados
+            Aprovadas
           </span>
           <span className="flex items-center gap-xs font-body-sm text-body-sm text-on-surface-variant">
             <div className="w-3 h-3 rounded-full bg-secondary-container"></div>
-            Em Revisão
+            Geradas
           </span>
         </div>
       </div>
@@ -38,25 +36,27 @@ export function ProductivityChart({ data, isLoading }) {
 
         {data.data.map((dayData) => (
           <div
-            key={dayData.day}
-            className="relative z-10 flex-1 flex justify-center items-end gap-1 group"
+            key={dayData.chave}
+            className="relative z-10 flex h-full flex-1 justify-center items-end gap-1 group"
           >
             <div
-              style={{ height: `${(dayData.inReview / maxValue) * 100}%` }}
+              title={`${dayData.geradas} geradas`}
+              style={{ height: `${(dayData.geradas / maxValue) * 100}%` }}
               className="w-8 bg-secondary-container rounded-t-md transition-all group-hover:opacity-80"
             ></div>
             <div
-              style={{ height: `${(dayData.formalized / maxValue) * 100}%` }}
+              title={`${dayData.aprovadas} aprovadas`}
+              style={{ height: `${(dayData.aprovadas / maxValue) * 100}%` }}
               className="w-8 bg-primary-container rounded-t-md transition-all group-hover:opacity-80"
             ></div>
             <span className="absolute -bottom-8 font-label-sm text-label-sm text-on-surface-variant">
-              {dayData.day}
+              {dayData.dia}
             </span>
           </div>
         ))}
       </div>
       <div className="mt-8 text-center text-on-surface-variant font-label-sm">
-        Volume de cards processados por dia
+        Releases geradas e versões aprovadas por dia (últimos 7 dias, UTC)
       </div>
     </section>
   );
