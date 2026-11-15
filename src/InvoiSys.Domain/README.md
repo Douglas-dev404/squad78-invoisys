@@ -127,7 +127,7 @@ errado em silêncio).
 | [`IReleaseRepository`](Ports/IReleaseRepository.cs) | persistência (agregado) | `ReleaseRepository` | `BuscarPorIdAsync`, `BuscarPorChaveJiraAsync` (agregado completo), `SalvarAsync`, `ListarResumosAsync(status?)` (devolve o modelo de leitura `ReleaseResumo`, nunca uma `Release` parcial) |
 | [`IHistoriaJiraRepository`](Ports/IHistoriaJiraRepository.cs) | **somente leitura** | `HistoriaJiraRepository` | consultar histórias sem carregar o agregado |
 | [`IExecucaoPipelineRepository`](Ports/IExecucaoPipelineRepository.cs) | **somente leitura** | `ExecucaoPipelineRepository` | histórico de execuções (mais recente primeiro) |
-| [`IComunicadoExportadoRepository`](Ports/IComunicadoExportadoRepository.cs) | **append-only** | `ComunicadoExportadoRepository` | `AdicionarAsync`, `BuscarPorIdAsync`, `ListarPorReleaseAsync` |
+| [`IComunicadoExportadoRepository`](Ports/IComunicadoExportadoRepository.cs) | **append-only** | `ComunicadoExportadoRepository` | `AdicionarAsync`, `BuscarPorIdAsync`, `ListarPorReleaseAsync`; leitura para o histórico: `ListarAsync` (paginado, filtro de público e busca → `PaginaExportacoes`) e `BuscarDetalheAsync` (`ExportacaoResumo` com `conteudo`) |
 | [`IUsuarioRepository`](Ports/IUsuarioRepository.cs) | persistência (agregado) | `UsuarioRepository` | `BuscarPorIdAsync`, `BuscarPorEmailAsync` (normaliza o argumento), `ExisteAlgumAsync`, `ListarAsync`, `SalvarAsync` (sem delete) |
 | [`IHashSenha`](Ports/IHashSenha.cs) | saída (criptografia) | `Argon2idHashSenha` | `Gerar`, `Verificar` |
 | [`IEmissorToken`](Ports/IEmissorToken.cs) | saída (criptografia) | `JwtEmissorToken` | `Emitir(usuario)` → `TokenEmitido(Token, ExpiraEm)` |
