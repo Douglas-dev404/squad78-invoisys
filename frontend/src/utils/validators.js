@@ -48,7 +48,9 @@ export function validateLoginForm({ email, password }) {
  * @param {string} values.role
  * @returns {{ isValid: boolean, errors: { fullName?: string, email?: string, role?: string } }}
  */
-export function validateCreateUserForm({ fullName, email, role }) {
+export const SENHA_INICIAL_MINIMO = 8;
+
+export function validateCreateUserForm({ fullName, email, role, senhaInicial }) {
   const errors = {};
 
   if (!fullName || !fullName.trim()) {
@@ -62,7 +64,13 @@ export function validateCreateUserForm({ fullName, email, role }) {
   }
 
   if (!role) {
-    errors.role = 'Selecione um cargo para o usuário.';
+    errors.role = 'Selecione o papel do usuário.';
+  }
+
+  if (!senhaInicial) {
+    errors.senhaInicial = 'A senha inicial é obrigatória.';
+  } else if (senhaInicial.length < SENHA_INICIAL_MINIMO) {
+    errors.senhaInicial = `A senha inicial deve ter pelo menos ${SENHA_INICIAL_MINIMO} caracteres.`;
   }
 
   return {

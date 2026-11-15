@@ -64,3 +64,8 @@ export const UI_STRINGS = {
 };
 
 export const MIN_PASSWORD_LENGTH = 6;
+
+export const ROLE_LABELS = {
+  admin: 'Administrador',
+  release_manager: 'Gestor de Release',
+};

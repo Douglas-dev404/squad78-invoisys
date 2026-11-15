@@ -1,5 +1,5 @@
 import { useAuth } from '../../hooks/useAuth';
-import { ROLE_LABELS } from '../../data/users.mock';
+import { ROLE_LABELS } from '../../utils/constants';
 export function TopNavBar({ onLogout, onProfileClick, isMinimized = false }) {
   const { usuario } = useAuth();
   const initials = usuario?.name?.split(/\s+/).slice(0, 2).map(word => word[0]).join('');
