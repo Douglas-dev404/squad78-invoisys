@@ -14,6 +14,7 @@ InvoiSys.Api/
 
 │   ├── AuthEndpoints.cs           # rotas /api/v1/auth (esqueci a senha, redefinir)
 │   ├── ReleaseEndpoints.cs        # rotas /api/v1/releases (listar, detalhe, historias, processar)
+│   ├── DashboardEndpoints.cs      # GET /api/v1/dashboard (KPIs, últimos 7 dias, recentes, qualidade da IA)
 │   ├── RevisaoEndpoints.cs        # revisão humana por público (aprovar, reprovar, reabrir)
 │   └── ItemComunicadoEndpoints.cs # revisão de item (editar, excluir, reincluir)
 ├── Contracts/
@@ -31,7 +32,7 @@ InvoiSys.Api/
 
 ## Endpoints atuais
 
-> **Autenticação:** todas as rotas `/api/v1/releases/**` exigem `Authorization: Bearer <token>` (401 sem ele, com token inválido/expirado ou de usuário inexistente/desativado). Públicas: `/health` e `/api/v1/auth/*`.
+> **Autenticação:** todas as rotas `/api/v1/releases/**` e `/api/v1/dashboard` exigem `Authorization: Bearer <token>` (401 sem ele, com token inválido/expirado ou de usuário inexistente/desativado). Públicas: `/health` e `/api/v1/auth/*`.
 
 | Método | Rota | Handler | Resposta | Erros |
 |---|---|---|---|---|
@@ -44,6 +45,7 @@ InvoiSys.Api/
 | `POST` | `/api/v1/auth/resend-forgot-password` | `ReenviarEsqueciSenhaAsync` → `RecuperacaoSenha` | igual ao `forgot-password`; invalida o token anterior | 422, 429 |
 | `POST` | `/api/v1/auth/reset-password` | `RedefinirSenhaAsync` → `RecuperacaoSenha` | 204 · corpo `{ "token", "novaSenha" }` | 422 (token inválido, expirado ou já usado; senha fora da política) |
 
+| `GET` | `/api/v1/dashboard` | `BuscarAsync` → `ConsultaDashboard` | `DashboardOut` (exige Bearer): `totais`, `ultimos7Dias` (sempre 7, UTC, crescente), `recentes` (10 mais novas, título da versão cliente), `qualidade` (itens gerados/editados/excluídos) | 401 |
 | `GET` | `/api/v1/branding/highlights` | `ListarDestaquesAsync` → `ConsultaDestaques` | `DestaqueOut[]` (ativos, por ordem de exibição; público) | — |
 | `GET` | `/api/v1/releases?status=` | `ListarReleasesAsync` → `ConsultaReleases` | `ReleaseResumoOut[]` (mais recente primeiro) | 422 (status desconhecido) |
 | `GET` | `/api/v1/releases/{chaveRelease}` | `BuscarReleaseAsync` → `ConsultaReleases` | `ReleaseDetalheOut` (todas as versões por público; itens como `ItemRevisaoOut`, com `id`) | 404 |
