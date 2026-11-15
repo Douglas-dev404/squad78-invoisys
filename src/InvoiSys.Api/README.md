@@ -17,14 +17,17 @@ InvoiSys.Api/
 │   ├── DashboardEndpoints.cs      # GET /api/v1/dashboard (KPIs, últimos 7 dias, recentes, qualidade da IA)
 │   ├── UsuarioEndpoints.cs        # rotas /api/v1/usuarios (só admin: cadastrar, listar, desativar)
 │   ├── RevisaoEndpoints.cs        # revisão humana por público (aprovar, reprovar, reabrir)
+│   ├── ExportacaoEndpoints.cs     # exportar comunicado e histórico de exportações (/api/v1/exportacoes)
 │   └── ItemComunicadoEndpoints.cs # revisão de item (editar, excluir, reincluir)
 ├── Contracts/
 │   ├── AuthContracts.cs           # DTOs de sessão (LoginIn, LoginOut, UsuarioOut)
 │   ├── ReleaseContracts.cs        # DTOs (records) — nunca expor entidade de domínio
 │   ├── RevisaoContracts.cs        # DTOs de entrada da revisão
-│   └── ItemComunicadoContracts.cs # DTOs de item (ItemRevisaoOut: detalhe e rotas de item)
+│   ├── ItemComunicadoContracts.cs # DTOs de item (ItemRevisaoOut: detalhe e rotas de item)
+│   └── ExportacaoContracts.cs     # DTOs de exportação e do histórico (PaginaOut<T>, ExportacaoResumoOut, ExportacaoDetalheOut)
 ├── Validation/
 │   ├── LoginInValidator.cs        # regras de entrada do login (FluentValidation)
+│   ├── ListarExportacoesInValidator.cs # pagina >= 1, tamanho 1..100, público conhecido
 │   └── ValidacaoFiltro.cs         # filtro de endpoint: valida o corpo e devolve 422
 └── appsettings*.json
 ```
@@ -61,6 +64,8 @@ InvoiSys.Api/
 | `PATCH` | `/api/v1/releases/{chaveRelease}/itens/{itemId}` | `EditarItemAsync` → `RevisaoComunicado` | `ItemRevisaoOut` · corpo `{ "texto": "..." }` | 404, 409, 422 |
 | `POST` | `/api/v1/releases/{chaveRelease}/itens/{itemId}/excluir` | `ExcluirItemAsync` → `RevisaoComunicado` | `ItemRevisaoOut` · corpo opcional `{ "motivo": "..." }` | 404, 409 |
 | `POST` | `/api/v1/releases/{chaveRelease}/itens/{itemId}/reincluir` | `ReincluirItemAsync` → `RevisaoComunicado` | `ItemRevisaoOut` | 404, 409 |
+| `GET` | `/api/v1/exportacoes?pagina=&tamanho=&publico=&busca=` | `ListarExportacoesAsync` → `ConsultaExportacoes` | `PaginaOut<ExportacaoResumoOut>` (mais recente primeiro; padrão `pagina=1`, `tamanho=20`) | 401, 422 (`pagina` < 1, `tamanho` fora de 1..100, público desconhecido) |
+| `GET` | `/api/v1/exportacoes/{id}` | `BuscarExportacaoAsync` → `ConsultaExportacoes` | `ExportacaoDetalheOut` (campos do resumo + `conteudo`) | 401, 404 |
 | `GET` | `/openapi/v1.json` | gerado (só em Development) | spec OpenAPI 3.1 | — |
 | `GET` | `/swagger` | Swagger UI (só em Development) | tela para explorar e testar as rotas | — |
 
@@ -82,6 +87,42 @@ Com a API configurada e as migrations aplicadas:
 
 ```sh
 curl http://localhost:8080/api/v1/branding/highlights
+```
+
+### Histórico de exportações
+
+`GET /api/v1/exportacoes` lista o que já foi exportado (a tabela `comunicados_exportados`
+só recebe inclusões). O sistema não envia nada por conta própria, então o histórico da tela
+"Histórico de envios" é o histórico de exportações.
+
+- `publico` (opcional): `cliente`, `comercial`, `suporte` ou `interno`.
+- `busca` (opcional): casa com parte da chave da Release ou do título executivo, sem
+  diferenciar maiúsculas (`ILIKE`). `%` e `_` digitados são escapados e valem como texto,
+  não como curinga.
+- Ordem: `geradoEm` decrescente, com o `id` como desempate para a paginação ser estável.
+  `total` conta todos os registros do filtro, não só a página.
+- `tituloExecutivo` é o título **atual** da versão exportada (mesmo público). Se a versão
+  for reaberta e editada depois da exportação, o título pode divergir do `conteudo`
+  gravado; o `conteudo` é sempre o que foi exportado.
+- `geradoPor` pode vir `null` em exportações sem nome registrado.
+
+```json
+{
+  "itens": [
+    {
+      "id": "3f2b8c1e-7d4a-4e6b-9a51-0c8d2e7f1a90",
+      "chaveRelease": "INV-123",
+      "tituloExecutivo": "Emissão de NF-e mais rápida",
+      "publico": "cliente",
+      "formato": "markdown",
+      "geradoPor": "Maria Souza",
+      "geradoEm": "2026-11-03T14:20:00Z"
+    }
+  ],
+  "total": 42,
+  "pagina": 1,
+  "tamanho": 20
+}
 ```
 
 ### Exemplo de resposta de `/processar`

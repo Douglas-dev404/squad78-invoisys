@@ -12,7 +12,8 @@ InvoiSys.Application/
 ├── Autenticacao/
 │   └── RecuperacaoSenha.cs             # esqueci a senha: solicitar, reenviar, redefinir
 ├── Consulta/
-│   └── ConsultaReleases.cs             # listagem (resumo) e detalhe (agregado completo)
+│   ├── ConsultaReleases.cs             # listagem (resumo) e detalhe (agregado completo)
+│   └── ConsultaExportacoes.cs          # histórico de exportações: lista paginada e detalhe
 ├── Pipeline/
 │   └── PipelineGeracaoReleaseNote.cs   # o caso de uso central
 ├── Revisao/
@@ -118,6 +119,16 @@ Só leitura. `ListarAsync(status?)` devolve `ReleaseResumo` (chave, status, cria
 `IReleaseRepository.ListarResumosAsync`, projeção leve sem carregar o agregado.
 `DetalharAsync(chave)` devolve a `Release` completa ou lança `ReleaseNaoEncontradaException`
 (404 na API). Registrado como **Scoped**.
+
+---
+
+## `ConsultaExportacoes`
+
+Só leitura, sobre `IComunicadoExportadoRepository`. `ListarAsync(publico?, busca?, pagina, tamanho)`
+devolve `PaginaExportacoes` (itens da página e total). `DetalharAsync(id)` devolve
+`ExportacaoDetalhe` ou lança `ExportacaoNaoEncontradaException` (404 na API). Os valores
+padrão e o limite de `pagina`/`tamanho` ficam na API (validação de entrada). Registrado como
+**Scoped**.
 
 ---
 
