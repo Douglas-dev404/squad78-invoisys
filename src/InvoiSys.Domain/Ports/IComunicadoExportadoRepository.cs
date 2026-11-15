@@ -13,4 +13,34 @@ public interface IComunicadoExportadoRepository
         Guid releaseId,
         PublicoAlvo? publico = null,
         CancellationToken cancellationToken = default);
+
+    Task<PaginaExportacoes> ListarAsync(
+        PublicoAlvo? publico,
+        string? busca,
+        int pagina,
+        int tamanho,
+        CancellationToken cancellationToken = default);
+
+    Task<ExportacaoDetalhe?> BuscarDetalheAsync(Guid id, CancellationToken cancellationToken = default);
 }
+
+public sealed record ExportacaoResumo(
+    Guid Id,
+    string ChaveRelease,
+    string? TituloExecutivo,
+    PublicoAlvo Publico,
+    FormatoExportacao Formato,
+    string? GeradoPor,
+    DateTimeOffset GeradoEm);
+
+public sealed record ExportacaoDetalhe(
+    Guid Id,
+    string ChaveRelease,
+    string? TituloExecutivo,
+    PublicoAlvo Publico,
+    FormatoExportacao Formato,
+    string? GeradoPor,
+    DateTimeOffset GeradoEm,
+    string? Conteudo);
+
+public sealed record PaginaExportacoes(IReadOnlyList<ExportacaoResumo> Itens, int Total);

@@ -1,6 +1,8 @@
 using System.Security.Claims;
 using InvoiSys.Api.Auth;
 using InvoiSys.Api.Contracts;
+using InvoiSys.Api.Validacao;
+using InvoiSys.Application.Consulta;
 using InvoiSys.Application.Exportacao;
 using InvoiSys.Application.Revisao;
 using InvoiSys.Domain.Entities;
@@ -11,6 +13,9 @@ namespace InvoiSys.Api.Endpoints;
 
 public static class ExportacaoEndpoints
 {
+    private const int PaginaPadrao = 1;
+    private const int TamanhoPadrao = 20;
+
     public static IEndpointRouteBuilder MapExportacaoEndpoints(this IEndpointRouteBuilder rotas)
     {
         var grupo = rotas.MapGroup("/api/v1/releases").WithTags("exportacao")
@@ -25,7 +30,59 @@ public static class ExportacaoEndpoints
             .ProducesProblem(StatusCodes.Status409Conflict)
             .ProducesProblem(StatusCodes.Status422UnprocessableEntity);
 
+        var historico = rotas.MapGroup("/api/v1/exportacoes").WithTags("exportacao")
+            .RequireAuthorization()
+            .ProducesProblem(StatusCodes.Status401Unauthorized);
+
+        historico.MapGet("/", ListarExportacoesAsync)
+            .WithName("ListarExportacoes")
+            .WithSummary("Lista o histórico de exportações, paginado e do mais recente para o mais antigo.")
+            .ComValidacao<ListarExportacoesIn>()
+            .Produces<PaginaOut<ExportacaoResumoOut>>()
+            .ProducesProblem(StatusCodes.Status422UnprocessableEntity);
+
+        historico.MapGet("/{id:guid}", BuscarExportacaoAsync)
+            .WithName("BuscarExportacao")
+            .WithSummary("Consulta uma exportação com o conteúdo gerado.")
+            .Produces<ExportacaoDetalheOut>()
+            .ProducesProblem(StatusCodes.Status404NotFound);
+
         return rotas;
+    }
+
+    private static async Task<IResult> ListarExportacoesAsync(
+        [AsParameters] ListarExportacoesIn filtro,
+        [FromServices] ConsultaExportacoes consulta,
+        CancellationToken cancellationToken)
+    {
+        PublicoAlvo? publico = PublicoAlvoExtensions.TentarConverter(filtro.Publico, out var convertido)
+            ? convertido
+            : null;
+        var pagina = filtro.Pagina ?? PaginaPadrao;
+        var tamanho = filtro.Tamanho ?? TamanhoPadrao;
+
+        var resultado = await consulta.ListarAsync(publico, filtro.Busca, pagina, tamanho, cancellationToken);
+
+        return Results.Ok(new PaginaOut<ExportacaoResumoOut>(
+            [.. resultado.Itens.Select(ExportacaoResumoOut.De)],
+            resultado.Total,
+            pagina,
+            tamanho));
+    }
+
+    private static async Task<IResult> BuscarExportacaoAsync(
+        Guid id,
+        [FromServices] ConsultaExportacoes consulta,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            return Results.Ok(ExportacaoDetalheOut.De(await consulta.DetalharAsync(id, cancellationToken)));
+        }
+        catch (ExportacaoNaoEncontradaException exc)
+        {
+            return Results.Problem(detail: exc.Message, statusCode: StatusCodes.Status404NotFound);
+        }
     }
 
     private static async Task<IResult> ExportarAsync(

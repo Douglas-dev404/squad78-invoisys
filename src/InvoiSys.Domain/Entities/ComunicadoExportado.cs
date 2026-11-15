@@ -4,6 +4,9 @@ namespace InvoiSys.Domain.Entities;
 
 public sealed class ReleaseNaoAprovadaException(string mensagem) : Exception(mensagem);
 
+public sealed class ExportacaoNaoEncontradaException(Guid id)
+    : Exception($"Exportação {id} não encontrada.");
+
 public sealed class ComunicadoExportado
 {
     private ComunicadoExportado()

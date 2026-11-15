@@ -50,6 +50,7 @@ public static class DependencyInjection
         services.AddScoped<ConsultaReleases>();
         services.AddScoped<ConsultaDashboard>();
         services.AddScoped<ConsultaDestaques>();
+        services.AddScoped<ConsultaExportacoes>();
         services.AddScoped<ExportacaoComunicado>();
         services.AddScoped<Acesso.Autenticacao>();
         services.AddScoped<AdministracaoUsuarios>();
