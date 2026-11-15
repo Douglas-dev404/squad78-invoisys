@@ -17,6 +17,7 @@ InvoiSys.Api/
 │   ├── DashboardEndpoints.cs      # GET /api/v1/dashboard (KPIs, últimos 7 dias, recentes, qualidade da IA)
 │   ├── UsuarioEndpoints.cs        # rotas /api/v1/usuarios (só admin: cadastrar, listar, desativar)
 │   ├── RevisaoEndpoints.cs        # revisão humana por público (aprovar, reprovar, reabrir)
+│   ├── ExportacaoEndpoints.cs     # exportar (POST) e histórico de exportações (GET /api/v1/exportacoes)
 │   └── ItemComunicadoEndpoints.cs # revisão de item (editar, excluir, reincluir)
 ├── Contracts/
 │   ├── AuthContracts.cs           # DTOs de sessão (LoginIn, LoginOut, UsuarioOut)
@@ -33,7 +34,7 @@ InvoiSys.Api/
 
 ## Endpoints atuais
 
-> **Autenticação:** todas as rotas `/api/v1/releases/**` e `/api/v1/dashboard` exigem `Authorization: Bearer <token>` (401 sem ele, com token inválido/expirado ou de usuário inexistente/desativado). Públicas: `/health` e `/api/v1/auth/*`.
+> **Autenticação:** todas as rotas `/api/v1/releases/**`, `/api/v1/exportacoes/**` e `/api/v1/dashboard` exigem `Authorization: Bearer <token>` (401 sem ele, com token inválido/expirado ou de usuário inexistente/desativado). Públicas: `/health` e `/api/v1/auth/*`.
 
 | Método | Rota | Handler | Resposta | Erros |
 |---|---|---|---|---|
@@ -61,6 +62,9 @@ InvoiSys.Api/
 | `PATCH` | `/api/v1/releases/{chaveRelease}/itens/{itemId}` | `EditarItemAsync` → `RevisaoComunicado` | `ItemRevisaoOut` · corpo `{ "texto": "..." }` | 404, 409, 422 |
 | `POST` | `/api/v1/releases/{chaveRelease}/itens/{itemId}/excluir` | `ExcluirItemAsync` → `RevisaoComunicado` | `ItemRevisaoOut` · corpo opcional `{ "motivo": "..." }` | 404, 409 |
 | `POST` | `/api/v1/releases/{chaveRelease}/itens/{itemId}/reincluir` | `ReincluirItemAsync` → `RevisaoComunicado` | `ItemRevisaoOut` | 404, 409 |
+| `POST` | `/api/v1/releases/{chaveRelease}/exportar` | `ExportarAsync` → `ExportacaoComunicado` | 201 `ComunicadoExportadoOut` (com `conteudo`) · corpo `{ "publico", "formato": "markdown" }` | 404, 409 (versão não aprovada), 422 |
+| `GET` | `/api/v1/exportacoes?pagina=&tamanho=&publico=&busca=` | `ListarAsync` → `ConsultaExportacoes` | `PaginaOut<ExportacaoResumoOut>` `{ itens, total, pagina, tamanho }`, mais recente primeiro, sem `conteudo`. Padrão página 1, tamanho 20 (máx. 100). `busca` casa parte da chave ou do título, sem diferenciar maiúsculas (`%` e `_` são texto) | 422 |
+| `GET` | `/api/v1/exportacoes/{id}` | `BuscarAsync` → `ConsultaExportacoes` | `ExportacaoDetalheOut` (os campos da lista + `conteudo`) | 404 |
 | `GET` | `/openapi/v1.json` | gerado (só em Development) | spec OpenAPI 3.1 | — |
 | `GET` | `/swagger` | Swagger UI (só em Development) | tela para explorar e testar as rotas | — |
 

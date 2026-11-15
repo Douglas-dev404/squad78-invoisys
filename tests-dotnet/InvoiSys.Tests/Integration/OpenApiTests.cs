@@ -64,6 +64,8 @@ public class OpenApiTests
             "/health",
             "/api/v1/branding/highlights",
             "/api/v1/dashboard",
+            "/api/v1/exportacoes",
+            "/api/v1/exportacoes/{id}",
             "/api/v1/releases",
             "/api/v1/releases/{chaveRelease}",
             "/api/v1/releases/{chaveRelease}/aprovar",
