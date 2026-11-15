@@ -86,7 +86,7 @@ export function ItemRevisavel({ item, podeEditar, revisao, children }) {
   return (
     <div className="space-y-sm" aria-busy={salvando}>
       {editando ? (
-        <div className="space-y-xs">
+        <div className="space-y-xs" onKeyDown={aoTeclarNoEditor}>
           <label htmlFor={idEditor} className="sr-only">Texto do item</label>
           <textarea
             id={idEditor}
@@ -95,7 +95,6 @@ export function ItemRevisavel({ item, podeEditar, revisao, children }) {
               setRascunho(event.target.value);
               if (erroLocal) setErroLocal(null);
             }}
-            onKeyDown={aoTeclarNoEditor}
             disabled={salvando}
             rows={4}
             autoFocus
