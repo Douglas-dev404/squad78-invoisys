@@ -19,6 +19,9 @@ public sealed class FakeUsuarioRepository : IUsuarioRepository
     public Task<bool> ExisteAlgumAsync(CancellationToken cancellationToken = default) =>
         Task.FromResult(Usuarios.Count > 0);
 
+    public Task<IReadOnlyList<Usuario>> ListarAsync(CancellationToken cancellationToken = default) =>
+        Task.FromResult<IReadOnlyList<Usuario>>([.. Usuarios.OrderBy(u => u.Nome)]);
+
     public Task SalvarAsync(Usuario usuario, CancellationToken cancellationToken = default)
     {
         if (!Usuarios.Contains(usuario))

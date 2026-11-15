@@ -12,9 +12,9 @@ public static class UsuarioEndpoints
     public static IEndpointRouteBuilder MapUsuarioEndpoints(this IEndpointRouteBuilder rotas)
     {
         var grupo = rotas.MapGroup("/api/v1/usuarios").WithTags("usuarios").RequireAuthorization("Admin");
-        grupo.MapPost("/", CadastrarAsync).ComValidacao<CadastrarUsuarioIn>().Produces<UsuarioOut>(StatusCodes.Status201Created)
+        grupo.MapPost("/", CadastrarAsync).ComValidacao<CadastrarUsuarioIn>().Produces<UsuarioAdminOut>(StatusCodes.Status201Created)
             .ProducesProblem(StatusCodes.Status409Conflict).ProducesProblem(StatusCodes.Status422UnprocessableEntity);
-        grupo.MapGet("/", ListarAsync).Produces<IReadOnlyList<UsuarioOut>>();
+        grupo.MapGet("/", ListarAsync).Produces<IReadOnlyList<UsuarioAdminOut>>();
         grupo.MapPost("/{id:guid}/desativar", DesativarAsync).Produces(StatusCodes.Status204NoContent)
             .ProducesProblem(StatusCodes.Status404NotFound).ProducesProblem(StatusCodes.Status422UnprocessableEntity);
         return rotas;
@@ -66,6 +66,6 @@ public static class UsuarioEndpoints
         }
     }
 
-    private static UsuarioOut ParaOut(Usuario usuario) =>
+    private static UsuarioAdminOut ParaOut(Usuario usuario) =>
         new(usuario.Id, usuario.Nome, usuario.Email, usuario.Papel, usuario.Ativo, usuario.CriadoEm);
 }
