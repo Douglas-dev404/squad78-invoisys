@@ -1,6 +1,7 @@
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
-import { ROLE_LABELS } from '../../data/users.mock';
+import { useProfile } from '../../hooks/useProfile';
+import { ROLE_LABELS } from '../../utils/constants';
 import { Layout } from '../../components/Layout/Layout';
 import { ProfileField } from '../../components/ProfileField/ProfileField';
 
@@ -18,7 +19,9 @@ function formatDate(isoDate) {
 export function ProfilePage() {
   const navigate = useNavigate();
   const { usuario } = useAuth();
-  const profile = usuario ? { ...usuario, roleLabel: ROLE_LABELS[usuario.role] } : null;
+  const { profile: atualizado } = useProfile();
+  const base = atualizado ?? usuario;
+  const profile = base ? { ...base, roleLabel: ROLE_LABELS[base.role] ?? base.role } : null;
 
   return (
     <Layout>
@@ -62,7 +65,7 @@ export function ProfilePage() {
             <ProfileField icon="mail" label="E-mail" value={profile.email} />
             <ProfileField
               icon="calendar_today"
-              label="Conta criada em"
+              label="Membro desde"
               value={formatDate(profile.createdAt)}
             />
           </div>

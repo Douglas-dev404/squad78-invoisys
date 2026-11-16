@@ -1,36 +1,41 @@
-import { useState, useEffect, useCallback, useMemo } from 'react';
-import {
-  fetchUsers,
-  updateUserPermissions,
-  toggleUserStatus,
-} from '../services/users.service';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { deactivateUser, fetchUsers } from '../services/users.service';
 
+const mensagem = (err, padrao) => err?.detail || err?.message || padrao;
+
+/**
+ * Lista de usuários (GET /usuarios), seleção e desativação.
+ * @returns {{ users: Array, loading: boolean, error: string|null, refetch: Function,
+ *   selectedUser: Object|null, selectUser: Function, clearSelection: Function,
+ *   deactivate: Function, isSaving: boolean, saveError: string|null }}
+ */
 export function useUserManagement() {
-  const [users, setUsers] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-
+  const [tentativa, setTentativa] = useState(0);
+  const [resultado, setResultado] = useState(null);
   const [selectedUserId, setSelectedUserId] = useState(null);
-  const [draftPermissions, setDraftPermissions] = useState(null);
   const [isSaving, setIsSaving] = useState(false);
   const [saveError, setSaveError] = useState(null);
 
-  const loadUsers = useCallback(async () => {
-    try {
-      setLoading(true);
-      setError(null);
-      const data = await fetchUsers();
-      setUsers(data);
-    } catch (err) {
-      setError(err.message || 'Erro ao carregar usuários');
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
   useEffect(() => {
-    loadUsers();
-  }, [loadUsers]);
+    let cancelado = false;
+
+    fetchUsers()
+      .then((users) => {
+        if (!cancelado) setResultado({ tentativa, users, erro: null });
+      })
+      .catch((err) => {
+        if (!cancelado) setResultado({ tentativa, users: [], erro: mensagem(err, 'Erro ao carregar usuários.') });
+      });
+
+    return () => {
+      cancelado = true;
+    };
+  }, [tentativa]);
+
+  const refetch = useCallback(() => setTentativa((n) => n + 1), []);
+
+  const loading = resultado === null || resultado.tentativa !== tentativa;
+  const users = useMemo(() => resultado?.users ?? [], [resultado]);
 
   const selectedUser = useMemo(
     () => users.find((user) => user.id === selectedUserId) || null,
@@ -44,72 +49,34 @@ export function useUserManagement() {
 
   const clearSelection = useCallback(() => {
     setSelectedUserId(null);
-    setDraftPermissions(null);
     setSaveError(null);
   }, []);
 
-  useEffect(() => {
-    if (selectedUser) {
-      setDraftPermissions({ ...selectedUser.permissions });
-    }
-  }, [selectedUser]);
-
-  const togglePermission = useCallback((key) => {
-    setDraftPermissions((prev) => ({ ...prev, [key]: !prev[key] }));
-  }, []);
-
-  const savePermissions = useCallback(async () => {
-    if (!selectedUserId || !draftPermissions) return;
+  const deactivate = useCallback(async () => {
+    if (!selectedUserId) return false;
+    setIsSaving(true);
+    setSaveError(null);
     try {
-      setIsSaving(true);
-      setSaveError(null);
-      const updatedUser = await updateUserPermissions(
-        selectedUserId,
-        draftPermissions
-      );
-      setUsers((prev) =>
-        prev.map((user) => (user.id === updatedUser.id ? updatedUser : user))
-      );
+      await deactivateUser(selectedUserId);
+      refetch();
+      return true;
     } catch (err) {
-      setSaveError(err.message || 'Erro ao salvar permissões');
+      setSaveError(mensagem(err, 'Não foi possível desativar o usuário.'));
+      return false;
     } finally {
       setIsSaving(false);
     }
-  }, [selectedUserId, draftPermissions]);
-
-  const toggleStatus = useCallback(async () => {
-    if (!selectedUserId) return;
-    try {
-      setIsSaving(true);
-      setSaveError(null);
-      const updatedUser = await toggleUserStatus(selectedUserId);
-      setUsers((prev) =>
-        prev.map((user) => (user.id === updatedUser.id ? updatedUser : user))
-      );
-    } catch (err) {
-      setSaveError(err.message || 'Erro ao atualizar status do usuário');
-    } finally {
-      setIsSaving(false);
-    }
-  }, [selectedUserId]);
-
-  const clearError = useCallback(() => {
-    setError(null);
-  }, []);
+  }, [selectedUserId, refetch]);
 
   return {
     users,
     loading,
-    error,
-    clearError,
-    refetch: loadUsers,
+    error: loading ? null : resultado.erro,
+    refetch,
     selectedUser,
     selectUser,
     clearSelection,
-    draftPermissions,
-    togglePermission,
-    savePermissions,
-    toggleStatus,
+    deactivate,
     isSaving,
     saveError,
   };
