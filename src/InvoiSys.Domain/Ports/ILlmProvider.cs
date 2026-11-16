@@ -15,9 +15,11 @@ public interface ILlmProvider
     Task<string> ReescreverLinguagemNegocioAsync(
         IReadOnlyList<string> textosFonte,
         CategoriaAlteracao categoria,
+        PublicoAlvo publico = PublicoAlvo.Cliente,
         CancellationToken cancellationToken = default);
 
     Task<(string Titulo, string Resumo)> GerarTituloEResumoAsync(
         IReadOnlyList<string> itensTexto,
+        PublicoAlvo publico = PublicoAlvo.Cliente,
         CancellationToken cancellationToken = default);
 }

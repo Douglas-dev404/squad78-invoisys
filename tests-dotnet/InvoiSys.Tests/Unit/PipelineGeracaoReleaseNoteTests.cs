@@ -170,4 +170,82 @@ public class PipelineGeracaoReleaseNoteTests
         (await acao.Should().ThrowAsync<ReleaseSemHistoriasException>()).WithMessage("*REL-VAZIA*");
         (await repositorio.BuscarPorChaveJiraAsync("REL-VAZIA")).Should().BeNull();
     }
+
+    [Fact]
+    public async Task Sem_lista_de_publicos_so_gera_a_versao_cliente()
+    {
+        var jira = new FakeJiraClient { Historias = [Historia("INV-1")] };
+        var llm = new FakeLlmProvider();
+
+        var release = await new PipelineGeracaoReleaseNote(jira, llm, new FakeReleaseRepository(), new FakeBloqueioProcessamento())
+            .ExecutarAsync("REL-1");
+
+        release.Versoes.Select(v => v.Publico).Should().Equal(PublicoAlvo.Cliente);
+        llm.PublicosReescritos.Should().OnlyContain(p => p == PublicoAlvo.Cliente);
+        llm.PublicosTituloEResumo.Should().Equal(PublicoAlvo.Cliente);
+    }
+
+    [Fact]
+    public async Task Dois_publicos_geram_duas_versoes_sem_repetir_agrupamento_nem_categorizacao()
+    {
+        var jira = new FakeJiraClient { Historias = [Historia("INV-1"), Historia("INV-2"), Historia("INV-3")] };
+        var llm = new FakeLlmProvider { GruposFixos = [["INV-1", "INV-2"], ["INV-3"]] };
+
+        var release = await new PipelineGeracaoReleaseNote(jira, llm, new FakeReleaseRepository(), new FakeBloqueioProcessamento())
+            .ExecutarAsync("REL-1", [PublicoAlvo.Comercial, PublicoAlvo.Cliente]);
+
+        llm.ChamadasAgrupar.Should().Be(1, "agrupar roda uma vez para todos os públicos");
+        llm.TextosCategorizados.Should().HaveCount(2, "categorizar roda uma vez por grupo, não por público");
+        llm.PublicosReescritos.Should().Equal(
+            PublicoAlvo.Cliente, PublicoAlvo.Cliente, PublicoAlvo.Comercial, PublicoAlvo.Comercial);
+        llm.PublicosTituloEResumo.Should().Equal(PublicoAlvo.Cliente, PublicoAlvo.Comercial);
+
+        release.Versoes.Select(v => v.Publico).Should().BeEquivalentTo([PublicoAlvo.Cliente, PublicoAlvo.Comercial]);
+        var comercial = release.VersaoPara(PublicoAlvo.Comercial)!;
+        comercial.Status.Should().Be(StatusRevisao.AguardandoRevisao);
+        comercial.Itens.Should().HaveCount(2);
+        comercial.Itens.Should().OnlyContain(i => i.Texto.EndsWith("(comercial)"));
+        comercial.Itens.Select(i => i.Categoria)
+            .Should().Equal(release.VersaoCliente!.Itens.Select(i => i.Categoria), "a categoria é compartilhada");
+    }
+
+    [Fact]
+    public async Task Gerar_outro_publico_nao_sobrescreve_versao_aprovada()
+    {
+        var repositorio = new FakeReleaseRepository();
+        var jira = new FakeJiraClient { Historias = [Historia("INV-1")] };
+        var release = await new PipelineGeracaoReleaseNote(jira, new FakeLlmProvider(), repositorio, new FakeBloqueioProcessamento())
+            .ExecutarAsync("REL-1");
+        release.Aprovar(UmRevisor("revisora@invoisys.com"), DateTimeOffset.UtcNow);
+        var textoAprovado = release.VersaoCliente!.Itens[0].Texto;
+
+        var llm = new FakeLlmProvider { TextoReescrito = "Outro texto" };
+        await new PipelineGeracaoReleaseNote(jira, llm, repositorio, new FakeBloqueioProcessamento())
+            .ExecutarAsync("REL-1", [PublicoAlvo.Suporte]);
+
+        release.VersaoCliente!.Status.Should().Be(StatusRevisao.Aprovado);
+        release.VersaoCliente.Itens[0].Texto.Should().Be(textoAprovado);
+        release.VersaoPara(PublicoAlvo.Suporte)!.Status.Should().Be(StatusRevisao.AguardandoRevisao);
+        llm.PublicosReescritos.Should().OnlyContain(p => p == PublicoAlvo.Suporte);
+    }
+
+    [Fact]
+    public async Task Pedir_publico_ja_aprovado_recusa_antes_de_chamar_Jira_ou_LLM()
+    {
+        var repositorio = new FakeReleaseRepository();
+        var release = await new PipelineGeracaoReleaseNote(
+            new FakeJiraClient { Historias = [Historia("INV-1")] },
+            new FakeLlmProvider(),
+            repositorio, new FakeBloqueioProcessamento()).ExecutarAsync("REL-1");
+        release.Aprovar(UmRevisor("revisora@invoisys.com"), DateTimeOffset.UtcNow);
+
+        var jira = new FakeJiraClient { Historias = [Historia("INV-1")] };
+        var llm = new FakeLlmProvider { FalhaAoChamar = new InvalidOperationException("não chamar o LLM") };
+        var acao = async () => await new PipelineGeracaoReleaseNote(jira, llm, repositorio, new FakeBloqueioProcessamento())
+            .ExecutarAsync("REL-1", [PublicoAlvo.Interno, PublicoAlvo.Cliente]);
+
+        await acao.Should().ThrowAsync<RevisaoHumanaObrigatoriaException>();
+        jira.ChavesConsultadas.Should().BeEmpty();
+        release.VersaoPara(PublicoAlvo.Interno).Should().BeNull();
+    }
 }

@@ -194,5 +194,5 @@ forçada). Sem rede, sem token, determinístico.
 | Caso de uso | Issue | Observação |
 |---|---|---|
 | ~~Exportar Markdown~~ feito em `Exportacao/` (`ExportacaoComunicado` + `RenderizadorMarkdown`) | #24 | ver [P-03](../../docs/decisoes-arquiteturais.md#p-03--onde-mora-o-render-da-exportação) |
-| Gerar versões Comercial/Suporte/Interno | Fase 6 | chamar `ConcluirProcessamento(..., publico)` por público, com prompt por público |
+| ~~Gerar versões Comercial/Suporte/Interno~~ feito: `ExecutarAsync(chave, publicos)` agrupa e categoriza uma vez, reescreve e gera título/resumo por público (`?publicos=` no `POST /processar`) | #88 | prompts em [`prompts/README.md`](../../prompts/README.md#prompts-por-público-88); versão aprovada de um público não é tocada ao gerar outro |
 | Paralelizar o loop por grupo | opcional | só se a latência de Releases grandes incomodar |

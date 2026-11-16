@@ -1,4 +1,5 @@
 using InvoiSys.Api.Contracts;
+using InvoiSys.Api.Validacao;
 using InvoiSys.Application.Consulta;
 using InvoiSys.Application.Pipeline;
 using InvoiSys.Domain.Entities;
@@ -37,8 +38,9 @@ public static class ReleaseEndpoints
             .ProducesProblem(StatusCodes.Status502BadGateway);
 
         grupo.MapPost("/{chaveRelease}/processar", ProcessarReleaseAsync)
+            .ComValidacao<ProcessarReleaseIn>()
             .WithName("ProcessarRelease")
-            .WithSummary("Roda o pipeline de IA completo sobre a Release.")
+            .WithSummary("Roda o pipeline de IA sobre a Release. ?publicos=cliente,comercial gera uma versão por público (padrão: cliente).")
             .Produces<ReleaseProcessadaOut>()
             .ProducesProblem(StatusCodes.Status409Conflict)
             .ProducesProblem(StatusCodes.Status422UnprocessableEntity)
@@ -146,12 +148,19 @@ public static class ReleaseEndpoints
 
     private static async Task<IResult> ProcessarReleaseAsync(
         string chaveRelease,
+        [AsParameters] ProcessarReleaseIn entrada,
         [FromServices] PipelineGeracaoReleaseNote pipeline,
         CancellationToken cancellationToken)
     {
+        var publicos = ProcessarReleaseIn.Valores(entrada.Publicos)
+            .Select(valor => PublicoAlvoExtensions.TentarConverter(valor, out var publico)
+                ? publico
+                : throw new InvalidOperationException($"Público '{valor}' passou pela validação sem ser válido."))
+            .ToList();
+
         try
         {
-            var release = await pipeline.ExecutarAsync(chaveRelease, cancellationToken);
+            var release = await pipeline.ExecutarAsync(chaveRelease, publicos, cancellationToken);
 
             return Results.Ok(new ReleaseProcessadaOut(
                 ChaveJira: release.ChaveJira,

@@ -81,16 +81,20 @@ public abstract partial class ChatCompletionsLlmProvider(
     public async Task<string> ReescreverLinguagemNegocioAsync(
         IReadOnlyList<string> textosFonte,
         CategoriaAlteracao categoria,
+        PublicoAlvo publico = PublicoAlvo.Cliente,
         CancellationToken cancellationToken = default)
     {
         var prompt = prompts.Montar(
-            "04_reescrever_linguagem_negocio.md",
+            ArquivoDoPublico("04_reescrever_linguagem_negocio.md", "reescrever", publico),
             ("categoria", categoria.ParaValor()),
             ("textos_fonte", string.Join("\n", textosFonte.Select(t => $"- {t}"))));
 
         var resposta = await ChamarAsync(prompt, jsonMode: false, cancellationToken);
         return SemAspasEmVolta(resposta.Trim());
     }
+
+    internal static string ArquivoDoPublico(string arquivoCliente, string estagio, PublicoAlvo publico) =>
+        publico == PublicoAlvo.Cliente ? arquivoCliente : $"{estagio}.{publico.ParaValor()}.md";
 
     private static string SemAspasEmVolta(string texto) =>
         texto.Length >= 2 && texto[0] is ('"' or '“') && texto[^1] is ('"' or '”')
@@ -99,10 +103,11 @@ public abstract partial class ChatCompletionsLlmProvider(
 
     public async Task<(string Titulo, string Resumo)> GerarTituloEResumoAsync(
         IReadOnlyList<string> itensTexto,
+        PublicoAlvo publico = PublicoAlvo.Cliente,
         CancellationToken cancellationToken = default)
     {
         var prompt = prompts.Montar(
-            "05_gerar_titulo_resumo.md",
+            ArquivoDoPublico("05_gerar_titulo_resumo.md", "titulo_resumo", publico),
             ("itens_texto", string.Join("\n", itensTexto.Select(t => $"- {t}"))));
 
         var resposta = await ChamarAsync(prompt, jsonMode: true, cancellationToken);

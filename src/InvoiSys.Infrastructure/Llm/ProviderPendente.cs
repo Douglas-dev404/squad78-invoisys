@@ -22,11 +22,13 @@ public sealed class ProviderPendente(string chaveConfiguracao = "OpenRouter:ApiK
     public Task<string> ReescreverLinguagemNegocioAsync(
         IReadOnlyList<string> textosFonte,
         CategoriaAlteracao categoria,
+        PublicoAlvo publico = PublicoAlvo.Cliente,
         CancellationToken cancellationToken = default) =>
         throw new ProviderNaoConfiguradoException(_mensagem);
 
     public Task<(string Titulo, string Resumo)> GerarTituloEResumoAsync(
         IReadOnlyList<string> itensTexto,
+        PublicoAlvo publico = PublicoAlvo.Cliente,
         CancellationToken cancellationToken = default) =>
         throw new ProviderNaoConfiguradoException(_mensagem);
 }
