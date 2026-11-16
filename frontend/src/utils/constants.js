@@ -42,6 +42,13 @@ export const UI_STRINGS = {
   RESENDING_LINK_LABEL: 'Reenviando...',
   RESEND_SUCCESS_MESSAGE: 'Novo link enviado! Verifique sua caixa de entrada.',
 
+    // Dashboard
+  DASHBOARD_LOAD_ERROR: 'Não foi possível carregar o Dashboard.',
+  DASHBOARD_EMPTY: 'Processe sua primeira Release',
+  DASHBOARD_EMPTY_HINT: 'Os indicadores aparecem assim que a primeira Release for processada.',
+  DASHBOARD_EMPTY_BUTTON: 'Ir para Releases',
+  DASHBOARD_QUALITY_TITLE: 'Qualidade da IA',
+
     // Releases
   RELEASES_TITLE: 'Releases',
   RELEASES_PROCESS_BUTTON: 'Processar Release',
