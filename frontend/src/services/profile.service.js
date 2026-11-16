@@ -1,16 +1,4 @@
-import { profileMock } from '../data/profile.mock';
+import { getCurrentUser } from './auth.service';
 
-export async function fetchProfile() {
-  // TODO: Substituir mock por chamada HTTP real ao backend .NET:
-  // const response = await fetch(ENDPOINTS.PROFILE.ME, {
-  //   headers: { Authorization: `Bearer ${localStorage.getItem('auth_token')}` },
-  // });
-  // if (!response.ok) throw new Error('Não foi possível carregar os dados do perfil.');
-  // return response.json();
-
-  return new Promise((resolve) => {
-    setTimeout(() => {
-      resolve(profileMock);
-    }, 700);
-  });
-}
+/** Dados frescos do usuário logado (`GET /auth/me`). */
+export const fetchProfile = (options) => getCurrentUser(options);
