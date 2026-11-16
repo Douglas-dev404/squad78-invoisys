@@ -6,6 +6,7 @@
 | [modelagem-de-dominio.md](modelagem-de-dominio.md) | quem mexe em entidade, migration ou query | ERD, relacionamentos, fluxo de estados, tabela por tabela, índices, CHECKs, triggers |
 | [contratos-integracao.md](contratos-integracao.md) | quem mexe nos adapters Jira/OpenRouter | O que foi verificado contra a doc oficial × o que ainda é suposição |
 | [deploy.md](deploy.md) | quem mexe em infraestrutura ou precisa refazer o ambiente | Arquitetura de produção (Azure + Render), App Settings, CI/CD e rollback |
+| [guia-instalacao.md](guia-instalacao.md) | quem vai rodar o projeto pela primeira vez | Pré-requisitos, todas as variáveis de ambiente, Docker Compose, execução local, testes, primeiro uso e solução de problemas |
 | [erd.png](erd.png) / [erd.svg](erd.svg) | — | Diagrama entidade-relacionamento |
 | [plano-historias-jira-data-access.md](plano-historias-jira-data-access.md), [checklist-historias-jira-data-access.md](checklist-historias-jira-data-access.md) | histórico | Plano e checklist de uma tarefa já entregue (repository de `HistoriaJira` + Testcontainers). Ficam como referência de como planejar uma tarefa neste repo |
 
