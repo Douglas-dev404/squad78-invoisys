@@ -15,8 +15,17 @@ import { nomeArquivoMarkdown } from '../../utils/revisao';
  * @param {boolean} props.exportando
  * @param {string|null} props.erro mensagem da API (ex.: 409 "aprove a versão antes de exportar")
  * @param {Function} props.onClose
+ * @param {string} [props.mensagemCarregando] texto enquanto `exportando` (o histórico só busca, não gera)
  */
-export function ExportacaoModal({ chave, publico, exportacao, exportando, erro, onClose }) {
+export function ExportacaoModal({
+  chave,
+  publico,
+  exportacao,
+  exportando,
+  erro,
+  onClose,
+  mensagemCarregando = 'Gerando o Markdown…',
+}) {
   const [copiado, setCopiado] = useState(false);
   const [erroCopia, setErroCopia] = useState(null);
   const temporizador = useRef(null);
@@ -53,7 +62,7 @@ export function ExportacaoModal({ chave, publico, exportacao, exportando, erro, 
       <div className="space-y-md">
         {exportando && (
           <p role="status" className="font-body-md text-body-md text-on-surface-variant">
-            Gerando o Markdown…
+            {mensagemCarregando}
           </p>
         )}
 
