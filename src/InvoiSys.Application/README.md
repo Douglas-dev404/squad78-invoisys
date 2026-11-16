@@ -194,5 +194,6 @@ forçada). Sem rede, sem token, determinístico.
 | Caso de uso | Issue | Observação |
 |---|---|---|
 | ~~Exportar Markdown~~ feito em `Exportacao/` (`ExportacaoComunicado` + `RenderizadorMarkdown`) | #24 | ver [P-03](../../docs/decisoes-arquiteturais.md#p-03--onde-mora-o-render-da-exportação) |
+| ~~Exportar HTML~~ feito em `Exportacao/RenderizadorHtml` (texto escapado, arquivo autocontido); PDF fora | #89 | ver [ADR-032](../../docs/decisoes-arquiteturais.md#adr-032--exportação-em-html-autocontido-pdf-fica-fora) |
 | Gerar versões Comercial/Suporte/Interno | Fase 6 | chamar `ConcluirProcessamento(..., publico)` por público, com prompt por público |
 | Paralelizar o loop por grupo | opcional | só se a latência de Releases grandes incomodar |

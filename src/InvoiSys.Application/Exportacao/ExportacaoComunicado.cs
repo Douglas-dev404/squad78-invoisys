@@ -6,7 +6,7 @@ using InvoiSys.Domain.Ports;
 namespace InvoiSys.Application.Exportacao;
 
 public sealed class FormatoNaoSuportadoException(FormatoExportacao formato)
-    : Exception($"Formato '{formato.ParaValor()}' ainda não é suportado. Use markdown.");
+    : Exception($"Formato '{formato.ParaValor()}' ainda não é suportado. Use markdown ou html.");
 
 public sealed class ExportacaoComunicado(
     IReleaseRepository releases,
@@ -30,15 +30,17 @@ public sealed class ExportacaoComunicado(
                 $"Release {chaveRelease} não tem comunicado gerado para o público "
                 + $"{publico.ParaValor()}.");
 
-        if (formato != FormatoExportacao.Markdown)
+        var conteudo = formato switch
         {
-            throw new FormatoNaoSuportadoException(formato);
-        }
+            FormatoExportacao.Markdown => RenderizadorMarkdown.Renderizar(versao),
+            FormatoExportacao.Html => RenderizadorHtml.Renderizar(versao),
+            _ => throw new FormatoNaoSuportadoException(formato),
+        };
 
         var exportado = new ComunicadoExportado(
             versao,
             formato,
-            RenderizadorMarkdown.Renderizar(versao),
+            conteudo,
             null,
             gerador.Nome,
             gerador.Id);

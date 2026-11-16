@@ -91,6 +91,25 @@ public class ApiExportacaoTests
     }
 
     [Fact]
+    public async Task Exportar_em_html_responde_201_e_persiste_o_html()
+    {
+        var (releases, _) = await ReleaseSalva(aprovada: true);
+        var exportados = new FakeComunicadoExportadoRepository();
+
+        var resposta = await Exportar(releases, exportados, new { publico = "cliente", formato = "html" });
+
+        resposta.StatusCode.Should().Be(HttpStatusCode.Created);
+        var corpo = await resposta.Content.ReadFromJsonAsync<JsonElement>();
+        corpo.GetProperty("formato").GetString().Should().Be("html");
+
+        var salvo = exportados.Exportados.Should().ContainSingle().Subject;
+        salvo.Formato.Should().Be(FormatoExportacao.Html);
+        salvo.Conteudo.Should().StartWith("<!DOCTYPE html>");
+        salvo.Conteudo.Should().Contain("<li>Item publicado.</li>");
+        salvo.Conteudo.Should().NotContain("Item excluído.");
+    }
+
+    [Fact]
     public async Task Exportar_nao_inclui_item_excluido()
     {
         var (releases, _) = await ReleaseSalva(aprovada: true);
@@ -162,7 +181,6 @@ public class ApiExportacaoTests
     [InlineData(null, "markdown")]
     [InlineData("cliente", "docx")]
     [InlineData("cliente", null)]
-    [InlineData("cliente", "html")]
     [InlineData("cliente", "pdf")]
     public async Task Exportar_com_publico_ou_formato_invalido_ou_nao_suportado_responde_422(
         string? publico,
