@@ -24,6 +24,9 @@ export async function processarRelease(chave) {
   );
 }
 const caminhoRelease = (chave) => `/releases/${encodeURIComponent(chave)}`;
+/** Detalhe da Release com versões por público, histórias e execuções. 404 se a chave não existe. */
+export const buscarRelease = (chave) => api.get(caminhoRelease(chave));
+
 const caminhoItem = (chave, itemId) => `${caminhoRelease(chave)}/itens/${encodeURIComponent(itemId)}`;
 
 /** Troca o texto de um item. 200 com o item atualizado · 404 · 409 (versão aprovada) · 422 (texto vazio). */
