@@ -56,21 +56,29 @@ public sealed class FakeLlmProvider : ILlmProvider
         return grupos;
     }
 
+    public List<PublicoAlvo> PublicosReescritos { get; } = [];
+
+    public List<PublicoAlvo> PublicosTituloEResumo { get; } = [];
+
     public Task<string> ReescreverLinguagemNegocioAsync(
         IReadOnlyList<string> textosFonte,
         CategoriaAlteracao categoria,
+        PublicoAlvo publico = PublicoAlvo.Cliente,
         CancellationToken cancellationToken = default)
     {
         LancarSeConfigurado();
         GruposReescritos.Add(textosFonte);
-        return Task.FromResult(TextoReescrito);
+        PublicosReescritos.Add(publico);
+        return Task.FromResult(publico == PublicoAlvo.Cliente ? TextoReescrito : $"{TextoReescrito} ({publico.ParaValor()})");
     }
 
     public Task<(string Titulo, string Resumo)> GerarTituloEResumoAsync(
         IReadOnlyList<string> itensTexto,
+        PublicoAlvo publico = PublicoAlvo.Cliente,
         CancellationToken cancellationToken = default)
     {
         LancarSeConfigurado();
+        PublicosTituloEResumo.Add(publico);
         return Task.FromResult(TituloEResumo);
     }
 

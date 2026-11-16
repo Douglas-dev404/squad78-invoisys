@@ -52,3 +52,11 @@ public sealed record ReleaseDetalheOut(
     IReadOnlyList<HistoriaJiraOut> Historias,
     IReadOnlyList<VersaoComunicadoOut> Versoes,
     IReadOnlyList<ExecucaoPipelineOut> Execucoes);
+
+public sealed record ProcessarReleaseIn(string? Publicos)
+{
+    public static IReadOnlyList<string> Valores(string? publicos) =>
+        string.IsNullOrWhiteSpace(publicos)
+            ? []
+            : [.. publicos.Split(',', StringSplitOptions.TrimEntries)];
+}

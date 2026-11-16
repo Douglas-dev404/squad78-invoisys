@@ -3,6 +3,7 @@ using System.Net.Http.Json;
 using System.Text.Json;
 using FluentAssertions;
 using InvoiSys.Domain.Entities;
+using InvoiSys.Domain.Enums;
 using InvoiSys.Domain.Ports;
 using InvoiSys.Infrastructure.Llm;
 using InvoiSys.Tests.Fakes;
@@ -353,5 +354,39 @@ public class ApiReleasesTests
         var resposta = await client.GetAsync("/api/v1/releases/RELEASE-INEXISTENTE");
 
         resposta.StatusCode.Should().Be(HttpStatusCode.NotFound);
+    }
+
+    [Fact]
+    public async Task Processar_com_publicos_gera_uma_versao_por_publico()
+    {
+        var jira = new FakeJiraClient { Historias = [Historia("INV-1")] };
+        var llm = new FakeLlmProvider();
+        var repositorio = new FakeReleaseRepository();
+
+        using var app = CriarApp(jira, llm, repositorio);
+        using var client = app.CriarClienteAutenticado();
+
+        var resposta = await client.PostAsync("/api/v1/releases/RELEASE-2026-08/processar?publicos=cliente,comercial", null);
+
+        resposta.StatusCode.Should().Be(HttpStatusCode.OK);
+        var release = await repositorio.BuscarPorChaveJiraAsync("RELEASE-2026-08");
+        release!.Versoes.Select(v => v.Publico.ParaValor()).Should().BeEquivalentTo(["cliente", "comercial"]);
+    }
+
+    [Theory]
+    [InlineData("financeiro")]
+    [InlineData("cliente,")]
+    [InlineData("cliente,diretoria")]
+    public async Task Processar_com_publico_invalido_responde_422_sem_chamar_o_Jira(string publicos)
+    {
+        var jira = new FakeJiraClient { Historias = [Historia("INV-1")] };
+
+        using var app = CriarApp(jira);
+        using var client = app.CriarClienteAutenticado();
+
+        var resposta = await client.PostAsync($"/api/v1/releases/RELEASE-2026-08/processar?publicos={publicos}", null);
+
+        resposta.StatusCode.Should().Be(HttpStatusCode.UnprocessableEntity);
+        jira.ChavesConsultadas.Should().BeEmpty();
     }
 }

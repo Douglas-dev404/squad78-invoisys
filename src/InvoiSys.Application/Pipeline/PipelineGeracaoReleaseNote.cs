@@ -1,4 +1,5 @@
 using InvoiSys.Domain.Entities;
+using InvoiSys.Domain.Enums;
 using InvoiSys.Domain.Ports;
 
 namespace InvoiSys.Application.Pipeline;
@@ -23,24 +24,39 @@ public sealed class PipelineGeracaoReleaseNote(
     /// esbarrar no UNIQUE de <c>ChaveJira</c> no fim.
     /// </summary>
     /// <exception cref="ProcessamentoEmAndamentoException">a mesma Release já está sendo processada.</exception>
+    public Task<Release> ExecutarAsync(
+        string chaveRelease,
+        CancellationToken cancellationToken = default) =>
+        ExecutarAsync(chaveRelease, [PublicoAlvo.Cliente], cancellationToken);
+
     public async Task<Release> ExecutarAsync(
         string chaveRelease,
+        IReadOnlyCollection<PublicoAlvo> publicos,
         CancellationToken cancellationToken = default)
     {
+        publicos = publicos.Count == 0 ? [PublicoAlvo.Cliente] : [.. publicos.Distinct().Order()];
+
         await using var trava = await _bloqueio.TentarAdquirirAsync(chaveRelease, cancellationToken)
             ?? throw new ProcessamentoEmAndamentoException(chaveRelease);
 
-        return await ExecutarSemTravaAsync(chaveRelease, cancellationToken);
+        return await ExecutarSemTravaAsync(chaveRelease, publicos, cancellationToken);
     }
 
     private async Task<Release> ExecutarSemTravaAsync(
         string chaveRelease,
+        IReadOnlyCollection<PublicoAlvo> publicos,
         CancellationToken cancellationToken)
     {
         // Reusar a instância carregada: SalvarAsync decide INSERT/UPDATE pelo rastreamento do EF.
         var release = await _releaseRepository.BuscarPorChaveJiraAsync(chaveRelease, cancellationToken);
 
-        release?.GarantirQuePodeReprocessar();
+        if (release is not null)
+        {
+            foreach (var publico in publicos)
+            {
+                release.GarantirQuePodeReprocessar(publico);
+            }
+        }
 
         var historias = await _jira.BuscarHistoriasDaReleaseAsync(chaveRelease, cancellationToken);
 
@@ -65,13 +81,20 @@ public sealed class PipelineGeracaoReleaseNote(
                 [.. historiasLimpas.Select(h => (h.Chave, h.TextoFonte))],
                 cancellationToken);
 
-            var itens = await ProcessarGruposAsync(historiasLimpas, grupos, cancellationToken);
+            var gruposCategorizados = await CategorizarGruposAsync(historiasLimpas, grupos, cancellationToken);
 
-            var (titulo, resumo) = await _llm.GerarTituloEResumoAsync(
-                [.. itens.Select(i => i.Texto)],
-                cancellationToken);
+            foreach (var publico in publicos)
+            {
+                var itens = await ReescreverParaPublicoAsync(gruposCategorizados, publico, cancellationToken);
 
-            release.ConcluirProcessamento(itens, titulo, resumo);
+                var (titulo, resumo) = await _llm.GerarTituloEResumoAsync(
+                    [.. itens.Select(i => i.Texto)],
+                    publico,
+                    cancellationToken);
+
+                release.ConcluirProcessamento(itens, titulo, resumo, publico);
+            }
+
             execucao.MarcarConcluida();
         }
         catch (Exception exc)
@@ -103,7 +126,12 @@ public sealed class PipelineGeracaoReleaseNote(
     private static string Normalizar(string texto) =>
         string.Join(' ', texto.Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries));
 
-    private async Task<List<ItemComunicado>> ProcessarGruposAsync(
+    private sealed record GrupoCategorizado(
+        CategoriaAlteracao Categoria,
+        IReadOnlyList<string> Chaves,
+        IReadOnlyList<string> TextosFonte);
+
+    private async Task<List<GrupoCategorizado>> CategorizarGruposAsync(
         IReadOnlyList<HistoriaJira> historias,
         IReadOnlyList<IReadOnlyList<string>> grupos,
         CancellationToken cancellationToken)
@@ -114,7 +142,8 @@ public sealed class PipelineGeracaoReleaseNote(
         {
             porChave.TryAdd(historia.Chave, historia);
         }
-        var itens = new List<ItemComunicado>();
+
+        var categorizados = new List<GrupoCategorizado>();
 
         foreach (var grupoChaves in grupos)
         {
@@ -132,12 +161,31 @@ public sealed class PipelineGeracaoReleaseNote(
                 historiasDoGrupo[0].TextoFonte,
                 cancellationToken);
 
-            var texto = await _llm.ReescreverLinguagemNegocioAsync(
-                [.. historiasDoGrupo.Select(h => h.TextoFonte)],
+            categorizados.Add(new GrupoCategorizado(
                 categoria,
+                chavesConhecidas,
+                [.. historiasDoGrupo.Select(h => h.TextoFonte)]));
+        }
+
+        return categorizados;
+    }
+
+    private async Task<List<ItemComunicado>> ReescreverParaPublicoAsync(
+        IReadOnlyList<GrupoCategorizado> grupos,
+        PublicoAlvo publico,
+        CancellationToken cancellationToken)
+    {
+        var itens = new List<ItemComunicado>(grupos.Count);
+
+        foreach (var grupo in grupos)
+        {
+            var texto = await _llm.ReescreverLinguagemNegocioAsync(
+                grupo.TextosFonte,
+                grupo.Categoria,
+                publico,
                 cancellationToken);
 
-            itens.Add(new ItemComunicado(categoria, texto, chavesConhecidas));
+            itens.Add(new ItemComunicado(grupo.Categoria, texto, grupo.Chaves));
         }
 
         return itens;

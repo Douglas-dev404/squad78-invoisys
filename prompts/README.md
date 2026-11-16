@@ -51,5 +51,22 @@ O estágio 1 (extração e limpeza) é normalização determinística em C#
 - **Few-shot reais da InvoiSys:** os exemplos atuais são genéricos de DF-e/fiscal.
   Substituir por histórias e comunicados reais assim que houver acesso ao Jira e a
   Releases publicadas.
-- **Prompts por público** (Comercial, Suporte, Interno): diferencial da Fase 6.
-  Provavelmente variações do `04` e do `05` por público.
+## Prompts por público (#88)
+
+O `04` e o `05` são a versão **Cliente**. Os outros públicos têm prompt próprio só nos
+estágios que mudam de texto conforme o leitor:
+
+| Público | Reescrita | Título e resumo | Tom |
+|---|---|---|---|
+| `comercial` | [`reescrever.comercial.md`](reescrever.comercial.md) | [`titulo_resumo.comercial.md`](titulo_resumo.comercial.md) | benefícios, linguagem de venda, sem jargão |
+| `suporte` | [`reescrever.suporte.md`](reescrever.suporte.md) | [`titulo_resumo.suporte.md`](titulo_resumo.suporte.md) | o que mudou no comportamento, como orientar o cliente |
+| `interno` | [`reescrever.interno.md`](reescrever.interno.md) | [`titulo_resumo.interno.md`](titulo_resumo.interno.md) | detalhe técnico e pontos de atenção |
+
+- O adapter escolhe o arquivo por convenção: `reescrever.<publico>.md` e
+  `titulo_resumo.<publico>.md` (`ChatCompletionsLlmProvider.ArquivoDoPublico`). Placeholders
+  e formato de saída são **os mesmos** do `04` e do `05`.
+- **Categorização e agrupamento rodam uma vez** e valem para todos os públicos: não há
+  prompt por público para `02` e `03`.
+- Público novo exige mudar o enum `PublicoAlvo` (ADR-018) e criar os dois arquivos.
+- Quem pede os públicos é `POST /api/v1/releases/{chave}/processar?publicos=cliente,comercial`.
+  Sem a query, só `cliente`.
