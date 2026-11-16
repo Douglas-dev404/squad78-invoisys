@@ -3,8 +3,11 @@ import { buscarRelease } from '../services/releases.service';
 
 /**
  * Carrega o detalhe de uma Release. `recarregar` refaz o GET (usado depois de cada ação de revisão).
+ * Durante um recarregamento da mesma chave, a Release anterior continua na tela (`atualizando = true`),
+ * para a aba e a posição do usuário não se perderem depois de aprovar, reabrir ou reprocessar.
  * @param {string} chave chave da Release (fixVersion do Jira)
- * @returns {{ release: Object|null, carregando: boolean, erro: import('../services/http').ApiError|Error|null, recarregar: Function }}
+ * @returns {{ release: Object|null, carregando: boolean, atualizando: boolean,
+ *   erro: import('../services/http').ApiError|Error|null, recarregar: Function }}
  */
 export function useRelease(chave) {
   const [tentativa, setTentativa] = useState(0);
@@ -17,10 +20,10 @@ export function useRelease(chave) {
 
     buscarRelease(chave)
       .then((dados) => {
-        if (!cancelado) setResultado({ pedido, release: dados, erro: null });
+        if (!cancelado) setResultado({ chave, pedido, release: dados, erro: null });
       })
       .catch((err) => {
-        if (!cancelado) setResultado({ pedido, release: null, erro: err });
+        if (!cancelado) setResultado({ chave, pedido, release: null, erro: err });
       });
 
     return () => {
@@ -30,12 +33,15 @@ export function useRelease(chave) {
 
   const recarregar = useCallback(() => setTentativa((n) => n + 1), []);
 
-  const carregando = resultado === null || resultado.pedido !== pedido;
+  const atual = resultado !== null && resultado.pedido === pedido;
+  const anteriorDaMesmaChave = resultado !== null && resultado.chave === chave && resultado.release !== null;
+  const carregando = !atual && !anteriorDaMesmaChave;
 
   return {
     release: carregando ? null : resultado.release,
     carregando,
-    erro: carregando ? null : resultado.erro,
+    atualizando: !atual && anteriorDaMesmaChave,
+    erro: atual ? resultado.erro : null,
     recarregar,
   };
 }

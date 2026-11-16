@@ -1,12 +1,15 @@
-import { useId, useRef, useState } from 'react';
+import { useCallback, useId, useRef, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { Layout } from '../../components/Layout/Layout';
 import { Button } from '../../components/Button/Button';
 import { Icon } from '../../components/Icon/Icon';
+import { BarraRevisao } from '../../components/BarraRevisao/BarraRevisao';
+import { ItemRevisavel } from '../../components/ItemRevisavel/ItemRevisavel';
 import { useRelease } from '../../hooks/useRelease';
+import { useRevisaoItem } from '../../hooks/useRevisaoItem';
 import { UI_STRINGS } from '../../utils/constants';
 import { RELEASE_STATUS, formatarData } from '../../utils/releases';
-import { PUBLICO_LABEL, VERSAO_STATUS, textoFinalDoItem } from '../../utils/revisao';
+import { PUBLICO_LABEL, VERSAO_STATUS, acoesDaVersao, textoFinalDoItem } from '../../utils/revisao';
 
 const CARD_CLASS =
   'rounded-xl border border-surface-variant/50 bg-surface-container-lowest shadow-[0px_4px_12px_rgba(27,67,50,0.08)]';
@@ -43,8 +46,13 @@ function formatarDuracao(inicio, fim) {
   return resto ? `${minutos} min ${resto} s` : `${minutos} min`;
 }
 
+const EXECUCAO_STATUS = { iniciada: 'Em andamento', concluida: 'Concluída', falhou: 'Falhou' };
+
+const maisRecentesPrimeiro = (execucoes = []) =>
+  [...execucoes].sort((a, b) => new Date(b.iniciadoEm) - new Date(a.iniciadoEm));
+
 function ultimaExecucao(execucoes = []) {
-  return [...execucoes].sort((a, b) => new Date(b.iniciadoEm) - new Date(a.iniciadoEm))[0] ?? null;
+  return maisRecentesPrimeiro(execucoes)[0] ?? null;
 }
 
 function DetalheSkeleton() {
@@ -94,10 +102,20 @@ function ErroCarregamento({ mensagem, onRetry }) {
   );
 }
 
-function Item({ item }) {
+function Item({ item, podeEditar, revisao }) {
   const excluido = item.incluido === false;
   return (
-    <li className="space-y-xs rounded-lg border border-surface-variant/60 p-sm">
+    <li className="rounded-lg border border-surface-variant/60 p-sm">
+      <ItemRevisavel item={item} podeEditar={podeEditar} revisao={revisao}>
+        <ConteudoItem item={item} excluido={excluido} />
+      </ItemRevisavel>
+    </li>
+  );
+}
+
+function ConteudoItem({ item, excluido }) {
+  return (
+    <div className="space-y-xs">
       <div className="flex flex-wrap items-start gap-xs">
         <p
           className={`min-w-0 flex-1 font-body-md text-body-md ${
@@ -130,33 +148,20 @@ function Item({ item }) {
           ))}
         </ul>
       )}
-    </li>
+    </div>
   );
 }
 
-function Revisao({ versao }) {
-  return (
-    <>
-      {versao.status === 'aprovado' && versao.revisadoPor && (
-        <p className="font-body-sm text-body-sm text-on-surface-variant">
-          Aprovado por <strong className="text-on-surface">{versao.revisadoPor}</strong>
-          {versao.revisadoEm ? ` em ${formatarData(versao.revisadoEm)}` : ''}
-        </p>
-      )}
-      {versao.motivoReprovacao && (
-        <div className="rounded-lg border border-error/30 bg-error-container p-sm font-body-sm text-body-sm text-on-error-container">
-          <strong>{UI_STRINGS.RELEASE_DETALHE_REPROVADA}:</strong> {versao.motivoReprovacao}
-        </div>
-      )}
-    </>
-  );
-}
-
-function CorpoVersao({ versao }) {
+/**
+ * Corpo da aba de um público. A BarraRevisao (#71/#72) mostra quem aprovou e o motivo da reprovação,
+ * por isso esta tela não repete essas informações.
+ */
+function CorpoVersao({ versao, chave, statusRelease, recarregar, revisaoItem }) {
   const itens = versao.itens ?? [];
+  const acoes = acoesDaVersao(versao, statusRelease);
   return (
     <div className="space-y-md">
-      <Revisao versao={versao} />
+      <BarraRevisao chave={chave} versao={versao} statusRelease={statusRelease} recarregar={recarregar} />
       <article className={`${CARD_CLASS} space-y-xs p-md`}>
         <h2 className="font-headline-md text-headline-md text-primary">{versao.tituloExecutivo}</h2>
         <p className="whitespace-pre-line font-body-md text-body-md text-on-surface">{versao.resumoExecutivo}</p>
@@ -169,7 +174,7 @@ function CorpoVersao({ versao }) {
             <h3 className="font-headline-sm text-headline-sm text-on-surface">{titulo}</h3>
             <ul className="space-y-sm">
               {daCategoria.map((item) => (
-                <Item key={item.id} item={item} />
+                <Item key={item.id} item={item} podeEditar={acoes.editarItens} revisao={revisaoItem} />
               ))}
             </ul>
           </section>
@@ -179,7 +184,7 @@ function CorpoVersao({ versao }) {
   );
 }
 
-function AbasVersoes({ versoes }) {
+function AbasVersoes({ versoes, ...revisao }) {
   const base = useId();
   const [selecionado, setSelecionado] = useState(null);
   const abas = useRef([]);
@@ -248,7 +253,7 @@ function AbasVersoes({ versoes }) {
         tabIndex={0}
         className={`rounded-xl ${FOCO}`}
       >
-        <CorpoVersao versao={ativa} />
+        <CorpoVersao versao={ativa} {...revisao} />
       </div>
     </div>
   );
@@ -319,9 +324,11 @@ function PainelLateral({ historias = [], execucoes = [] }) {
           </p>
         ) : (
           <ul className="divide-y divide-surface-variant/60">
-            {execucoes.map((execucao) => (
+            {maisRecentesPrimeiro(execucoes).map((execucao) => (
               <li key={execucao.iniciadoEm} className="space-y-0.5 py-xs font-body-sm text-body-sm">
-                <p className="font-semibold text-on-surface">{execucao.status}</p>
+                <p className={`font-semibold ${execucao.status === 'falhou' ? 'text-error' : 'text-on-surface'}`}>
+                  {EXECUCAO_STATUS[execucao.status] ?? execucao.status}
+                </p>
                 <dl className="grid grid-cols-[auto_1fr] gap-x-sm text-on-surface-variant">
                   <dt>Modelo</dt>
                   <dd className="text-on-surface">{execucao.modeloLlm ?? '—'}</dd>
@@ -350,8 +357,24 @@ function SemVersoes({ execucoes }) {
   );
 }
 
-function Detalhe({ release }) {
-  const versoes = release.versoes ?? [];
+/** Aplica sobre as versões os itens que a API devolveu depois de editar/excluir/reincluir (sem refazer o GET). */
+function comItensAtualizados(versoes, atualizados) {
+  return versoes.map((versao) => ({
+    ...versao,
+    itens: (versao.itens ?? []).map((item) => (atualizados[item.id] ? { ...item, ...atualizados[item.id] } : item)),
+  }));
+}
+
+function Detalhe({ release, recarregar }) {
+  const [atualizados, setAtualizados] = useState({});
+  const onItemAtualizado = useCallback((item) => setAtualizados((m) => ({ ...m, [item.id]: item })), []);
+  const revisaoItem = useRevisaoItem({ chave: release.chaveJira, onItemAtualizado });
+  // depois de aprovar/reabrir/reprocessar o GET inteiro volta a ser a fonte da verdade
+  const recarregarTudo = useCallback(() => {
+    setAtualizados({});
+    recarregar();
+  }, [recarregar]);
+  const versoes = comItensAtualizados(release.versoes ?? [], atualizados);
   return (
     <>
       <header className="mb-lg space-y-xs">
@@ -371,7 +394,14 @@ function Detalhe({ release }) {
           {versoes.length === 0 ? (
             <SemVersoes execucoes={release.execucoes} />
           ) : (
-            <AbasVersoes key={release.chaveJira} versoes={versoes} />
+            <AbasVersoes
+              key={release.chaveJira}
+              versoes={versoes}
+              chave={release.chaveJira}
+              statusRelease={release.status}
+              recarregar={recarregarTudo}
+              revisaoItem={revisaoItem}
+            />
           )}
         </div>
         <PainelLateral historias={release.historias} execucoes={release.execucoes} />
@@ -394,7 +424,7 @@ export function ReleaseDetalhePage() {
       <ErroCarregamento mensagem={erro.detail || erro.message || UI_STRINGS.RELEASE_DETALHE_ERRO} onRetry={recarregar} />
     );
   } else {
-    conteudo = <Detalhe release={release} />;
+    conteudo = <Detalhe release={release} recarregar={recarregar} />;
   }
 
   return (
