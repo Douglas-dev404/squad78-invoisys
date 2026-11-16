@@ -10,9 +10,10 @@ import { UI_STRINGS } from '../../utils/constants';
  * @param {Object} props
  * @param {Function} props.onClose - Fecha o modal
  * @param {Function} props.onSucesso - Recebe a chave processada (a página navega)
+ * @param {string} [props.chave] - Chave já escolhida no quadro: o modal só confirma, sem campo para digitar
  */
-export function ProcessarReleaseModal({ onClose, onSucesso }) {
-  const [valor, setValor] = useState('');
+export function ProcessarReleaseModal({ onClose, onSucesso, chave: chaveEscolhida }) {
+  const [valor, setValor] = useState(chaveEscolhida ?? '');
   const [erroCampo, setErroCampo] = useState(undefined);
   const [erroApi, setErroApi] = useState(null);
   const [enviando, setEnviando] = useState(false);
@@ -98,17 +99,23 @@ export function ProcessarReleaseModal({ onClose, onSucesso }) {
         </div>
 
         <form onSubmit={handleSubmit} noValidate className="space-y-md">
-          <InputField
-            id="chave-release"
-            name="chave"
-            label={UI_STRINGS.PROCESS_MODAL_KEY_LABEL}
-            placeholder={UI_STRINGS.PROCESS_MODAL_KEY_PLACEHOLDER}
-            value={valor}
-            onChange={handleChange}
-            error={erroCampo}
-            required
-            disabled={enviando}
-          />
+          {chaveEscolhida ? (
+            <p className="font-body-md text-body-md text-on-surface">
+              Gerar o comunicado da Release <strong>{chaveEscolhida}</strong> a partir das histórias do Jira?
+            </p>
+          ) : (
+            <InputField
+              id="chave-release"
+              name="chave"
+              label={UI_STRINGS.PROCESS_MODAL_KEY_LABEL}
+              placeholder={UI_STRINGS.PROCESS_MODAL_KEY_PLACEHOLDER}
+              value={valor}
+              onChange={handleChange}
+              error={erroCampo}
+              required
+              disabled={enviando}
+            />
+          )}
 
           {enviando && (
             <p role="status" className="font-body-sm text-body-sm text-on-surface-variant">

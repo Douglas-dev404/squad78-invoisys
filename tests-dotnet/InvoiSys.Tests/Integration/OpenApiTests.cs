@@ -64,6 +64,7 @@ public class OpenApiTests
             "/health",
             "/api/v1/branding/highlights",
             "/api/v1/dashboard",
+            "/api/v1/jira/releases",
             "/api/v1/exportacoes",
             "/api/v1/exportacoes/{id}",
             "/api/v1/releases",

@@ -1,15 +1,83 @@
+using System.Globalization;
 using System.Net.Http.Json;
 using System.Text.Json;
 using System.Web;
 using InvoiSys.Domain.Entities;
 using InvoiSys.Domain.Ports;
+using InvoiSys.Infrastructure.Configuration;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 
 namespace InvoiSys.Infrastructure.Jira;
 
-public sealed class JiraRestClient(HttpClient http, ILogger<JiraRestClient> logger) : IJiraClient
+public sealed class JiraRestClient(
+    HttpClient http,
+    IOptions<JiraOptions> opcoes,
+    ILogger<JiraRestClient> logger) : IJiraClient
 {
     private const string TipoIssueReleaseNote = "Release Note";
+
+    public async Task<IReadOnlyList<VersaoJira>> ListarVersoesAsync(CancellationToken cancellationToken = default)
+    {
+        var projeto = opcoes.Value.ProjetoChave.Trim();
+        if (projeto.Length == 0)
+        {
+            throw new ProviderNaoConfiguradoException(
+                "Projeto do Jira não configurado — defina Jira:ProjetoChave (ou a variável de ambiente "
+                + "Jira__ProjetoChave) com a chave do projeto, ex.: INV.");
+        }
+
+        var versoes = new List<VersaoJira>();
+        var inicio = 0;
+
+        while (true)
+        {
+            var payload = await GetAsync(
+                $"/rest/api/3/project/{Uri.EscapeDataString(projeto)}/version?startAt={inicio}&maxResults=50",
+                cancellationToken);
+
+            var pagina = payload.TryGetProperty("values", out var valores) && valores.ValueKind == JsonValueKind.Array
+                ? valores.EnumerateArray().ToList()
+                : [];
+
+            versoes.AddRange(pagina.Select(ParaVersaoJira).OfType<VersaoJira>());
+            inicio += pagina.Count;
+
+            var ehUltima = !payload.TryGetProperty("isLast", out var isLast) || isLast.ValueKind != JsonValueKind.False;
+            if (ehUltima || pagina.Count == 0)
+            {
+                break;
+            }
+        }
+
+        return versoes;
+    }
+
+    internal static VersaoJira? ParaVersaoJira(JsonElement versao)
+    {
+        var nome = Texto(versao, "name");
+        if (string.IsNullOrWhiteSpace(nome))
+        {
+            return null;
+        }
+
+        var data = Texto(versao, "releaseDate");
+
+        return new VersaoJira(
+            nome.Trim(),
+            Texto(versao, "description"),
+            Booleano(versao, "released"),
+            Booleano(versao, "archived"),
+            DateOnly.TryParse(data, CultureInfo.InvariantCulture, out var dia) ? dia : null);
+    }
+
+    private static string? Texto(JsonElement objeto, string propriedade) =>
+        objeto.TryGetProperty(propriedade, out var valor) && valor.ValueKind == JsonValueKind.String
+            ? valor.GetString()
+            : null;
+
+    private static bool Booleano(JsonElement objeto, string propriedade) =>
+        objeto.TryGetProperty(propriedade, out var valor) && valor.ValueKind == JsonValueKind.True;
 
     public async Task<IReadOnlyList<HistoriaJira>> BuscarHistoriasDaReleaseAsync(
         string fixVersion,

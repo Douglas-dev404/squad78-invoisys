@@ -29,3 +29,27 @@ export function formatarData(iso) {
   if (Number.isNaN(data.getTime())) return '—';
   return formatadorData.format(data).replace(',', '');
 }
+
+export const COLUNAS_QUADRO = [
+  {
+    id: 'jira',
+    titulo: 'No Jira',
+    descricao: 'Ainda sem comunicado. Clique para gerar.',
+    status: ['nao_processada'],
+  },
+  {
+    id: 'revisao',
+    titulo: 'Em revisão',
+    descricao: 'Comunicado gerado, aguardando revisão humana.',
+    status: ['pendente', 'processando', 'aguardando_revisao'],
+  },
+  { id: 'aprovadas', titulo: 'Aprovadas', descricao: 'Prontas para exportar.', status: ['aprovado'] },
+  { id: 'falharam', titulo: 'Falharam', descricao: 'Clique para tentar de novo.', status: ['falhou'] },
+];
+
+/** Em que coluna o cartão cai, pelo status no InvoiSys. */
+export const colunaDoCartao = (cartao) =>
+  COLUNAS_QUADRO.find((coluna) => coluna.status.includes(cartao.status))?.id ?? 'revisao';
+
+/** Cartão sem comunicado (ou que falhou) dispara a IA; os demais abrem a tela da Release. */
+export const cartaoProcessa = (cartao) => cartao.status === 'nao_processada' || cartao.status === 'falhou';

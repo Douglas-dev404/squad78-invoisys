@@ -13,4 +13,7 @@ public sealed class JiraClientPendente : IJiraClient
         string fixVersion,
         CancellationToken cancellationToken = default) =>
         throw new ProviderNaoConfiguradoException(Mensagem);
+
+    public Task<IReadOnlyList<VersaoJira>> ListarVersoesAsync(CancellationToken cancellationToken = default) =>
+        throw new ProviderNaoConfiguradoException(Mensagem);
 }

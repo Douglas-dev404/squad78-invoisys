@@ -120,6 +120,19 @@ OpenRouter (`ChatCompletionsLlmProvider.cs`). Configuração:
 
 ---
 
+### Listagem de Releases para o quadro (`GET /api/v1/jira/releases`)
+
+- Chamada: `GET /rest/api/3/project/{Jira__ProjetoChave}/version?startAt=N&maxResults=50`,
+  paginada por `startAt` até `isLast`. Campos lidos: `name`, `description`, `released`,
+  `archived`, `releaseDate` (`yyyy-MM-dd`). Versão arquivada não aparece no quadro.
+- O nome da versão é a chave usada no `POST /releases/{chave}/processar` (mesmo valor do
+  JQL `fixVersion = "<chave>"`).
+- Sem `Jira__ProjetoChave`, ou com o Jira fora do ar, o endpoint **não falha**: devolve só
+  as Releases já processadas e `avisoJira` com o motivo
+  ([ADR-033](decisoes-arquiteturais.md#adr-033--quadro-de-releases-lido-do-jira-e-jira-próprio-para-testes)).
+- Para testes, o grupo usa um Jira Cloud gratuito próprio populado por
+  [`scripts/jira-teste`](../scripts/jira-teste/README.md).
+
 ## Onde a configuração vive
 
 Nenhuma camada lê variável de ambiente direto — sempre via `IOptions<T>`

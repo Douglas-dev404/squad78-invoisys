@@ -46,6 +46,7 @@ histórico também é documentação.
 
 | [029](#adr-029--adapter-openai-para-o-illmprovider-escolhido-por-configuração) | Adapter OpenAI para o `ILlmProvider`, escolhido por configuração | Aceita | 2026-11-03 |
 | [P-02](#p-02--desenho-da-autenticação) | Desenho da autenticação | **Resolvida** → ADR-024 | 2026-10-11 |
+| [033](#adr-033--quadro-de-releases-lido-do-jira-e-jira-próprio-para-testes) | Quadro de Releases lido do Jira e Jira próprio para testes | Aceita | 2026-11-16 |
 | [P-03](#p-03--onde-mora-o-render-da-exportação) | Onde mora o render da exportação | **Proposta** | — |
 
 ---
@@ -922,6 +923,37 @@ Release duplicada, mas não o gasto duplicado.
 
 Origem: PR #57 (trava + observabilidade). Só a trava entrou; a observabilidade
 (Langfuse, Prometheus, Grafana) fica para a Entrega 4.
+
+---
+
+## ADR-033 — Quadro de Releases lido do Jira e Jira próprio para testes
+
+**Contexto.** Para processar uma Release era preciso digitar a fixVersion exatamente como
+no Jira; um erro de digitação só aparecia como 422 depois. Além disso, a InvoiSys não dá
+acesso ao Jira dela, então o fluxo nunca rodava ponta a ponta com um Jira de verdade.
+
+**Decisão.**
+- `IJiraClient.ListarVersoesAsync` lista as versões do projeto `Jira__ProjetoChave`
+  (`GET /rest/api/3/project/{chave}/version`). O caso de uso `QuadroReleases` junta essas
+  versões com as Releases já processadas e devolve um cartão por Release com o status no
+  InvoiSys (`nao_processada` quando ainda não foi gerada). Endpoint `GET /api/v1/jira/releases`.
+- A tela Releases vira um **kanban** (No Jira → Em revisão → Aprovadas, e Falharam).
+  Clicar numa Release sem comunicado confirma e dispara o processamento; nas demais, abre
+  a revisão. "Processar por chave" continua para Release fora do projeto.
+- **Leitura sob demanda, não tempo real**: o quadro consulta o Jira ao abrir a tela e no
+  botão "Atualizar do Jira". Sem webhook nem sincronização em segundo plano: o processamento
+  já lê o Jira na hora, e um webhook exigiria URL pública e cadastro no Jira de terceiros.
+- Jira indisponível ou sem projeto configurado **não derruba a tela**: o quadro mostra as
+  Releases já processadas e um aviso. Os 501/502 continuam no `/processar`.
+- Para testes, um **Jira Cloud gratuito do grupo** populado por `scripts/jira-teste`. Não é
+  fallback de entrada (ADR-006 segue valendo): é a mesma API real, só outra instância.
+
+**Consequências.**
+- ✅ Ninguém digita chave; o quadro mostra o que existe no Jira e o que falta revisar.
+- ✅ O fluxo roda de ponta a ponta sem acesso ao Jira da InvoiSys.
+- ⚠️ Um projeto por instalação (`Jira__ProjetoChave`). Vários projetos exigiriam lista na configuração.
+- ⚠️ Dados de teste inventados não provam o formato do Jira real (nome do tipo "Release
+  Note", descrições em ADF): segue pendente na #82.
 
 ---
 

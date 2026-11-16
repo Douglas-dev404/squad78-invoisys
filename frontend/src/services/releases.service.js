@@ -13,6 +13,15 @@ export async function listarReleases(status) {
 }
 
 /**
+ * Quadro de Releases: fixVersions do projeto no Jira, cada uma com o status no InvoiSys.
+ * Se o Jira falhar ou não estiver configurado, vêm só as já processadas e `avisoJira` explica.
+ * @returns {Promise<{ cartoes: Array<{ chave: string, descricao: string|null, noJira: boolean,
+ *   lancadaNoJira: boolean, dataLancamento: string|null, status: string, processadaEm: string|null }>,
+ *   avisoJira: string|null }>}
+ */
+export const listarQuadroReleases = () => api.get('/jira/releases');
+
+/**
  * Dispara a IA para uma Release (pode levar de 10 s a 2 min).
  * Erros: 409, 501 e 502 chegam com `detail` em português.
  */

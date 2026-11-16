@@ -1,27 +1,21 @@
 import { useMemo, useState } from 'react';
-import { Link, useSearchParams } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Layout } from '../../components/Layout/Layout';
 import { Button } from '../../components/Button/Button';
 import { ProcessarReleaseModal } from '../../components/ProcessReleaseModal/ProcessReleaseModal';
-import { useReleases } from '../../hooks/useReleases';
+import { QuadroReleases } from '../../components/QuadroReleases/QuadroReleases';
+import { useQuadroReleases } from '../../hooks/useQuadroReleases';
 import { UI_STRINGS } from '../../utils/constants';
-import {
-  PAGE_SIZE,
-  RELEASE_FILTER_TABS,
-  RELEASE_STATUS,
-  formatarData,
-} from '../../utils/releases';
+import { cartaoProcessa } from '../../utils/releases';
 
 const CARD_CLASS =
   'overflow-hidden rounded-xl border border-surface-variant/50 bg-surface-container-lowest shadow-[0px_4px_12px_rgba(27,67,50,0.08)]';
 
-const BADGE_FALLBACK = 'bg-surface-container text-on-surface-variant';
-
 function ReleasesSkeleton() {
   return (
-    <section role="status" aria-live="polite" className={`${CARD_CLASS} space-y-sm p-md`}>
-      {[...Array(5)].map((_, i) => (
-        <div key={i} className="h-10 animate-pulse rounded-lg bg-surface-container" />
+    <section role="status" aria-live="polite" className="grid grid-cols-1 gap-md md:grid-cols-2 xl:grid-cols-4">
+      {[...Array(4)].map((_, i) => (
+        <div key={i} className="h-40 animate-pulse rounded-xl bg-surface-container" />
       ))}
       <span className="sr-only">{UI_STRINGS.RELEASES_LOADING}</span>
     </section>
@@ -44,142 +38,52 @@ function ReleasesEmpty() {
   return (
     <section className={`${CARD_CLASS} p-xl text-center`} role="status">
       <p className="font-body-md text-body-md text-on-surface-variant">
-        {UI_STRINGS.RELEASES_EMPTY}
+        Nenhuma Release no Jira nem processada ainda. Crie uma versão (fixVersion) no projeto do Jira.
       </p>
     </section>
   );
 }
 
-function ReleasesTable({ itens, total, inicio, pagina, totalPaginas, onPageChange }) {
-  const fim = inicio + itens.length;
-
-  return (
-    <section aria-label="Lista de Releases" className={CARD_CLASS}>
-      <div className="overflow-x-auto">
-        <table className="w-full min-w-[480px] border-collapse text-left text-body-sm">
-          <thead className="bg-surface-bright text-label-sm text-on-surface-variant">
-            <tr>
-              <th scope="col" className="px-md py-sm font-medium">{UI_STRINGS.RELEASES_COL_KEY}</th>
-              <th scope="col" className="px-md py-sm font-medium">{UI_STRINGS.RELEASES_COL_STATUS}</th>
-              <th scope="col" className="px-md py-sm font-medium">{UI_STRINGS.RELEASES_COL_CREATED}</th>
-            </tr>
-          </thead>
-          <tbody>
-            {itens.map((release) => {
-              const selo = RELEASE_STATUS[release.status];
-              return (
-                <tr
-                  key={release.chaveJira}
-                  className="border-t border-surface-variant/60 transition-colors hover:bg-secondary-container/5"
-                >
-                  <td className="whitespace-nowrap px-md py-sm font-semibold">
-                    <Link
-                      to={`/releases/${encodeURIComponent(release.chaveJira)}`}
-                      className="text-primary hover:underline"
-                    >
-                      {release.chaveJira}
-                    </Link>
-                  </td>
-                  <td className="px-md py-sm">
-                    <span
-                      className={`inline-flex rounded-full px-2 py-1 text-label-sm font-semibold ${
-                        selo ? selo.className : BADGE_FALLBACK
-                      }`}
-                    >
-                      {selo ? selo.label : release.status}
-                    </span>
-                  </td>
-                  <td className="whitespace-nowrap px-md py-sm text-on-surface-variant">
-                    {formatarData(release.criadoEm)}
-                  </td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
-      </div>
-
-      <div className="flex flex-col gap-sm border-t border-surface-variant/60 px-md py-sm text-body-sm text-on-surface-variant sm:flex-row sm:items-center sm:justify-between">
-        <span aria-live="polite">
-          Mostrando {inicio + 1} a {fim} de {total} resultados
-        </span>
-        {totalPaginas > 1 && (
-          <nav aria-label="Páginas de Releases" className="flex items-center gap-1">
-            <button
-              type="button"
-              aria-label="Página anterior"
-              disabled={pagina === 1}
-              onClick={() => onPageChange(pagina - 1)}
-              className="rounded-lg p-2 hover:bg-surface-container disabled:cursor-not-allowed disabled:opacity-40"
-            >
-              <span aria-hidden="true" className="material-symbols-outlined text-[18px]">chevron_left</span>
-            </button>
-            {Array.from({ length: totalPaginas }, (_, i) => i + 1).map((numero) => (
-              <button
-                key={numero}
-                type="button"
-                aria-label={`Página ${numero}`}
-                aria-current={pagina === numero ? 'page' : undefined}
-                onClick={() => onPageChange(numero)}
-                className={`h-9 min-w-9 rounded-lg px-2 ${
-                  pagina === numero ? 'bg-primary text-on-primary' : 'hover:bg-surface-container'
-                }`}
-              >
-                {numero}
-              </button>
-            ))}
-            <button
-              type="button"
-              aria-label="Próxima página"
-              disabled={pagina === totalPaginas}
-              onClick={() => onPageChange(pagina + 1)}
-              className="rounded-lg p-2 hover:bg-surface-container disabled:cursor-not-allowed disabled:opacity-40"
-            >
-              <span aria-hidden="true" className="material-symbols-outlined text-[18px]">chevron_right</span>
-            </button>
-          </nav>
-        )}
-      </div>
-    </section>
-  );
-}
+const normalizar = (texto) =>
+  String(texto ?? '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLocaleLowerCase('pt-BR');
 
 export function ReleasesPage() {
+  const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
+  const { cartoes, avisoJira, carregando, erro, recarregar } = useQuadroReleases();
 
-  const statusParam = searchParams.get('status');
-  const status = statusParam && Object.hasOwn(RELEASE_STATUS, statusParam) ? statusParam : '';
-
-  const { releases, carregando, erro, recarregar } = useReleases(status || undefined);
-
-  const [modalAberto, setModalAberto] = useState(false);
-  const mostrarModal = modalAberto || searchParams.get('nova') === '1';
+  const [busca, setBusca] = useState('');
+  const [modal, setModal] = useState(null);
+  const modalManual = modal === 'manual' || searchParams.get('nova') === '1';
+  const chaveDoModal = typeof modal === 'string' && modal !== 'manual' ? modal : null;
 
   const fecharModal = () => {
-    setModalAberto(false);
+    setModal(null);
     if (searchParams.has('nova')) {
       const semNova = new URLSearchParams(searchParams);
       semNova.delete('nova');
       setSearchParams(semNova, { replace: true });
     }
   };
-  const [paginaSalva, setPaginaSalva] = useState({ status, numero: 1 });
 
-  const ordenadas = useMemo(
-    () => [...releases].sort((a, b) => new Date(b.criadoEm) - new Date(a.criadoEm)),
-    [releases]
-  );
+  const filtrados = useMemo(() => {
+    const termo = normalizar(busca.trim());
+    return termo
+      ? cartoes.filter((cartao) => normalizar(`${cartao.chave} ${cartao.descricao ?? ''}`).includes(termo))
+      : cartoes;
+  }, [cartoes, busca]);
 
-  const totalPaginas = Math.max(1, Math.ceil(ordenadas.length / PAGE_SIZE));
-  const pagina = Math.min(paginaSalva.status === status ? paginaSalva.numero : 1, totalPaginas);
-  const inicio = (pagina - 1) * PAGE_SIZE;
-  const visiveis = ordenadas.slice(inicio, inicio + PAGE_SIZE);
+  const selecionar = (cartao) => {
+    if (cartaoProcessa(cartao)) {
+      setModal(cartao.chave);
+    } else {
+      navigate(`/releases/${encodeURIComponent(cartao.chave)}`);
+    }
+  };
 
-  const trocarAba = (valor) => setSearchParams(valor ? { status: valor } : {});
-  const irParaPagina = (numero) => setPaginaSalva({ status, numero });
-  const aoProcessar = () => {
+  const aoProcessar = (chave) => {
     fecharModal();
-    recarregar();
+    navigate(`/releases/${encodeURIComponent(chave)}`);
   };
 
   let conteudo;
@@ -187,64 +91,69 @@ export function ReleasesPage() {
     conteudo = <ReleasesSkeleton />;
   } else if (erro) {
     conteudo = <ReleasesError message={erro} onRetry={recarregar} />;
-  } else if (ordenadas.length === 0) {
+  } else if (cartoes.length === 0) {
     conteudo = <ReleasesEmpty />;
   } else {
-    conteudo = (
-      <ReleasesTable
-        itens={visiveis}
-        total={ordenadas.length}
-        inicio={inicio}
-        pagina={pagina}
-        totalPaginas={totalPaginas}
-        onPageChange={irParaPagina}
-      />
-    );
+    conteudo = <QuadroReleases cartoes={filtrados} onSelecionar={selecionar} />;
   }
 
   return (
     <Layout>
       <div className="mx-auto w-full max-w-[1280px]">
-        <header className="mb-lg flex flex-col gap-sm sm:flex-row sm:items-center sm:justify-between">
-          <h2 className="font-headline-lg text-headline-lg text-primary">
-            {UI_STRINGS.RELEASES_TITLE}
-          </h2>
-          <Button onClick={() => setModalAberto(true)} className="self-start sm:self-auto">
-            {UI_STRINGS.RELEASES_PROCESS_BUTTON}
-          </Button>
+        <header className="mb-md flex flex-col gap-sm sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <h2 className="font-headline-lg text-headline-lg text-primary">{UI_STRINGS.RELEASES_TITLE}</h2>
+            <p className="text-body-sm text-on-surface-variant">
+              Versões do projeto no Jira. Clique numa Release para gerar ou revisar o comunicado.
+            </p>
+          </div>
+          <div className="flex flex-wrap gap-sm self-start sm:self-auto">
+            <button
+              type="button"
+              onClick={recarregar}
+              disabled={carregando}
+              className="inline-flex items-center gap-xs rounded-lg border border-outline-variant px-sm py-xs text-body-sm text-on-surface hover:bg-surface-container disabled:opacity-50"
+            >
+              <span aria-hidden="true" className="material-symbols-outlined text-[18px]">refresh</span>
+              Atualizar do Jira
+            </button>
+            <button
+              type="button"
+              onClick={() => setModal('manual')}
+              className="rounded-lg border border-primary px-sm py-xs text-body-sm font-medium text-primary hover:bg-primary/5"
+            >
+              Processar por chave
+            </button>
+          </div>
         </header>
 
-        <div
-          role="tablist"
-          aria-label="Filtrar Releases por status"
-          className="mb-md flex flex-wrap gap-xs border-b border-surface-variant/60"
-        >
-          {RELEASE_FILTER_TABS.map((aba) => {
-            const ativa = aba.value === status;
-            return (
-              <button
-                key={aba.value || 'todas'}
-                type="button"
-                role="tab"
-                aria-selected={ativa}
-                onClick={() => trocarAba(aba.value)}
-                className={`-mb-px border-b-2 px-sm py-xs font-label-md text-label-md transition-colors ${
-                  ativa
-                    ? 'border-primary text-primary'
-                    : 'border-transparent text-on-surface-variant hover:text-primary'
-                }`}
-              >
-                {aba.label}
-              </button>
-            );
-          })}
-        </div>
+        {avisoJira && (
+          <div role="status" className="mb-md rounded-xl border border-amber-300 bg-amber-50 p-sm text-body-sm text-amber-900">
+            Não foi possível ler as Releases do Jira: {avisoJira} Mostrando só as já processadas.
+          </div>
+        )}
+
+        {!carregando && !erro && cartoes.length > 0 && (
+          <label className="mb-md flex h-10 max-w-md items-center gap-xs rounded-lg border border-outline-variant bg-surface-container-lowest px-3 focus-within:border-primary focus-within:ring-2 focus-within:ring-primary/15">
+            <span aria-hidden="true" className="material-symbols-outlined text-[18px] text-on-surface-variant">search</span>
+            <span className="sr-only">Buscar Release</span>
+            <input
+              type="search"
+              value={busca}
+              onChange={(event) => setBusca(event.target.value)}
+              placeholder="Buscar pela versão ou descrição"
+              className="min-w-0 w-full border-0 bg-transparent p-0 text-body-sm text-on-surface placeholder:text-on-surface-variant focus:ring-0"
+            />
+          </label>
+        )}
 
         {conteudo}
       </div>
 
-      {mostrarModal && (
+      {(modalManual || chaveDoModal) && (
         <ProcessarReleaseModal
+          key={chaveDoModal ?? 'manual'}
+          chave={chaveDoModal ?? undefined}
           onClose={fecharModal}
           onSucesso={aoProcessar}
         />

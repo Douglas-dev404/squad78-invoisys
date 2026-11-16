@@ -52,3 +52,14 @@ public sealed record ReleaseDetalheOut(
     IReadOnlyList<HistoriaJiraOut> Historias,
     IReadOnlyList<VersaoComunicadoOut> Versoes,
     IReadOnlyList<ExecucaoPipelineOut> Execucoes);
+
+public sealed record CartaoReleaseOut(
+    string Chave,
+    string? Descricao,
+    bool NoJira,
+    bool LancadaNoJira,
+    DateOnly? DataLancamento,
+    string Status,
+    DateTimeOffset? ProcessadaEm);
+
+public sealed record QuadroReleasesOut(IReadOnlyList<CartaoReleaseOut> Cartoes, string? AvisoJira);

@@ -102,6 +102,7 @@ app.MapGet("/health", () => Results.Ok(new StatusSaude("ok")))
     .Produces<StatusSaude>();
 app.MapAuthEndpoints();
 app.MapReleaseEndpoints();
+app.MapQuadroReleasesEndpoints();
 app.MapRevisaoEndpoints();
 app.MapItemComunicadoEndpoints();
 app.MapExportacaoEndpoints();

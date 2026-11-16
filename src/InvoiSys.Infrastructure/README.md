@@ -26,7 +26,7 @@ InvoiSys.Infrastructure/
 
 | Porta | Adapter | Condição |
 |---|---|---|
-| `IJiraClient` | `JiraRestClient` | `Jira:BaseUrl`, `Jira:Email` e `Jira:ApiToken` preenchidos |
+| `IJiraClient` | `JiraRestClient` | `Jira:BaseUrl`, `Jira:Email` e `Jira:ApiToken` preenchidos (`Jira:ProjetoChave` para o quadro de Releases) |
 | `IJiraClient` | `JiraClientPendente` | qualquer um vazio → **501** com instrução |
 | `ILlmProvider` | `OpenRouterProvider` | `OpenRouter:ApiKey` preenchida |
 | `ILlmProvider` | `ProviderPendente` | chave vazia → **501** com instrução |

@@ -354,4 +354,35 @@ public class ApiReleasesTests
 
         resposta.StatusCode.Should().Be(HttpStatusCode.NotFound);
     }
+
+    [Fact]
+    public async Task Quadro_de_releases_exige_token()
+    {
+        using var app = CriarApp();
+        using var client = app.CreateClient();
+
+        var resposta = await client.GetAsync("/api/v1/jira/releases");
+
+        resposta.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
+    }
+
+    [Fact]
+    public async Task Quadro_de_releases_traz_versoes_do_Jira_com_status_nao_processada()
+    {
+        var jira = new FakeJiraClient
+        {
+            Versoes = [new VersaoJira("2026.11.0", "Novembro", false, false, new DateOnly(2026, 11, 30))],
+        };
+
+        using var app = CriarApp(jira);
+        using var client = app.CriarClienteAutenticado();
+
+        var corpo = await client.GetFromJsonAsync<JsonElement>("/api/v1/jira/releases");
+
+        corpo.GetProperty("avisoJira").ValueKind.Should().Be(JsonValueKind.Null);
+        var cartao = corpo.GetProperty("cartoes").EnumerateArray().Single();
+        cartao.GetProperty("chave").GetString().Should().Be("2026.11.0");
+        cartao.GetProperty("status").GetString().Should().Be("nao_processada");
+        cartao.GetProperty("dataLancamento").GetString().Should().Be("2026-11-30");
+    }
 }

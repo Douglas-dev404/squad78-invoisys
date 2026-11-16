@@ -10,6 +10,8 @@ public sealed class JiraOptions
 
     public string ApiToken { get; set; } = string.Empty;
 
+    public string ProjetoChave { get; set; } = string.Empty;
+
     public bool EstaConfigurado =>
         !string.IsNullOrWhiteSpace(BaseUrl)
         && !string.IsNullOrWhiteSpace(Email)
