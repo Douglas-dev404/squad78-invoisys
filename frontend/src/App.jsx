@@ -2,7 +2,6 @@ import { useEffect } from 'react';
 import { Link, Navigate, Route, Routes, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from './hooks/useAuth';
 import { RotaProtegida, RotaAdmin } from './components/RotaProtegida/RotaProtegida';
-import { Layout } from './components/Layout/Layout';
 import { LoginPage } from './pages/LoginPage/LoginPage';
 import { ForgotPasswordPage } from './pages/ForgotPasswordPage/ForgotPasswordPage';
 import { EmailConfirmationPage } from './pages/EmailConfirmationPage/EmailConfirmationPage';
@@ -12,6 +11,7 @@ import { UserManagementPage } from './pages/UserManagementPage/UserManagementPag
 import { CreateUserPage } from './pages/CreateUserPage/CreateUserPage';
 import { SentHistoryPage } from './pages/SentHistoryPage/SentHistoryPage';
 import { ReleasesPage } from './pages/ReleasesPage/ReleasesPage';
+import { ReleaseDetalhePage } from './pages/ReleaseDetalhePage/ReleaseDetalhePage';
 import { ResetPasswordPage } from './pages/ResetPasswordPage/ResetPasswordPage';
 
 function LoginRoute() {
@@ -39,10 +39,6 @@ function ConfirmationRoute() {
   return <EmailConfirmationPage email={location.state?.email || ''} mensagem={location.state?.mensagem} expiraEmMinutos={location.state?.expiraEmMinutos} onNavigateToLogin={() => navigate('/login')} />;
 }
 
-function ReleaseRoute() {
-  return <Layout><h1 className="text-headline-lg text-primary">Detalhe da Release</h1><p>A revisão do comunicado chega na próxima entrega.</p><Link to="/releases" className="text-primary hover:underline">Voltar para Releases</Link></Layout>;
-}
-
 function App() {
   const navigate = useNavigate();
   useEffect(() => {
@@ -58,7 +54,7 @@ function App() {
     <Route element={<RotaProtegida />}>
       <Route path="/dashboard" element={<DashboardPage />} />
       <Route path="/releases" element={<ReleasesPage />} />
-      <Route path="/releases/:chave" element={<ReleaseRoute />} />
+      <Route path="/releases/:chave" element={<ReleaseDetalhePage />} />
       <Route path="/historico" element={<SentHistoryPage />} />
       <Route path="/perfil" element={<ProfilePage />} />
       <Route element={<RotaAdmin />}>
