@@ -12,6 +12,12 @@ continua falando com a API real do Jira; só muda qual Jira.
    **Nunca** commite o token nem cole em issue, PR ou chat.
 3. Convide o resto do grupo pelo próprio Jira, se quiserem ver os dados.
 
+Para gravar o token no `.env` sem ele aparecer na tela (Windows):
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\jira-teste\definir-token.ps1
+```
+
 ## 2. Popular com dados de teste
 
 Cria o projeto `INV` (Kanban, gerenciado pela empresa), o tipo de subtarefa
@@ -54,6 +60,11 @@ A tela **Releases** passa a mostrar o quadro com as versões do projeto. Clicar 
 Release da coluna "No Jira" gera o comunicado (precisa também da chave da IA).
 
 ## Limitação
+
+Validado em 16/11/2026 contra um Jira Cloud real: o quadro lista as versões, e a leitura
+das histórias encontra as subtarefas "Release Note" e extrai texto e listas das descrições.
+**Tabelas em ADF saem achatadas numa linha só** ("Origem Destino Antes Depois MG SP 12% 4%"):
+o texto chega à IA, mas sem a estrutura.
 
 Os dados são inventados pelo grupo. O nome do tipo "Release Note" e o formato das
 descrições aqui **não provam** que o Jira real da InvoiSys é igual (pendência da #82).
