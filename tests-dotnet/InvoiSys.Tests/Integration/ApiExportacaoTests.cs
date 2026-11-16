@@ -24,6 +24,8 @@ public class ApiExportacaoTests
             builder.ConfigureServices(services =>
             {
                 services.RemoveAll<IReleaseRepository>();
+                services.RemoveAll<IBloqueioProcessamento>();
+                services.AddSingleton<IBloqueioProcessamento>(new FakeBloqueioProcessamento());
                 services.RemoveAll<IComunicadoExportadoRepository>();
                 services.ComUsuarios(AutenticacaoDeTeste.Revisor);
                 services.AddScoped(_ => releases);

@@ -24,6 +24,8 @@ public class ApiAutenticacaoTests
             builder.ConfigureServices(services =>
             {
                 services.RemoveAll<IReleaseRepository>();
+                services.RemoveAll<IBloqueioProcessamento>();
+                services.AddSingleton<IBloqueioProcessamento>(new FakeBloqueioProcessamento());
                 services.RemoveAll<ITokenRedefinicaoSenhaRepository>();
                 services.AddScoped<IReleaseRepository>(_ => new FakeReleaseRepository());
                 services.AddSingleton<ITokenRedefinicaoSenhaRepository>(new FakeTokenRedefinicaoSenhaRepository());

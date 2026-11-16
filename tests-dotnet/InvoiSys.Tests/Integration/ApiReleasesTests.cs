@@ -24,6 +24,8 @@ public class ApiReleasesTests
                 services.RemoveAll<IJiraClient>();
                 services.RemoveAll<ILlmProvider>();
                 services.RemoveAll<IReleaseRepository>();
+                services.RemoveAll<IBloqueioProcessamento>();
+                services.AddSingleton<IBloqueioProcessamento>(new FakeBloqueioProcessamento());
                 services.ComUsuarios(AutenticacaoDeTeste.Revisor);
                 services.AddScoped(_ => jira ?? new FakeJiraClient());
                 services.AddScoped(_ => llm ?? new FakeLlmProvider());

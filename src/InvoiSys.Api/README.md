@@ -123,6 +123,7 @@ real ([ADR-025](../../docs/decisoes-arquiteturais.md#adr-025--recuperação-de-s
 | Exceção | Status | Significado |
 |---|---|---|
 | `RevisaoHumanaObrigatoriaException` (só em `/processar`) | **409** | a versão já foi aprovada; é preciso reabrir a revisão antes de reprocessar |
+| `ProcessamentoEmAndamentoException` (só em `/processar`) | **409** | a mesma Release já está sendo processada; a segunda chamada é recusada antes de Jira e IA ([ADR-031](../../docs/decisoes-arquiteturais.md#adr-031--trava-por-release-antes-do-pipeline-advisory-lock-no-postgres)) |
 | `ProviderNaoConfiguradoException` | **501** | falta credencial (Jira ou OpenRouter). O `detail` diz o que configurar |
 | `IntegracaoExternaException` (e filhas) | **502** | Jira/LLM falhou ou respondeu fora do formato |
 | qualquer outra | 500 | erro interno de verdade |
