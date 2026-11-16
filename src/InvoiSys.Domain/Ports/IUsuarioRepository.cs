@@ -10,5 +10,7 @@ public interface IUsuarioRepository
 
     Task<bool> ExisteAlgumAsync(CancellationToken cancellationToken = default);
 
+    Task<IReadOnlyList<Usuario>> ListarAsync(CancellationToken cancellationToken = default);
+
     Task SalvarAsync(Usuario usuario, CancellationToken cancellationToken = default);
 }

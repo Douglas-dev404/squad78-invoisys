@@ -7,6 +7,7 @@ using InvoiSys.Infrastructure;
 using InvoiSys.Infrastructure.Auth;
 using InvoiSys.Infrastructure.Configuration;
 using InvoiSys.Infrastructure.Database;
+using InvoiSys.Domain.Entities;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
@@ -56,7 +57,8 @@ builder.Services
             },
         };
     });
-builder.Services.AddAuthorization();
+builder.Services.AddAuthorization(opcoes =>
+    opcoes.AddPolicy("Admin", politica => politica.RequireRole(Usuario.PapelAdmin)));
 builder.Services.AddProblemDetails();
 builder.Services.AddCorsConfiguravel();
 builder.Services.AddLimiteDeLogin();
@@ -104,6 +106,8 @@ app.MapRevisaoEndpoints();
 app.MapItemComunicadoEndpoints();
 app.MapExportacaoEndpoints();
 app.MapBrandingEndpoints();
+app.MapDashboardEndpoints();
+app.MapUsuarioEndpoints();
 
 app.Run();
 return 0;

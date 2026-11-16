@@ -63,6 +63,9 @@ public class OpenApiTests
             "/api/v1/auth/reset-password",
             "/health",
             "/api/v1/branding/highlights",
+            "/api/v1/dashboard",
+            "/api/v1/exportacoes",
+            "/api/v1/exportacoes/{id}",
             "/api/v1/releases",
             "/api/v1/releases/{chaveRelease}",
             "/api/v1/releases/{chaveRelease}/aprovar",
@@ -77,6 +80,8 @@ public class OpenApiTests
             "/api/v1/auth/login",
             "/api/v1/auth/me",
             "/api/v1/auth/logout",
+            "/api/v1/usuarios",
+            "/api/v1/usuarios/{id}/desativar",
         ]);
     }
 

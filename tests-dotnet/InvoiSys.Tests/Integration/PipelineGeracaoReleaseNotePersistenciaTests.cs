@@ -38,7 +38,7 @@ public class PipelineGeracaoReleaseNotePersistenciaTests(
         Etapa("1. Pipeline processa e o EF Core grava a Release no Postgres");
         await using (var escrita = fixture.CriarContexto(saida))
         {
-            var pipeline = new PipelineGeracaoReleaseNote(jira, llm, new ReleaseRepository(escrita));
+            var pipeline = new PipelineGeracaoReleaseNote(jira, llm, new ReleaseRepository(escrita), new FakeBloqueioProcessamento());
             await pipeline.ExecutarAsync(chaveRelease);
         }
 
@@ -66,14 +66,14 @@ public class PipelineGeracaoReleaseNotePersistenciaTests(
         Guid idPrimeiraRodada;
         await using (var primeiraEscrita = fixture.CriarContexto(saida))
         {
-            var pipeline = new PipelineGeracaoReleaseNote(jira, llm, new ReleaseRepository(primeiraEscrita));
+            var pipeline = new PipelineGeracaoReleaseNote(jira, llm, new ReleaseRepository(primeiraEscrita), new FakeBloqueioProcessamento());
             idPrimeiraRodada = (await pipeline.ExecutarAsync(chaveRelease)).Id;
         }
 
         jira.Historias = [Historia("INV-2"), Historia("INV-3")];
         await using (var segundaEscrita = fixture.CriarContexto(saida))
         {
-            var pipeline = new PipelineGeracaoReleaseNote(jira, llm, new ReleaseRepository(segundaEscrita));
+            var pipeline = new PipelineGeracaoReleaseNote(jira, llm, new ReleaseRepository(segundaEscrita), new FakeBloqueioProcessamento());
             await pipeline.ExecutarAsync(chaveRelease);
         }
 
@@ -96,7 +96,7 @@ public class PipelineGeracaoReleaseNotePersistenciaTests(
 
         await using (var escrita = fixture.CriarContexto(saida))
         {
-            var pipeline = new PipelineGeracaoReleaseNote(jira, llm, new ReleaseRepository(escrita));
+            var pipeline = new PipelineGeracaoReleaseNote(jira, llm, new ReleaseRepository(escrita), new FakeBloqueioProcessamento());
             var acao = async () => await pipeline.ExecutarAsync(chaveRelease);
             await acao.Should().ThrowAsync<InvalidOperationException>();
         }
@@ -121,7 +121,7 @@ public class PipelineGeracaoReleaseNotePersistenciaTests(
         Etapa("1. Primeiro processamento: INSERT da Release, histórias, versão, itens e execução");
         await using (var contexto = fixture.CriarContexto(saida))
         {
-            await new PipelineGeracaoReleaseNote(jira, llm, new ReleaseRepository(contexto))
+            await new PipelineGeracaoReleaseNote(jira, llm, new ReleaseRepository(contexto), new FakeBloqueioProcessamento())
                 .ExecutarAsync(chaveRelease);
         }
 
@@ -135,7 +135,7 @@ public class PipelineGeracaoReleaseNotePersistenciaTests(
         await using (var contexto = fixture.CriarContexto(saida))
         {
             var acao = async () => await new PipelineGeracaoReleaseNote(
-                jira, llm, new ReleaseRepository(contexto)).ExecutarAsync(chaveRelease);
+                jira, llm, new ReleaseRepository(contexto), new FakeBloqueioProcessamento()).ExecutarAsync(chaveRelease);
             await acao.Should().ThrowAsync<RevisaoHumanaObrigatoriaException>();
         }
 
@@ -151,7 +151,7 @@ public class PipelineGeracaoReleaseNotePersistenciaTests(
         Etapa("5. Reprocessa: troca histórias e itens (DELETE + INSERT) e registra a 2ª execução");
         await using (var contexto = fixture.CriarContexto(saida))
         {
-            await new PipelineGeracaoReleaseNote(jira, llm, new ReleaseRepository(contexto))
+            await new PipelineGeracaoReleaseNote(jira, llm, new ReleaseRepository(contexto), new FakeBloqueioProcessamento())
                 .ExecutarAsync(chaveRelease);
         }
 

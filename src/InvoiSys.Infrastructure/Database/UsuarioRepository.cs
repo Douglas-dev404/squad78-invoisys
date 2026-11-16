@@ -26,6 +26,9 @@ public sealed class UsuarioRepository(InvoiSysDbContext contexto) : IUsuarioRepo
     public async Task<bool> ExisteAlgumAsync(CancellationToken cancellationToken = default) =>
         await _contexto.Usuarios.AnyAsync(cancellationToken);
 
+    public async Task<IReadOnlyList<Usuario>> ListarAsync(CancellationToken cancellationToken = default) =>
+        await _contexto.Usuarios.AsNoTracking().OrderBy(u => u.Nome).ToListAsync(cancellationToken);
+
     public async Task SalvarAsync(Usuario usuario, CancellationToken cancellationToken = default)
     {
         if (_contexto.Entry(usuario).State == EntityState.Detached)

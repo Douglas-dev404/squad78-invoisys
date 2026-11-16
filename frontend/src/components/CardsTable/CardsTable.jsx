@@ -1,10 +1,12 @@
+import { RELEASE_STATUS, formatarData } from '../../utils/releases';
+
 export function CardsTable({ cards, isLoading, onRowClick }) {
   if (isLoading) {
     return (
       <section className="bg-surface-container-lowest rounded-xl shadow-[0px_4px_12px_rgba(27,67,50,0.08)] border border-surface-variant/50 overflow-hidden">
         <div className="px-md py-sm border-b border-surface-variant/30 flex justify-between items-center bg-surface-container-lowest">
           <h3 className="font-headline-sm text-headline-sm text-primary">
-            Últimos Cards Formalizados
+            Releases recentes
           </h3>
         </div>
         <div className="p-lg space-y-4">
@@ -24,27 +26,21 @@ export function CardsTable({ cards, isLoading, onRowClick }) {
       <section className="bg-surface-container-lowest rounded-xl shadow-[0px_4px_12px_rgba(27,67,50,0.08)] border border-surface-variant/50 overflow-hidden">
         <div className="px-md py-sm border-b border-surface-variant/30 flex justify-between items-center bg-surface-container-lowest">
           <h3 className="font-headline-sm text-headline-sm text-primary">
-            Últimos Cards Formalizados
+            Releases recentes
           </h3>
         </div>
         <div className="p-lg text-center text-on-surface-variant font-body-md">
-          Nenhum card encontrado
+          Nenhuma Release encontrada
         </div>
       </section>
     );
   }
 
-  const statusColorMap = {
-    'Em Revisão': 'bg-secondary-container text-on-secondary-container',
-    'Formalizado': 'bg-primary text-on-primary',
-    'Enviado Cliente': 'bg-tertiary-container text-on-tertiary-container',
-  };
-
   return (
     <section className="bg-surface-container-lowest rounded-xl shadow-[0px_4px_12px_rgba(27,67,50,0.08)] border border-surface-variant/50 overflow-hidden">
       <div className="px-md py-sm border-b border-surface-variant/30 flex justify-between items-center bg-surface-container-lowest">
         <h3 className="font-headline-sm text-headline-sm text-primary">
-          Últimos Cards Formalizados
+          Releases recentes
         </h3>
         <button className="text-primary font-label-md text-label-md hover:underline flex items-center gap-xs">
           Ver todos{' '}
@@ -58,19 +54,16 @@ export function CardsTable({ cards, isLoading, onRowClick }) {
           <thead>
             <tr className="border-b border-outline-variant/20 bg-surface-bright">
               <th className="px-md py-sm font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider font-medium">
-                ID Jira
+                Chave
               </th>
               <th className="px-md py-sm font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider font-medium">
-                Descrição da Tarefa
-              </th>
-              <th className="px-md py-sm font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider font-medium">
-                Responsável
+                Título
               </th>
               <th className="px-md py-sm font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider font-medium">
                 Status
               </th>
               <th className="px-md py-sm font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider font-medium text-right">
-                Data
+                Criada em
               </th>
             </tr>
           </thead>
@@ -79,27 +72,26 @@ export function CardsTable({ cards, isLoading, onRowClick }) {
               <tr
                 key={card.id}
                 onClick={() => onRowClick?.(card)}
-                className="border-b border-outline-variant/10 hover:bg-secondary-container/5 transition-colors cursor-pointer group"
+                onKeyDown={(e) => e.key === 'Enter' && onRowClick?.(card)}
+                tabIndex={onRowClick ? 0 : undefined}
+                className="border-b border-outline-variant/10 hover:bg-secondary-container/5 transition-colors cursor-pointer group focus-visible:outline-none focus-visible:bg-secondary-container/10 focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary"
               >
                 <td className="px-md py-sm text-primary font-medium group-hover:underline">
-                  {card.jiraId}
+                  {card.chave}
                 </td>
-                <td className="px-md py-sm text-on-surface">{card.title}</td>
-                <td className="px-md py-sm text-on-surface-variant">
-                  {card.responsible}
-                </td>
+                <td className="px-md py-sm text-on-surface">{card.titulo}</td>
                 <td className="px-md py-sm">
                   <span
                     className={`inline-flex items-center px-2 py-1 rounded-full font-label-sm text-[11px] leading-tight font-semibold ${
-                      statusColorMap[card.status] ||
+                      RELEASE_STATUS[card.status]?.className ||
                       'bg-surface-container text-on-surface-variant'
                     }`}
                   >
-                    {card.status}
+                    {RELEASE_STATUS[card.status]?.label ?? card.status}
                   </span>
                 </td>
                 <td className="px-md py-sm text-on-surface-variant text-right">
-                  {card.date}
+                  {formatarData(card.criadoEm)}
                 </td>
               </tr>
             ))}

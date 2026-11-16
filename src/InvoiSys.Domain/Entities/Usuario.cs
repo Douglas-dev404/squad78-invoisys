@@ -3,6 +3,10 @@ namespace InvoiSys.Domain.Entities;
 public sealed class Usuario
 {
     public const string PapelAdmin = "admin";
+    public const string PapelReleaseManager = "release_manager";
+
+    public static bool PapelEhValido(string? papel) =>
+        papel is PapelAdmin or PapelReleaseManager;
 
     public const int TamanhoMinimoSenha = 8;
 

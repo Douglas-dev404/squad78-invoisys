@@ -7,17 +7,35 @@ public sealed class PipelineGeracaoReleaseNote(
     IJiraClient jiraClient,
     ILlmProvider llmProvider,
     IReleaseRepository releaseRepository,
+    IBloqueioProcessamento bloqueio,
     string? modeloLlm = null)
 {
     private readonly IJiraClient _jira = jiraClient;
     private readonly ILlmProvider _llm = llmProvider;
     private readonly IReleaseRepository _releaseRepository = releaseRepository;
+    private readonly IBloqueioProcessamento _bloqueio = bloqueio;
 
     private readonly string? _modeloLlm = modeloLlm;
 
+    /// <summary>
+    /// Processa a Release sob uma trava por chave (ADR-031): uma segunda execução simultânea da mesma
+    /// Release é recusada na hora, antes de chamar Jira e IA, em vez de gastar as chamadas pagas e só
+    /// esbarrar no UNIQUE de <c>ChaveJira</c> no fim.
+    /// </summary>
+    /// <exception cref="ProcessamentoEmAndamentoException">a mesma Release já está sendo processada.</exception>
     public async Task<Release> ExecutarAsync(
         string chaveRelease,
         CancellationToken cancellationToken = default)
+    {
+        await using var trava = await _bloqueio.TentarAdquirirAsync(chaveRelease, cancellationToken)
+            ?? throw new ProcessamentoEmAndamentoException(chaveRelease);
+
+        return await ExecutarSemTravaAsync(chaveRelease, cancellationToken);
+    }
+
+    private async Task<Release> ExecutarSemTravaAsync(
+        string chaveRelease,
+        CancellationToken cancellationToken)
     {
         // Reusar a instância carregada: SalvarAsync decide INSERT/UPDATE pelo rastreamento do EF.
         var release = await _releaseRepository.BuscarPorChaveJiraAsync(chaveRelease, cancellationToken);

@@ -5,6 +5,7 @@ using InvoiSys.Application.Consulta;
 using InvoiSys.Application.Exportacao;
 using InvoiSys.Application.Pipeline;
 using InvoiSys.Application.Revisao;
+using InvoiSys.Application.Usuarios;
 using InvoiSys.Domain.Ports;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -22,6 +23,7 @@ public static class DependencyInjection
             provider.GetRequiredService<IJiraClient>(),
             provider.GetRequiredService<ILlmProvider>(),
             provider.GetRequiredService<IReleaseRepository>(),
+            provider.GetRequiredService<IBloqueioProcessamento>(),
             string.Equals(configuration["Llm:Provedor"]?.Trim(), "OpenAi", StringComparison.OrdinalIgnoreCase)
                 ? configuration["OpenAi:Modelo"]
                 : configuration["OpenRouter:Modelo"]));
@@ -47,9 +49,12 @@ public static class DependencyInjection
 
         services.AddScoped<RevisaoComunicado>();
         services.AddScoped<ConsultaReleases>();
+        services.AddScoped<ConsultaDashboard>();
+        services.AddScoped<ConsultaExportacoes>();
         services.AddScoped<ConsultaDestaques>();
         services.AddScoped<ExportacaoComunicado>();
         services.AddScoped<Acesso.Autenticacao>();
+        services.AddScoped<AdministracaoUsuarios>();
 
         return services;
     }

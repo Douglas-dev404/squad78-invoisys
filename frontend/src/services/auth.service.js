@@ -27,3 +27,4 @@ export async function getCurrentUser(options) {
 
 export const requestPasswordReset = ({ email }) => api.post('/auth/forgot-password', { email }, { auth: false });
 export const resendPasswordReset = ({ email }) => api.post('/auth/resend-forgot-password', { email }, { auth: false });
+export const resetPassword = ({ token, novaSenha }) => api.post('/auth/reset-password', { token, novaSenha }, { auth: false });

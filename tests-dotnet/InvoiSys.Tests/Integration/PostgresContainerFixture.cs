@@ -26,6 +26,8 @@ public sealed class PostgresContainerFixture : IAsyncLifetime
 
     public async Task DisposeAsync() => await _container.DisposeAsync();
 
+    public string ConnectionString => _container.GetConnectionString();
+
     public async Task<Usuario> SalvarRevisorAsync(string nome = "Revisora")
     {
         var usuario = AutenticacaoDeTeste.UmRevisor(nome);

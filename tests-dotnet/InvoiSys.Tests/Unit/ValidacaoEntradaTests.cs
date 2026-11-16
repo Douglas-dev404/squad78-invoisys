@@ -8,6 +8,29 @@ namespace InvoiSys.Tests.Unit;
 public class ValidacaoEntradaTests
 {
     [Theory]
+    [InlineData("", "ana@example.com", "admin", "senha-forte", "nome")]
+    [InlineData("Ana", "invalido", "admin", "senha-forte", "email")]
+    [InlineData("Ana", "ana@example.com", "operador", "senha-forte", "papel")]
+    [InlineData("Ana", "ana@example.com", "admin", "1234567", "senhaInicial")]
+    public void Cadastro_usuario_invalido_identifica_o_campo(string nome, string email, string papel, string senha, string campo)
+    {
+        var resultado = new CadastrarUsuarioInValidator()
+            .Validate(new CadastrarUsuarioIn(nome, email, papel, senha));
+
+        resultado.IsValid.Should().BeFalse();
+        resultado.Errors.Any(erro => string.Equals(erro.PropertyName, campo, StringComparison.OrdinalIgnoreCase))
+            .Should().BeTrue();
+    }
+
+    [Fact]
+    public void Cadastro_usuario_aceita_campos_validos()
+    {
+        var resultado = new CadastrarUsuarioInValidator()
+            .Validate(new CadastrarUsuarioIn("Ana", "ana@example.com", "admin", "senha-forte"));
+
+        resultado.IsValid.Should().BeTrue();
+    }
+    [Theory]
     [InlineData(null)]
     [InlineData("")]
     [InlineData("   ")]

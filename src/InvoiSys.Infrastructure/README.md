@@ -149,6 +149,19 @@ Modelo completo, tabela por tabela: [docs/modelagem-de-dominio.md](../../docs/mo
 
 ---
 
+### Trava por Release: `PostgresBloqueioProcessamento`
+
+Implementa `IBloqueioProcessamento` com **advisory lock de sessão** do Postgres
+([ADR-031](../../docs/decisoes-arquiteturais.md#adr-031--trava-por-release-antes-do-pipeline-advisory-lock-no-postgres)).
+
+| Etapa | O que faz |
+|---|---|
+| `TentarAdquirirAsync(chave)` | abre uma conexão do `NpgsqlDataSource` (singleton, fora do `DbContext`) e roda `SELECT pg_try_advisory_lock(@chave)`; se não obteve, devolve a conexão e retorna `null` |
+| chave | início (64 bits) do SHA-256 de `invoisys:processar-release:<CHAVE>`, em maiúsculas e sem espaços nas pontas |
+| `DisposeAsync` da trava | `pg_advisory_unlock` e fecha a conexão (com `CancellationToken.None`: cancelar a requisição não pode deixar a trava presa) |
+
+Se a API cair no meio, o Postgres encerra a sessão e libera a trava sozinho.
+
 ## Auth: Argon2id + JWT
 
 Decisão em [ADR-024](../../docs/decisoes-arquiteturais.md#adr-024--autenticação-jwt-stateless-argon2id-e-admin-inicial).

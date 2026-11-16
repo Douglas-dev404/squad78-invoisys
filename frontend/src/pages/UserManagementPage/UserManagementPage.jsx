@@ -1,4 +1,5 @@
 import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../../hooks/useAuth';
 import { useUserManagement } from '../../hooks/useUserManagement';
 import { Layout } from '../../components/Layout/Layout';
 import { UserListItem } from '../../components/UserListItem/UserListItem';
@@ -7,19 +8,16 @@ import { AlertError } from '../../components/AlertError/AlertError';
 
 export function UserManagementPage() {
   const navigate = useNavigate();
+  const { usuario } = useAuth();
   const {
     users,
     loading,
     error,
-    clearError,
     refetch,
     selectedUser,
     selectUser,
     clearSelection,
-    draftPermissions,
-    togglePermission,
-    savePermissions,
-    toggleStatus,
+    deactivate,
     isSaving,
     saveError,
   } = useUserManagement();
@@ -37,7 +35,7 @@ export function UserManagementPage() {
               Gestão de Usuários
             </h2>
             <p className="font-body-sm text-body-sm text-on-surface-variant mt-xs">
-              Gerencie acessos, permissões e histórico da equipe.
+              Cadastre e desative os acessos da equipe.
             </p>
           </div>
           <button
@@ -52,7 +50,7 @@ export function UserManagementPage() {
         </div>
 
         {error && (
-          <AlertError message={error} onDismiss={clearError} onRetry={refetch} />
+          <AlertError message={error} onRetry={refetch} />
         )}
 
         {loading && (
@@ -91,11 +89,10 @@ export function UserManagementPage() {
       {/* Right Side: Profile Details Panel (only when a user is selected) */}
       {selectedUser && (
         <UserProfilePanel
+          key={selectedUser.id}
           user={selectedUser}
-          draftPermissions={draftPermissions}
-          onTogglePermission={togglePermission}
-          onSave={savePermissions}
-          onToggleStatus={toggleStatus}
+          isSelf={selectedUser.id === usuario?.id}
+          onDeactivate={deactivate}
           onClose={clearSelection}
           isSaving={isSaving}
           saveError={saveError}

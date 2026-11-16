@@ -153,3 +153,37 @@ O mock de identidade continua apenas porque profile.mock.js ainda o importa. As 
 ## Destaques do login (F-05)
 
 GET /branding/highlights é público e usa o cliente HTTP da F-01 sem Bearer. O service converte titulo/descricao/icone em title/description/icon. Falha da API retorna os destaques locais sem alerta visual; o motivo é registrado por console.warn. Lista vazia do servidor é respeitada. O hook cancela atualizações de componentes desmontados e inicializa o estado de carregamento. getBrandInfo e MOCK_BRAND_INFO foram removidos após busca de referências. A integração com banco depende do PR #94 (B-04).
+
+## Ações da revisão (F-07, F-08, F-09) — prontas para a tela de detalhe (F-06)
+
+Não há página nem rota nesta entrega: as peças abaixo são montadas pela tela de detalhe da Release (#69).
+
+| Peça | Arquivo | O que faz |
+|---|---|---|
+| Regras | [`utils/revisao.js`](src/utils/revisao.js) | `acoesDaVersao(versao, statusRelease)` diz o que o status permite (espelha o domínio, a UI nunca oferece um 409). `substituirItem`, `nomeArquivoMarkdown`, `erroDoCampo` |
+| Services | [`services/releases.service.js`](src/services/releases.service.js) | `editarItem`, `excluirItem`, `reincluirItem`, `aprovarVersao`, `reprovarVersao`, `reabrirVersao`, `exportarComunicado` |
+| Item (F-07) | `useRevisaoItem` + [`ItemRevisavel`](src/components/ItemRevisavel/ItemRevisavel.jsx) | Editar (textarea, contador, Esc cancela, Ctrl+Enter salva), excluir com motivo opcional, reincluir. `salvando`/`erro` por item; o item devolvido pela API substitui o da lista, sem novo GET |
+| Versão (F-08) | `useRevisaoVersao` + [`BarraRevisao`](src/components/BarraRevisao/BarraRevisao.jsx) | Aprovar, reprovar (motivo obrigatório), reabrir e reprocessar com confirmação; chama `recarregar()` depois de cada sucesso |
+| Exportação (F-09) | `useExportacao` + [`ExportacaoModal`](src/components/ExportacaoModal/ExportacaoModal.jsx) | Aberto pela `BarraRevisao` quando a versão está aprovada: prévia em texto puro, Copiar, Baixar `<chave>-<publico>.md` (UTF-8) |
+
+| Status da versão | Barra mostra | Itens editáveis |
+|---|---|---|
+| `aguardando_revisao` | Aprovar (desabilitado sem item incluído), Reprovar, Reprocessar com IA | sim |
+| `aprovado` | Reabrir, Exportar Markdown | não ("Reabra para editar") |
+| `reprovado` | Reprocessar com IA (reprovar → reprocessar; a API recusa reabrir) | não (o reprocessamento apagaria as edições) |
+
+Como a tela de detalhe usa:
+
+```jsx
+const { release, recarregar } = useRelease(chave);               // F-06
+const [itens, setItens] = useState(versao.itens);
+const revisaoItem = useRevisaoItem({ chave, onItemAtualizado: (i) => setItens((l) => substituirItem(l, i)) });
+const acoes = acoesDaVersao(versao, release.status);
+
+<BarraRevisao chave={chave} versao={versao} statusRelease={release.status} recarregar={recarregar} />
+{itens.map((item) => (
+  <ItemRevisavel key={item.id} item={item} podeEditar={acoes.editarItens} revisao={revisaoItem}>
+    {/* conteúdo do card: textoFinal, selo "Editado", riscado se excluído, chips das origens */}
+  </ItemRevisavel>
+))}
+```
