@@ -46,7 +46,8 @@ histórico também é documentação.
 
 | [029](#adr-029--adapter-openai-para-o-illmprovider-escolhido-por-configuração) | Adapter OpenAI para o `ILlmProvider`, escolhido por configuração | Aceita | 2026-11-03 |
 | [P-02](#p-02--desenho-da-autenticação) | Desenho da autenticação | **Resolvida** → ADR-024 | 2026-10-11 |
-| [P-03](#p-03--onde-mora-o-render-da-exportação) | Onde mora o render da exportação | **Proposta** | — |
+| [032](#adr-032--exportação-em-html-autocontido-pdf-fica-fora) | Exportação em HTML autocontido; PDF fica fora | Aceita | 2026-11-16 |
+| [P-03](#p-03--onde-mora-o-render-da-exportação) | Onde mora o render da exportação | **Resolvida** → ADR-032 | 2026-11-16 |
 
 ---
 
@@ -925,6 +926,36 @@ Origem: PR #57 (trava + observabilidade). Só a trava entrou; a observabilidade
 
 ---
 
+## ADR-032 — Exportação em HTML autocontido; PDF fica fora
+
+**Contexto.** O enunciado cita HTML ou PDF além de Markdown (#89). `FormatoExportacao` e o
+`CHECK` de `comunicados_exportados.formato` já aceitavam `html` e `pdf` desde a #24, mas o
+caso de uso recusava tudo que não fosse Markdown. O conteúdo vem da IA e de edição humana,
+então não pode virar HTML ativo.
+
+**Decisão.**
+- `RenderizadorHtml` na Application, ao lado do `RenderizadorMarkdown` e com o mesmo
+  contrato (`Renderizar(VersaoComunicado)`). A ordem das categorias fica num só lugar
+  (`SecoesComunicado`), usada pelos dois. Isso resolve a [P-03](#p-03--onde-mora-o-render-da-exportação):
+  render é função pura da Application, sem porta, porque não fala com nada externo.
+- HTML5 em **um único arquivo**: CSS inline, sem fonte, imagem ou script externo, e um
+  `Content-Security-Policy` (`default-src 'none'`) que bloqueia script mesmo se algo
+  escapar.
+- **Todo texto passa por `WebUtility.HtmlEncode`** (título, resumo, itens). Acentos saem
+  como entidade numérica (`&#231;`), o que o navegador mostra normalmente.
+- **PDF não entra.** Gerar PDF a partir do HTML exige biblioteca com navegador embutido
+  (Chromium, ~150 MB) ou licença comercial, e o container Linux do Render no plano
+  gratuito não comporta isso. `pdf` continua recusado com 422. Quem precisar de PDF
+  imprime o HTML pelo navegador ("Salvar como PDF").
+- Sem migration: o `CHECK` já permitia `html`.
+
+**Consequências.**
+- ✅ Markdown não muda (mesmo texto byte a byte).
+- ✅ O front mostra a prévia em `<iframe sandbox>`, sem permissão de script.
+- ⚠️ O HTML exportado tem estilo fixo; mudar a identidade visual é mudar o renderizador.
+
+---
+
 ## Decisões em aberto
 
 ### P-02 — Desenho da autenticação
@@ -933,7 +964,9 @@ Origem: PR #57 (trava + observabilidade). Só a trava entrou; a observabilidade
 
 ### P-03 — Onde mora o render da exportação
 
-A decidir: um serviço de aplicação (`ExportarComunicado`) que monta o Markdown a partir
+**Resolvida** pela [ADR-032](#adr-032--exportação-em-html-autocontido-pdf-fica-fora).
+
+Proposta original: um serviço de aplicação (`ExportarComunicado`) que monta o Markdown a partir
 de `VersaoComunicado.ItensPublicaveis`, agrupado por categoria, e grava via
 `IComunicadoExportadoRepository`; ou uma porta `IRenderizadorComunicado` com um adapter
 por formato (Markdown agora; HTML/PDF depois). A segunda opção encaixa melhor no
