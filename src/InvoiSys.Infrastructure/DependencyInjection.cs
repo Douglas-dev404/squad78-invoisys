@@ -8,6 +8,7 @@ using InvoiSys.Infrastructure.Database;
 using InvoiSys.Infrastructure.Email;
 using InvoiSys.Infrastructure.Jira;
 using InvoiSys.Infrastructure.Llm;
+using Npgsql;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -70,6 +71,11 @@ public static class DependencyInjection
         services.AddScoped<IUsuarioRepository, UsuarioRepository>();
         services.AddScoped<ITokenRedefinicaoSenhaRepository, TokenRedefinicaoSenhaRepository>();
         services.AddScoped<IDestaqueHeroRepository, DestaqueHeroRepository>();
+
+        // Trava por Release (ADR-031): advisory lock de sessão numa conexão própria, fora do DbContext,
+        // para durar a execução inteira do pipeline sem depender de transação.
+        services.AddSingleton(_ => NpgsqlDataSource.Create(connectionString));
+        services.AddScoped<IBloqueioProcessamento, PostgresBloqueioProcessamento>();
     }
 
     private static void AddJiraClient(IServiceCollection services)

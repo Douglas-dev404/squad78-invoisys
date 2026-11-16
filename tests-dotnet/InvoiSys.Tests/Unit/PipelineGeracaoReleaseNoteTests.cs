@@ -30,7 +30,7 @@ public class PipelineGeracaoReleaseNoteTests
             GruposFixos = [["INV-1", "INV-INEXISTENTE"], ["INV-2"]],
         };
 
-        var release = await new PipelineGeracaoReleaseNote(jira, llm, new FakeReleaseRepository()).ExecutarAsync("REL-1");
+        var release = await new PipelineGeracaoReleaseNote(jira, llm, new FakeReleaseRepository(), new FakeBloqueioProcessamento()).ExecutarAsync("REL-1");
 
         release.Status.Should().Be(StatusPipeline.AguardandoRevisao);
         release.Itens.Should().HaveCount(2, "nenhuma história real pode se perder");
@@ -45,12 +45,12 @@ public class PipelineGeracaoReleaseNoteTests
         var release = await new PipelineGeracaoReleaseNote(
             new FakeJiraClient { Historias = [Historia("INV-1")] },
             new FakeLlmProvider(),
-            repositorio).ExecutarAsync("REL-1");
+            repositorio, new FakeBloqueioProcessamento()).ExecutarAsync("REL-1");
         release.Aprovar(UmRevisor("revisora@invoisys.com"), DateTimeOffset.UtcNow);
 
         var jira = new FakeJiraClient { Historias = [Historia("INV-9")] };
         var llm = new FakeLlmProvider { FalhaAoChamar = new InvalidOperationException("não chamar o LLM") };
-        var acao = async () => await new PipelineGeracaoReleaseNote(jira, llm, repositorio)
+        var acao = async () => await new PipelineGeracaoReleaseNote(jira, llm, repositorio, new FakeBloqueioProcessamento())
             .ExecutarAsync("REL-1");
 
         await acao.Should().ThrowAsync<RevisaoHumanaObrigatoriaException>();
@@ -69,7 +69,7 @@ public class PipelineGeracaoReleaseNoteTests
             GruposFixos = [["INV-1"], ["INV-FANTASMA-1", "INV-FANTASMA-2"]],
         };
 
-        var release = await new PipelineGeracaoReleaseNote(jira, llm, new FakeReleaseRepository()).ExecutarAsync("REL-1");
+        var release = await new PipelineGeracaoReleaseNote(jira, llm, new FakeReleaseRepository(), new FakeBloqueioProcessamento()).ExecutarAsync("REL-1");
 
         release.Itens.Should().HaveCount(1, "um grupo só de chaves inexistentes não gera item");
     }
@@ -85,7 +85,7 @@ public class PipelineGeracaoReleaseNoteTests
             TituloEResumo = ("Release de agosto", "Resumo da release."),
         };
 
-        var release = await new PipelineGeracaoReleaseNote(jira, llm, new FakeReleaseRepository()).ExecutarAsync("REL-1");
+        var release = await new PipelineGeracaoReleaseNote(jira, llm, new FakeReleaseRepository(), new FakeBloqueioProcessamento()).ExecutarAsync("REL-1");
 
         release.Status.Should().Be(StatusPipeline.AguardandoRevisao);
         release.ProntaParaExportar.Should().BeFalse("publicação exige aprovação humana");
@@ -109,7 +109,7 @@ public class PipelineGeracaoReleaseNoteTests
             GruposFixos = [["INV-1", "INV-2"], ["INV-3"]],
         };
 
-        var release = await new PipelineGeracaoReleaseNote(jira, llm, new FakeReleaseRepository()).ExecutarAsync("REL-1");
+        var release = await new PipelineGeracaoReleaseNote(jira, llm, new FakeReleaseRepository(), new FakeBloqueioProcessamento()).ExecutarAsync("REL-1");
 
         release.Itens.Should().HaveCount(2);
         release.Itens[0].Origens.Should().Equal("INV-1", "INV-2");
@@ -125,7 +125,7 @@ public class PipelineGeracaoReleaseNoteTests
         var llm = new FakeLlmProvider { FalhaAoChamar = new InvalidOperationException("boom") };
 
         var acao = async () =>
-            await new PipelineGeracaoReleaseNote(jira, llm, new FakeReleaseRepository()).ExecutarAsync("REL-1");
+            await new PipelineGeracaoReleaseNote(jira, llm, new FakeReleaseRepository(), new FakeBloqueioProcessamento()).ExecutarAsync("REL-1");
 
         await acao.Should().ThrowAsync<InvalidOperationException>().WithMessage("boom");
     }
@@ -165,7 +165,7 @@ public class PipelineGeracaoReleaseNoteTests
         var llm = new FakeLlmProvider { FalhaAoChamar = new InvalidOperationException("a IA não devia ser chamada") };
         var repositorio = new FakeReleaseRepository();
 
-        var acao = () => new PipelineGeracaoReleaseNote(jira, llm, repositorio).ExecutarAsync("REL-VAZIA");
+        var acao = () => new PipelineGeracaoReleaseNote(jira, llm, repositorio, new FakeBloqueioProcessamento()).ExecutarAsync("REL-VAZIA");
 
         (await acao.Should().ThrowAsync<ReleaseSemHistoriasException>()).WithMessage("*REL-VAZIA*");
         (await repositorio.BuscarPorChaveJiraAsync("REL-VAZIA")).Should().BeNull();

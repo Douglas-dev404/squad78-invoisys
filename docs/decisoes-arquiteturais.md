@@ -881,6 +881,50 @@ qualquer chamada à IA e antes de gravar, então nada é persistido.
 
 ---
 
+## ADR-031 — Trava por Release antes do pipeline (advisory lock no Postgres)
+
+**Contexto.** `Release.ChaveJira` é única no banco, mas o `SalvarAsync` só roda no **fim**
+do pipeline: durante a execução o status `Processando` existe apenas em memória. Dois
+`POST /processar` simultâneos da mesma Release leem o banco sem ver nada e disparam, cada
+um, todas as chamadas pagas à IA (agrupar, categorizar e reescrever por grupo, título e
+resumo). Só no `SalvarAsync` o segundo é derrubado pelo índice único. O banco impede a
+Release duplicada, mas não o gasto duplicado.
+
+**Opções consideradas.**
+1. Gravar `Processando` no início e checar o status. Exige recuperar a Release "presa" em
+   `Processando` quando o processo cai no meio.
+2. `SemaphoreSlim` em memória. Não vale com mais de uma instância da API.
+3. Lock distribuído em Redis. Infraestrutura nova só para isso.
+4. Advisory lock de sessão do Postgres (`pg_try_advisory_lock`).
+
+**Decisão.** Opção 4.
+
+- Porta `IBloqueioProcessamento` (`Domain/Ports`) e adapter `PostgresBloqueioProcessamento`
+  (`Infrastructure/Database`). A chave de 64 bits é o início do SHA-256 de
+  `invoisys:processar-release:<CHAVE em maiúsculas, sem espaços nas pontas>`.
+- O pipeline adquire a trava **antes** de consultar o Jira ou chamar a IA. Se está
+  ocupada, lança `ProcessamentoEmAndamentoException` e a API responde **409**, sem nenhuma
+  chamada externa.
+- A trava vive numa conexão dedicada (`NpgsqlDataSource` singleton, fora do `DbContext`),
+  aberta no início e devolvida no fim (`DisposeAsync`: `pg_advisory_unlock` e fecha). Se o
+  processo morrer, o Postgres encerra a sessão e libera a trava.
+- O índice único continua sendo a segunda defesa.
+- A trava é dependência obrigatória do pipeline: não existe "pipeline sem trava". Os
+  testes que não tratam concorrência usam `FakeBloqueioProcessamento`.
+
+**Consequências.**
+- ✅ A segunda execução é recusada na hora, sem gastar token.
+- ✅ Não há nada para "destravar" à mão.
+- ⚠️ Segura uma conexão do pool durante toda a execução (segundos a minutos). O pool padrão
+  do Npgsql (100) comporta, mas muitas Releases simultâneas contam.
+- ⚠️ A trava é por Release, não por usuário.
+- ⚠️ `Processando` continua só em memória: `GET /releases` não mostra execução em curso.
+
+Origem: PR #57 (trava + observabilidade). Só a trava entrou; a observabilidade
+(Langfuse, Prometheus, Grafana) fica para a Entrega 4.
+
+---
+
 ## Decisões em aberto
 
 ### P-02 — Desenho da autenticação
