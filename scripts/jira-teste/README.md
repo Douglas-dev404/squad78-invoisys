@@ -18,6 +18,8 @@ Para gravar o token no `.env` sem ele aparecer na tela (Windows):
 powershell -ExecutionPolicy Bypass -File .\scripts\jira-teste\definir-token.ps1
 ```
 
+O mesmo script grava a chave da IA de testes: `-Variavel OpenRouter__ApiKey`.
+
 ## 2. Popular com dados de teste
 
 Cria o projeto `INV` (Kanban, gerenciado pela empresa), o tipo de subtarefa
