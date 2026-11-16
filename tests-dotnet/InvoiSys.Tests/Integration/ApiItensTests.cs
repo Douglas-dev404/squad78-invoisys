@@ -21,6 +21,8 @@ public class ApiItensTests
             builder.ConfigureServices(services =>
             {
                 services.RemoveAll<IReleaseRepository>();
+                services.RemoveAll<IBloqueioProcessamento>();
+                services.AddSingleton<IBloqueioProcessamento>(new FakeBloqueioProcessamento());
                 services.ComUsuarios(AutenticacaoDeTeste.Revisor);
                 services.AddScoped(_ => repositorio);
             }));
