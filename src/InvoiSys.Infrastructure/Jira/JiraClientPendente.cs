@@ -6,8 +6,8 @@ namespace InvoiSys.Infrastructure.Jira;
 public sealed class JiraClientPendente : IJiraClient
 {
     private const string Mensagem =
-        "Jira não configurado — defina Jira:BaseUrl, Jira:Email e Jira:ApiToken (ou as "
-        + "variáveis de ambiente Jira__BaseUrl, Jira__Email, Jira__ApiToken).";
+        "Jira não configurado — defina Jira:BaseUrl, Jira:Email, Jira:ApiToken e Jira:Projeto (ou as "
+        + "variáveis de ambiente Jira__BaseUrl, Jira__Email, Jira__ApiToken, Jira__Projeto).";
 
     public Task<IReadOnlyList<HistoriaJira>> BuscarHistoriasDaReleaseAsync(
         string fixVersion,
