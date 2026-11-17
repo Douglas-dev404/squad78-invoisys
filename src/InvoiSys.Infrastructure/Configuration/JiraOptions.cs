@@ -10,8 +10,22 @@ public sealed class JiraOptions
 
     public string ApiToken { get; set; } = string.Empty;
 
+    public string Projeto { get; set; } = string.Empty;
+
+    public JiraReleaseNoteOptions ReleaseNote { get; set; } = new();
+
     public bool EstaConfigurado =>
         !string.IsNullOrWhiteSpace(BaseUrl)
         && !string.IsNullOrWhiteSpace(Email)
-        && !string.IsNullOrWhiteSpace(ApiToken);
+        && !string.IsNullOrWhiteSpace(ApiToken)
+        && !string.IsNullOrWhiteSpace(Projeto);
+}
+
+public sealed class JiraReleaseNoteOptions
+{
+    public const string TipoSubtarefaPadrao = "Release Note";
+
+    public string TipoSubtarefa { get; set; } = TipoSubtarefaPadrao;
+
+    public string CampoCustomizado { get; set; } = string.Empty;
 }

@@ -17,6 +17,10 @@ public interface IReleaseRepository
         StatusPipeline? status,
         CancellationToken cancellationToken = default);
 
+    Task<IReadOnlyDictionary<string, StatusPipeline>> BuscarStatusPorChavesAsync(
+        IReadOnlyCollection<string> chavesJira,
+        CancellationToken cancellationToken = default);
+
     Task<DashboardDados> BuscarDashboardAsync(
         DateOnly hojeUtc,
         CancellationToken cancellationToken = default);

@@ -26,7 +26,7 @@ Adapter: `src/InvoiSys.Infrastructure/Jira/JiraRestClient.cs`. Configuração:
 | Endpoint de busca | `/rest/api/3/search/jql`. O endpoint legado `/rest/api/3/search` **foi removido** pela Atlassian — não é opção, mesmo que apareça em exemplos antigos. |
 | Paginação | `nextPageToken` (não mais `startAt`). Cada página devolve `isLast` e, se houver próxima, `nextPageToken`. **Token expira em 7 dias** — o adapter não cacheia entre execuções, sempre pagina do zero. |
 | Autenticação | Basic Auth com **email + API token**, nunca senha — é o que a Jira Cloud exige. Header montado uma vez na composition root (`DependencyInjection.cs`). |
-| Query usada | JQL `fixVersion = "<chave>"` — busca todas as issues de uma Release pela fixVersion. |
+| Query usada | JQL `project = "<Jira__Projeto>" AND fixVersion = "<chave>"`, com aspas e barra invertida escapadas nos dois valores (#136). Sem o projeto, versões de mesmo nome em outros projetos se misturavam. |
 | Campos pedidos | `summary,description,issuetype,labels,subtasks` — `fields.subtasks` retorna só `id/key/summary/issuetype` por padrão; **não** traz o corpo de texto da subtarefa. |
 | Corpo da subtarefa Release Note | Exige uma **segunda chamada** por subtarefa candidata: `GET /rest/api/3/issue/{key}?fields=description`. Custa 1 request extra por issue com subtarefa do tipo certo — aceitável no volume de uma Release (dezenas de issues, não milhares). |
 | Formato da descrição | Vem em **ADF** (Atlassian Document Format), uma árvore de nós JSON, não texto puro. Uma instância mal configurada pode devolver string direta — o parser trata os dois casos (`ExtrairTextoDescription`). |
@@ -40,10 +40,10 @@ Fonte primária, consultada em 2026-08-24 e revalidada em 2026-09-22:
 ### Pendências reais — não confundir com o que já foi verificado
 
 1. **Nome exato do subtask type "Release Note" não confirmado contra a instância real
-   da InvoiSys.** O código usa a constante `TipoIssueReleaseNote = "Release Note"`
-   (`JiraRestClient.cs:32`) como suposição — pode ser diferente no Jira real deles
-   (ex: "Nota de Release", "Release Notes", etc). **Bloqueador**: sem confirmar isso,
-   o pipeline nunca vai encontrar a subtarefa certa, mesmo funcionando tecnicamente.
+   da InvoiSys.** Desde a #136 isso é configuração, não código:
+   `Jira__ReleaseNote__TipoSubtarefa` (padrão `Release Note`, comparado sem diferenciar
+   maiúsculas) ou `Jira__ReleaseNote__CampoCustomizado` se a InvoiSys guardar o texto num
+   campo da própria história. Falta só descobrir qual dos dois eles usam.
 2. **Nunca testado contra uma instância real do Jira.** Toda a cobertura de teste
    (`JiraRestClientAdfTests.cs`) usa fixtures/fakes. O parsing de ADF só cobre nós de
    texto simples — tabelas, listas e formatação rica em ADF real podem quebrar ou
@@ -119,6 +119,12 @@ OpenRouter (`ChatCompletionsLlmProvider.cs`). Configuração:
    tratado.
 
 ---
+
+### Versões do projeto (`GET /api/v1/jira/versoes`, #137)
+
+- Chamada: `GET /rest/api/3/project/{Jira__Projeto}/versions` (lista inteira, sem paginação). Campos lidos: `name`, `description`, `released`, `archived`, `releaseDate` (`yyyy-MM-dd`).
+- O nome da versão é a chave usada no `/processar` e no JQL `fixVersion`.
+- Arquivadas não aparecem. Falta de configuração → 501; erro do Jira → 502 (mesmo padrão das rotas de Release).
 
 ## Onde a configuração vive
 

@@ -31,6 +31,22 @@ public sealed class ReleaseRepository(InvoiSysDbContext contexto) : IReleaseRepo
         await _contexto.SaveChangesAsync(cancellationToken);
     }
 
+    public async Task<IReadOnlyDictionary<string, StatusPipeline>> BuscarStatusPorChavesAsync(
+        IReadOnlyCollection<string> chavesJira,
+        CancellationToken cancellationToken = default)
+    {
+        if (chavesJira.Count == 0)
+        {
+            return new Dictionary<string, StatusPipeline>();
+        }
+
+        var chaves = chavesJira.Distinct().ToList();
+
+        return await _contexto.Releases.AsNoTracking()
+            .Where(r => chaves.Contains(r.ChaveJira))
+            .ToDictionaryAsync(r => r.ChaveJira, r => r.Status, cancellationToken);
+    }
+
     public async Task<IReadOnlyList<ReleaseResumo>> ListarResumosAsync(
         StatusPipeline? status,
         CancellationToken cancellationToken = default)
