@@ -32,6 +32,8 @@ segredo do GitHub é `AZURE_WEBAPP_PUBLISH_PROFILE`, que o workflow usa para faz
 | `Auth__RecuperacaoSenha__UrlBase` | `<url do front>/redefinir-senha` (obrigatória: sem ela a API não sobe) |
 | `Cors__Origens__0` | `<url do front>`, sem barra no fim |
 | `Jira__BaseUrl` / `Jira__Email` / `Jira__ApiToken` | credenciais do Jira (o token só vale para a conta do e-mail) |
+| `Jira__Projeto` | chave do projeto das Releases, ex.: `INV` (obrigatória: sem ela a API responde 501) |
+| `Jira__ReleaseNote__TipoSubtarefa` / `Jira__ReleaseNote__CampoCustomizado` | opcionais: nome do tipo de subtarefa da Release Note (padrão `Release Note`) ou id do campo customizado |
 | `Llm__Provedor` / `OpenAi__ApiKey` / `OpenAi__Modelo` | `OpenAi` / chave de platform.openai.com / `gpt-4o-mini` |
 | `Database__MigrarAoIniciar` | `true` |
 | `Proxy__ConfiarCabecalhosEncaminhados` | `true` (o App Service tem proxy na frente; sem isso o rate limit do login vale para todos juntos) |
