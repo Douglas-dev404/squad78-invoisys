@@ -129,3 +129,16 @@ test('409 da API chega com o detail para a UI mostrar', async () => {
     return true;
   });
 });
+
+test('nomeArquivoExportacao usa a extensão do formato', () => {
+  assert.equal(revisao.nomeArquivoExportacao('INV-123', 'cliente', 'html'), 'INV-123-cliente.html');
+  assert.equal(revisao.nomeArquivoExportacao('INV-123', 'suporte', 'markdown'), 'INV-123-suporte.md');
+  assert.equal(revisao.nomeArquivoExportacao('INV-123', 'cliente'), 'INV-123-cliente.md');
+  assert.equal(revisao.FORMATOS_EXPORTACAO.html.tipo, 'text/html;charset=utf-8');
+});
+
+test('exportarComunicado em html manda o formato no corpo', async () => {
+  const chamadas = capturar(201, { id: 'e1', formato: 'html', conteudo: '<!DOCTYPE html>' });
+  await releases.exportarComunicado('INV-123', 'cliente', 'html');
+  assert.deepEqual(chamadas[0].body, { publico: 'cliente', formato: 'html' });
+});
