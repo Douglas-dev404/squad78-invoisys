@@ -204,6 +204,25 @@ public class ApiReleasesTests
     }
 
     [Fact]
+    public async Task Credenciais_do_Jira_sem_projeto_respondem_501_pedindo_Jira_Projeto()
+    {
+        using var app = new WebApplicationFactory<Program>().WithWebHostBuilder(builder =>
+        {
+            builder.UseSetting("Jira:BaseUrl", "https://teste.atlassian.net");
+            builder.UseSetting("Jira:Email", "teste@exemplo.com");
+            builder.UseSetting("Jira:ApiToken", "token-de-teste");
+            builder.UseSetting("Jira:Projeto", "");
+            builder.ConfigureServices(services => services.ComUsuarios(AutenticacaoDeTeste.Revisor));
+        });
+        using var client = app.CriarClienteAutenticado();
+
+        var resposta = await client.GetAsync("/api/v1/releases/2026.10.0/historias");
+
+        resposta.StatusCode.Should().Be(HttpStatusCode.NotImplemented);
+        (await resposta.Content.ReadAsStringAsync()).Should().Contain("Jira__Projeto");
+    }
+
+    [Fact]
     public async Task Erro_do_Jira_vira_502_e_nao_500()
     {
         var jira = new FakeJiraClient

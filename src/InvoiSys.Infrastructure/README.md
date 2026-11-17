@@ -26,7 +26,7 @@ InvoiSys.Infrastructure/
 
 | Porta | Adapter | Condição |
 |---|---|---|
-| `IJiraClient` | `JiraRestClient` | `Jira:BaseUrl`, `Jira:Email` e `Jira:ApiToken` preenchidos |
+| `IJiraClient` | `JiraRestClient` | `Jira:BaseUrl`, `Jira:Email`, `Jira:ApiToken` e `Jira:Projeto` preenchidos |
 | `IJiraClient` | `JiraClientPendente` | qualquer um vazio → **501** com instrução |
 | `ILlmProvider` | `OpenRouterProvider` | `OpenRouter:ApiKey` preenchida |
 | `ILlmProvider` | `ProviderPendente` | chave vazia → **501** com instrução |
@@ -61,14 +61,14 @@ Implementa `IJiraClient` contra a **Jira Cloud REST API v3** (contrato em
 | Método | O que faz |
 |---|---|
 | `BuscarHistoriasDaReleaseAsync(fixVersion)` | Ponto de entrada: busca todas as issues e, para cada uma, o texto da subtarefa Release Note |
-| `BuscarTodasIssuesAsync` | `GET /rest/api/3/search/jql` com `jql=fixVersion="X"`, `maxResults=100`, laço por `nextPageToken` até `isLast` |
-| `BuscarTextoReleaseNoteAsync` | Procura subtarefa com `issuetype.name == "Release Note"` e busca a `description` dela em `/rest/api/3/issue/{key}` (1 chamada extra por issue que tem a subtarefa) |
+| `BuscarTodasIssuesAsync` | `GET /rest/api/3/search/jql` com `jql=project="P" AND fixVersion="X"` (aspas e barra invertida escapadas em `MontarJql`), `maxResults=100`, laço por `nextPageToken` até `isLast` |
+| `BuscarTextoReleaseNoteAsync` | Se `Jira:ReleaseNote:CampoCustomizado` estiver configurado e preenchido na história, usa ele (vem na própria busca, sem chamada extra). Senão procura a subtarefa do tipo `Jira:ReleaseNote:TipoSubtarefa` (padrão `Release Note`, sem diferenciar maiúsculas) e busca a `description` dela em `/rest/api/3/issue/{key}` |
 | `ParaHistoriaJira` | `JsonElement` → `HistoriaJira` (chave, título, descrição, tipo, labels, texto da Release Note) |
 | `ExtrairTextoDescription` / `ExtrairTextoAdf` | Achata o ADF (árvore `type`/`content`/`text`) em texto. Aceita `description` string (instâncias antigas) |
 | `GetAsync` | Erro HTTP → loga corpo (até 500 chars) → lança `JiraApiException` **sem** o corpo |
 
 ⚠️ **Pendências:** confirmar o nome exato do subtask type na instância real da InvoiSys
-(constante `TipoIssueReleaseNote`); ampliar a extração de ADF se as histórias reais
+(agora configurável em `Jira:ReleaseNote`, sem mudar código); ampliar a extração de ADF se as histórias reais
 usarem listas ou tabelas.
 
 ---
