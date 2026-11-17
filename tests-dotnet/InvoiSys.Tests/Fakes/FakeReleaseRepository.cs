@@ -29,6 +29,20 @@ public sealed class FakeReleaseRepository : IReleaseRepository
         return Task.CompletedTask;
     }
 
+    public int ConsultasDeStatus { get; private set; }
+
+    public Task<IReadOnlyDictionary<string, StatusPipeline>> BuscarStatusPorChavesAsync(
+        IReadOnlyCollection<string> chavesJira,
+        CancellationToken cancellationToken = default)
+    {
+        ConsultasDeStatus++;
+        var chaves = chavesJira.ToHashSet();
+        IReadOnlyDictionary<string, StatusPipeline> resultado = _porId.Values
+            .Where(r => chaves.Contains(r.ChaveJira))
+            .ToDictionary(r => r.ChaveJira, r => r.Status);
+        return Task.FromResult(resultado);
+    }
+
     public Task<IReadOnlyList<ReleaseResumo>> ListarResumosAsync(
         StatusPipeline? status,
         CancellationToken cancellationToken = default)

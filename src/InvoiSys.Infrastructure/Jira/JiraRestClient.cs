@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Net.Http.Json;
 using System.Text.Json;
 using System.Web;
@@ -34,6 +35,42 @@ public sealed class JiraRestClient(
     // Barra invertida primeiro: escapar as aspas antes duplicaria a barra que elas ganham.
     internal static string EscaparJql(string valor) =>
         valor.Replace("\\", "\\\\", StringComparison.Ordinal).Replace("\"", "\\\"", StringComparison.Ordinal);
+
+    public async Task<IReadOnlyList<VersaoJira>> ListarVersoesAsync(CancellationToken cancellationToken = default)
+    {
+        var resposta = await GetAsync(
+            $"/rest/api/3/project/{Uri.EscapeDataString(Projeto)}/versions",
+            cancellationToken);
+
+        return resposta.ValueKind == JsonValueKind.Array
+            ? [.. resposta.EnumerateArray().Select(ParaVersaoJira).OfType<VersaoJira>()]
+            : [];
+    }
+
+    internal static VersaoJira? ParaVersaoJira(JsonElement versao)
+    {
+        var nome = LerString(versao, "name").Trim();
+        if (nome.Length == 0)
+        {
+            return null;
+        }
+
+        var descricao = LerString(versao, "description");
+
+        return new VersaoJira(
+            nome,
+            string.IsNullOrWhiteSpace(descricao) ? null : descricao.Trim(),
+            DateOnly.TryParseExact(LerString(versao, "releaseDate"), "yyyy-MM-dd", CultureInfo.InvariantCulture, DateTimeStyles.None, out var data)
+                ? data
+                : null,
+            LerBool(versao, "released"),
+            LerBool(versao, "archived"));
+    }
+
+    private static bool LerBool(JsonElement elemento, string propriedade) =>
+        elemento.ValueKind == JsonValueKind.Object
+        && elemento.TryGetProperty(propriedade, out var valor)
+        && valor.ValueKind == JsonValueKind.True;
 
     public async Task<IReadOnlyList<HistoriaJira>> BuscarHistoriasDaReleaseAsync(
         string fixVersion,
