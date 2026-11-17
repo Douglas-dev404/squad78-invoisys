@@ -373,4 +373,66 @@ public class ApiReleasesTests
 
         resposta.StatusCode.Should().Be(HttpStatusCode.NotFound);
     }
+
+    [Fact]
+    public async Task Versoes_do_Jira_exigem_token()
+    {
+        using var app = CriarApp();
+        using var client = app.CreateClient();
+
+        var resposta = await client.GetAsync("/api/v1/jira/versoes");
+
+        resposta.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
+    }
+
+    [Fact]
+    public async Task Versoes_do_Jira_trazem_o_contrato_da_issue_com_statusInvoisys_nulo_quando_nao_processada()
+    {
+        var jira = new FakeJiraClient
+        {
+            Versoes =
+            [
+                new VersaoJira("2026.10.0", "Release de outubro", new DateOnly(2026, 10, 31), true, false),
+                new VersaoJira("2026.11.0", null, null, false, false),
+            ],
+        };
+
+        using var app = CriarApp(jira);
+        using var client = app.CriarClienteAutenticado();
+
+        var resposta = await client.GetAsync("/api/v1/jira/versoes?incluirLancadas=true");
+
+        resposta.StatusCode.Should().Be(HttpStatusCode.OK);
+        var lista = (await resposta.Content.ReadFromJsonAsync<JsonElement>()).EnumerateArray().ToList();
+        lista.Select(v => v.GetProperty("nome").GetString()).Should().Equal("2026.11.0", "2026.10.0");
+        var outubro = lista[1];
+        outubro.GetProperty("descricao").GetString().Should().Be("Release de outubro");
+        outubro.GetProperty("dataLancamento").GetString().Should().Be("2026-10-31");
+        outubro.GetProperty("lancada").GetBoolean().Should().BeTrue();
+        outubro.GetProperty("statusInvoisys").ValueKind.Should().Be(JsonValueKind.Null);
+    }
+
+    [Fact]
+    public async Task Versoes_do_Jira_sem_configuracao_respondem_501()
+    {
+        using var app = CriarApp(new Infrastructure.Jira.JiraClientPendente());
+        using var client = app.CriarClienteAutenticado();
+
+        var resposta = await client.GetAsync("/api/v1/jira/versoes");
+
+        resposta.StatusCode.Should().Be(HttpStatusCode.NotImplemented);
+    }
+
+    [Fact]
+    public async Task Versoes_do_Jira_com_Jira_fora_do_ar_respondem_502()
+    {
+        var jira = new FakeJiraClient { FalhaAoListarVersoes = new JiraApiException("Jira retornou 503.") };
+
+        using var app = CriarApp(jira);
+        using var client = app.CriarClienteAutenticado();
+
+        var resposta = await client.GetAsync("/api/v1/jira/versoes");
+
+        resposta.StatusCode.Should().Be(HttpStatusCode.BadGateway);
+    }
 }

@@ -15,6 +15,7 @@ InvoiSys.Api/
 │   ├── AuthEndpoints.cs           # rotas /api/v1/auth (esqueci a senha, redefinir)
 │   ├── ReleaseEndpoints.cs        # rotas /api/v1/releases (listar, detalhe, historias, processar)
 │   ├── DashboardEndpoints.cs      # GET /api/v1/dashboard (KPIs, últimos 7 dias, recentes, qualidade da IA)
+│   ├── JiraEndpoints.cs           # GET /api/v1/jira/versoes (versões do Jira + status no InvoiSys)
 │   ├── UsuarioEndpoints.cs        # rotas /api/v1/usuarios (só admin: cadastrar, listar, desativar)
 │   ├── RevisaoEndpoints.cs        # revisão humana por público (aprovar, reprovar, reabrir)
 │   ├── ExportacaoEndpoints.cs     # exportar (POST) e histórico de exportações (GET /api/v1/exportacoes)
@@ -34,7 +35,7 @@ InvoiSys.Api/
 
 ## Endpoints atuais
 
-> **Autenticação:** todas as rotas `/api/v1/releases/**`, `/api/v1/exportacoes/**` e `/api/v1/dashboard` exigem `Authorization: Bearer <token>` (401 sem ele, com token inválido/expirado ou de usuário inexistente/desativado). Públicas: `/health` e `/api/v1/auth/*`.
+> **Autenticação:** todas as rotas `/api/v1/releases/**`, `/api/v1/exportacoes/**`, `/api/v1/jira/**` e `/api/v1/dashboard` exigem `Authorization: Bearer <token>` (401 sem ele, com token inválido/expirado ou de usuário inexistente/desativado). Públicas: `/health` e `/api/v1/auth/*`.
 
 | Método | Rota | Handler | Resposta | Erros |
 |---|---|---|---|---|
@@ -54,6 +55,7 @@ InvoiSys.Api/
 | `GET` | `/api/v1/branding/highlights` | `ListarDestaquesAsync` → `ConsultaDestaques` | `DestaqueOut[]` (ativos, por ordem de exibição; público) | — |
 | `GET` | `/api/v1/releases?status=` | `ListarReleasesAsync` → `ConsultaReleases` | `ReleaseResumoOut[]` (mais recente primeiro) | 422 (status desconhecido) |
 | `GET` | `/api/v1/releases/{chaveRelease}` | `BuscarReleaseAsync` → `ConsultaReleases` | `ReleaseDetalheOut` (todas as versões por público; itens como `ItemRevisaoOut`, com `id`) | 404 |
+| `GET` | `/api/v1/jira/versoes?incluirLancadas=true` | `ListarVersoesAsync` → `ConsultaVersoesJira` | lista de `VersaoJiraOut` `{ nome, descricao, dataLancamento, lancada, statusInvoisys }`: sem arquivadas; não lançadas primeiro, depois `dataLancamento` decrescente; `statusInvoisys` = status no banco ou `null` (uma consulta só, `ChaveJira IN (...)`) | 401, 501, 502 |
 | `GET` | `/api/v1/releases/{chaveRelease}/historias` | `BuscarHistoriasAsync` → `IJiraClient` | `ReleaseOut` | 501, 502 |
 | `POST` | `/api/v1/releases/{chaveRelease}/processar` | `ProcessarReleaseAsync` → `PipelineGeracaoReleaseNote` | `ReleaseProcessadaOut` | 409, 501, 502 |
 | `POST` | `/api/v1/releases/{chaveRelease}/aprovar` | `AprovarAsync` → `RevisaoComunicado` | 204 | 404, 409, 422 |

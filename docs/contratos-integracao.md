@@ -120,6 +120,12 @@ OpenRouter (`ChatCompletionsLlmProvider.cs`). Configuração:
 
 ---
 
+### Versões do projeto (`GET /api/v1/jira/versoes`, #137)
+
+- Chamada: `GET /rest/api/3/project/{Jira__Projeto}/versions` (lista inteira, sem paginação). Campos lidos: `name`, `description`, `released`, `archived`, `releaseDate` (`yyyy-MM-dd`).
+- O nome da versão é a chave usada no `/processar` e no JQL `fixVersion`.
+- Arquivadas não aparecem. Falta de configuração → 501; erro do Jira → 502 (mesmo padrão das rotas de Release).
+
 ## Onde a configuração vive
 
 Nenhuma camada lê variável de ambiente direto — sempre via `IOptions<T>`

@@ -249,4 +249,27 @@ public class ReleaseRepositoryTests(PostgresContainerFixture fixture)
         listadas.Select(r => r.ChaveJira).Should().Equal(recente.ChaveJira, antiga.ChaveJira);
         listadas[0].CriadoEm.Should().BeAfter(listadas[1].CriadoEm);
     }
+
+    [Fact]
+    public async Task BuscarStatusPorChaves_traz_so_as_chaves_pedidas_que_existem()
+    {
+        var pendente = new Release(ChaveJiraUnica(), [UmaHistoria("INV-1")]);
+        var processando = new Release(ChaveJiraUnica(), [UmaHistoria("INV-1")]);
+        processando.MarcarProcessando();
+        var outra = new Release(ChaveJiraUnica(), [UmaHistoria("INV-1")]);
+
+        await using var contexto = fixture.CriarContexto();
+        var repositorio = new ReleaseRepository(contexto);
+        await repositorio.SalvarAsync(pendente);
+        await repositorio.SalvarAsync(processando);
+        await repositorio.SalvarAsync(outra);
+
+        var status = await repositorio.BuscarStatusPorChavesAsync(
+            [pendente.ChaveJira, processando.ChaveJira, "NAO-EXISTE"]);
+
+        status.Should().HaveCount(2);
+        status[pendente.ChaveJira].Should().Be(StatusPipeline.Pendente);
+        status[processando.ChaveJira].Should().Be(StatusPipeline.Processando);
+        (await repositorio.BuscarStatusPorChavesAsync([])).Should().BeEmpty();
+    }
 }
