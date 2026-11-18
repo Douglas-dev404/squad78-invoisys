@@ -437,6 +437,10 @@ Uma subseção por tela de `frontend/src/pages`. As rotas estão em `frontend/sr
 Toda tela protegida usa o `Layout` (menu lateral e cabeçalho); 401 em qualquer chamada
 devolve o usuário para `/login`.
 
+Prints tirados em 18/11/2026 com o código da `develop` (o mesmo da `main` publicada), rodando localmente com dados de teste, numa janela de 1280×800. A tela de detalhe está em página inteira.
+
+**Achado:** nas telas de recuperação de senha (8.2 a 8.4) o logotipo aparece quebrado. A imagem vem de um endereço do Google (`BRAND_LOGO_URL` em `frontend/src/utils/constants.js`) que hoje responde 403, inclusive no deploy.
+
 ### 8.1 Login — `LoginPage` (`/login`)
 
 **Mostra:** logotipo, formulário de e-mail e senha, painel lateral com os destaques
@@ -447,7 +451,7 @@ de novo") e vazio.
 `401` aparece em alerta); ir para "Esqueci minha senha". Usuário já autenticado é
 redirecionado para o dashboard.
 
-> Print: pendente (inserir print real do deploy)
+![Tela de login](telas/01-login.png)
 
 ### 8.2 Esqueci a senha — `ForgotPasswordPage` (`/esqueci-senha`)
 
@@ -456,7 +460,7 @@ redirecionado para o dashboard.
 **Ações:** enviar o link (`POST /auth/forgot-password`), com validação local de e-mail
 vazio ou inválido; voltar para o login.
 
-> Print: pendente (inserir print real do deploy)
+![Tela de esqueci a senha](telas/02-esqueci-senha.png)
 
 ### 8.3 E-mail enviado — `EmailConfirmationPage` (`/email-enviado`)
 
@@ -466,7 +470,7 @@ validade do link em minutos.
 **Ações:** reenviar o link (`POST /auth/resend-forgot-password`), com feedback de sucesso
 ou erro; voltar para o login.
 
-> Print: pendente (inserir print real do deploy)
+![Tela de e-mail enviado](telas/03-email-enviado.png)
 
 ### 8.4 Redefinir senha — `ResetPasswordPage` (`/redefinir-senha#token=...`)
 
@@ -477,7 +481,7 @@ endereço. Sem token, a tela informa que o link é inválido.
 **Ações:** salvar a nova senha (`POST /auth/reset-password`), com validação local de 8
 caracteres e confirmação igual; em caso de sucesso, volta para o login após 3 segundos.
 
-> Print: pendente (inserir print real do deploy)
+![Tela de redefinir senha](telas/04-redefinir-senha.png)
 
 ### 8.5 Dashboard — `DashboardPage` (`/dashboard`)
 
@@ -488,7 +492,7 @@ mostra um estado vazio com atalho para Releases.
 
 **Ações:** abrir uma Release recente (vai para o detalhe); tentar de novo em caso de erro.
 
-> Print: pendente (inserir print real do deploy)
+![Dashboard](telas/05-dashboard.png)
 
 ### 8.6 Releases — `ReleasesPage` (`/releases`)
 
@@ -501,7 +505,7 @@ Release**, que abre o modal `ProcessarReleaseModal` para informar a chave da Rel
 (fixVersion do Jira) e chama `POST /releases/{chave}/processar` (o modal avisa que a
 operação pode demorar). O modal também abre com `?nova=1` na URL.
 
-> Print: pendente (inserir print real do deploy)
+![Lista de Releases](telas/06-releases.png)
 
 ### 8.7 Detalhe da Release — `ReleaseDetalhePage` (`/releases/:chave`)
 
@@ -524,7 +528,7 @@ execução. Trata 404 ("Release não encontrada").
 
 Aprovar, Reabrir e Reprocessar pedem confirmação em diálogo.
 
-> Print: pendente (inserir print real do deploy)
+![Detalhe da Release 2027.01.0 aguardando revisão](telas/07-detalhe-release.png)
 
 ### 8.8 Histórico de Envios — `SentHistoryPage` (`/historico`)
 
@@ -536,7 +540,7 @@ feita.
 **Ações:** filtrar, limpar filtros, paginar. O botão "Exportar log" ainda não tem ação
 ligada à API.
 
-> Print: pendente (inserir print real do deploy)
+![Histórico de envios (dados de exemplo)](telas/08-historico.png)
 
 ### 8.9 Meu Perfil — `ProfilePage` (`/perfil`)
 
@@ -545,7 +549,7 @@ ligada à API.
 
 **Ações:** voltar para a tela anterior.
 
-> Print: pendente (inserir print real do deploy)
+![Meu perfil](telas/09-perfil.png)
 
 ### 8.10 Gestão de Usuários — `UserManagementPage` (`/usuarios`, só admin)
 
@@ -555,7 +559,7 @@ ao selecionar um usuário, painel com os dados dele.
 **Ações:** selecionar usuário; desativar usuário (`POST /usuarios/{id}/desativar`), exceto
 a própria conta; ir para "Novo Usuário".
 
-> Print: pendente (inserir print real do deploy)
+![Gestão de usuários](telas/10-usuarios.png)
 
 ### 8.11 Novo Usuário — `CreateUserPage` (`/usuarios/novo`, só admin)
 
@@ -565,7 +569,7 @@ Release Manager, com descrição de cada um) e senha inicial.
 **Ações:** cadastrar (`POST /usuarios`; e-mail duplicado volta como erro `409`); ao
 concluir, volta para a lista de usuários.
 
-> Print: pendente (inserir print real do deploy)
+![Cadastro de novo usuário](telas/11-novo-usuario.png)
 
 ### 8.12 Em construção — `UnderConstructionPage`
 
@@ -574,4 +578,4 @@ ligada a nenhuma rota** em `App.jsx`; fica disponível para telas futuras.
 
 **Ações:** nenhuma além da navegação do `Layout`.
 
-> Print: pendente (inserir print real do deploy)
+> Sem print: a tela não está ligada a nenhuma rota, então não aparece no sistema.
