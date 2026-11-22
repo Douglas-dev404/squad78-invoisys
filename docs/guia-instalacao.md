@@ -82,9 +82,12 @@ Git; nunca commite chave real.
 | `RateLimit__Login__Tentativas` | não (padrão `5`) | `5` | Tentativas de login por IP na janela |
 | `RateLimit__Login__JanelaSegundos` | não (padrão `60`) | `60` | Janela do limite de login, em segundos |
 | `Proxy__ConfiarCabecalhosEncaminhados` | não (padrão `false`) | `false` | Usa `X-Forwarded-For` para o IP do cliente. Ligue só atrás de proxy reverso |
-| `Jira__BaseUrl` | não, mas sem os três campos do Jira as rotas que usam o Jira respondem `501` | `https://suaempresa.atlassian.net` | URL do Jira Cloud |
+| `Jira__BaseUrl` | não, mas sem os quatro campos do Jira as rotas que usam o Jira respondem `501` | `https://suaempresa.atlassian.net` | URL do Jira Cloud |
 | `Jira__Email` | idem | `voce@empresa.com` | Conta do Jira (Basic Auth) |
 | `Jira__ApiToken` | idem | `<api token do Jira>` | API token da conta acima (não é a senha) |
+| `Jira__Projeto` | idem | `INV` | Chave do projeto no Jira. A busca é `project = <chave> AND fixVersion = <versão>` |
+| `Jira__ReleaseNote__TipoSubtarefa` | não (padrão `Release Note`) | `Release Note` | Tipo de subtarefa que guarda o texto da Release Note |
+| `Jira__ReleaseNote__CampoCustomizado` | não | `customfield_10050` | Id do campo da história com o texto da Release Note. Preenchido, tem prioridade sobre a subtarefa |
 | `Llm__Provedor` | não (padrão `OpenRouter`) | `OpenRouter` ou `OpenAi` | Qual provedor de IA usar. Valor diferente desses dois impede a API de subir |
 | `OpenRouter__ApiKey` | não, mas sem ela (com provedor `OpenRouter`) `/processar` responde `501` | `<chave da OpenRouter>` | Chave da OpenRouter |
 | `OpenRouter__Modelo` | não (padrão `openai/gpt-4o-mini`) | `openai/gpt-4o-mini` | Modelo no formato `provedor/modelo` |
@@ -140,7 +143,7 @@ Copy-Item .env.example .env
   PowerShell, `$b = [byte[]]::new(48); [Security.Cryptography.RandomNumberGenerator]::Create().GetBytes($b); [Convert]::ToBase64String($b)`);
 - `Auth__AdminInicial__Email`, `Auth__AdminInicial__Senha` e `Auth__AdminInicial__Nome`
   para ter com quem entrar;
-- `Jira__BaseUrl`, `Jira__Email`, `Jira__ApiToken` e `OpenRouter__ApiKey` (ou
+- `Jira__BaseUrl`, `Jira__Email`, `Jira__ApiToken`, `Jira__Projeto` e `OpenRouter__ApiKey` (ou
   `Llm__Provedor=OpenAi` + `OpenAi__ApiKey`) para processar Releases de verdade. Sem eles a
   API sobe, mas `/processar` responde `501`.
 
@@ -224,7 +227,7 @@ export Database__MigrarAoIniciar=true
 export Auth__AdminInicial__Email="admin@exemplo.com"
 export Auth__AdminInicial__Senha="<senha inicial>"
 export Auth__AdminInicial__Nome="Administrador"
-# opcional: Jira__BaseUrl, Jira__Email, Jira__ApiToken, OpenRouter__ApiKey
+# opcional: Jira__BaseUrl, Jira__Email, Jira__ApiToken, Jira__Projeto, OpenRouter__ApiKey
 ```
 
 PowerShell:
@@ -237,7 +240,7 @@ $env:Database__MigrarAoIniciar = "true"
 $env:Auth__AdminInicial__Email = "admin@exemplo.com"
 $env:Auth__AdminInicial__Senha = "<senha inicial>"
 $env:Auth__AdminInicial__Nome = "Administrador"
-# opcional: $env:Jira__BaseUrl, $env:Jira__Email, $env:Jira__ApiToken, $env:OpenRouter__ApiKey
+# opcional: $env:Jira__BaseUrl, $env:Jira__Email, $env:Jira__ApiToken, $env:Jira__Projeto, $env:OpenRouter__ApiKey
 ```
 
 **3. API:**
@@ -400,7 +403,7 @@ preenchidas no `.env` e rode `docker compose up -d --force-recreate api`.
 
 **Causa:** comportamento esperado sem credencial (ADR-014). Sem `OpenRouter__ApiKey` (ou
 sem `OpenAi__ApiKey` com `Llm__Provedor=OpenAi`), o composition root usa o
-`ProviderPendente`; sem os três `Jira__*`, usa o `JiraClientPendente`. Não é bug.
+`ProviderPendente`; sem os quatro `Jira__*` obrigatórios, usa o `JiraClientPendente`. Não é bug.
 
 **Solução:** preencha as chaves no `.env` (ou no terminal) e recrie a API. A mensagem do
 `501` diz qual variável falta.
