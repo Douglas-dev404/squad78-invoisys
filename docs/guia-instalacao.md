@@ -67,7 +67,7 @@ Git; nunca commite chave real.
 |---|---|---|---|
 | `ConnectionStrings__Default` | **sim** (em Development já vem de `appsettings.Development.json`; no compose é sobrescrita com host `db`) | `Host=localhost;Port=5432;Database=invoisys;Username=invoisys;Password=<senha>` | Conexão com o PostgreSQL |
 | `Database__MigrarAoIniciar` | não (padrão `false`; o compose liga) | `true` | Aplica as migrations do EF Core no boot da API |
-| `Auth__Jwt__Chave` | **sim**: sem ela a API não sobe | `<segredo de 32+ caracteres>` | Chave de assinatura do JWT. Gere com `openssl rand -base64 48`. Trocar invalida todos os tokens |
+| `Auth__Jwt__Chave` | **sim**: sem ela a API não sobe | `<segredo de 32+ caracteres>` | Chave de assinatura do JWT. Gere com `openssl rand -base64 48` (Bash) ou `$b = [byte[]]::new(48); [Security.Cryptography.RandomNumberGenerator]::Create().GetBytes($b); [Convert]::ToBase64String($b)` (PowerShell). Trocar invalida todos os tokens |
 | `Auth__Jwt__Emissor` | não (padrão `invoisys`) | `invoisys` | Emissor (`iss`) do JWT |
 | `Auth__Jwt__Audiencia` | não (padrão `invoisys-api`) | `invoisys-api` | Audiência (`aud`) do JWT |
 | `Auth__Jwt__ExpiracaoHoras` | não (padrão `8`) | `8` | Validade do token, em horas (maior que zero) |
@@ -120,7 +120,7 @@ O modelo do front é o [frontend/.env.example](../frontend/.env.example).
 ## 3. Subir com Docker Compose
 
 Sobe a API (porta `8080`) e o PostgreSQL 16 (porta `5432`). O front roda à parte, com Node
-(passo 4 desta seção).
+(passo 5 desta seção).
 
 **1. Criar o `.env`** (o compose exige o arquivo: `env_file: .env`).
 
@@ -136,7 +136,8 @@ Copy-Item .env.example .env
 
 **2. Preencher no `.env`, no mínimo:**
 
-- `Auth__Jwt__Chave` com um segredo de 32+ caracteres (`openssl rand -base64 48`);
+- `Auth__Jwt__Chave` com um segredo de 32+ caracteres (`openssl rand -base64 48` no Bash; no
+  PowerShell, `$b = [byte[]]::new(48); [Security.Cryptography.RandomNumberGenerator]::Create().GetBytes($b); [Convert]::ToBase64String($b)`);
 - `Auth__AdminInicial__Email`, `Auth__AdminInicial__Senha` e `Auth__AdminInicial__Nome`
   para ter com quem entrar;
 - `Jira__BaseUrl`, `Jira__Email`, `Jira__ApiToken` e `OpenRouter__ApiKey` (ou
@@ -229,7 +230,8 @@ export Auth__AdminInicial__Nome="Administrador"
 PowerShell:
 
 ```powershell
-$env:Auth__Jwt__Chave = "<segredo de 32+ caracteres>"
+$b = [byte[]]::new(48); [Security.Cryptography.RandomNumberGenerator]::Create().GetBytes($b)
+$env:Auth__Jwt__Chave = [Convert]::ToBase64String($b)
 $env:Auth__RecuperacaoSenha__UrlBase = "http://localhost:5173/redefinir-senha"
 $env:Database__MigrarAoIniciar = "true"
 $env:Auth__AdminInicial__Email = "admin@exemplo.com"
@@ -345,8 +347,9 @@ uma Release (fixVersion) do Jira com histórias.
 4. **Aprovar.** Clique em **Aprovar** e confirme. Para mudar algo depois, **Reabrir** volta
    a versão para revisão. Se o texto não serve, **Reprovar** (com motivo) e
    **Reprocessar com IA**.
-5. **Exportar.** Com a versão aprovada, clique em **Exportar Markdown**. O modal mostra o
-   comunicado com **Copiar** e **Baixar .md**. Itens excluídos não aparecem.
+5. **Exportar.** Com a versão aprovada, clique em **Exportar**. O modal abre com o
+   comunicado em Markdown; o seletor troca para HTML. Há **Copiar** e **Baixar .md** ou
+   **.html**. Itens excluídos não aparecem.
 
 Para cadastrar outros usuários: menu **Usuários** → **Novo Usuário** (só admin). Depois do
 primeiro login, troque a senha do admin pelo fluxo de recuperação e tire
@@ -357,6 +360,12 @@ Recuperação de senha em ambiente local: ainda não há SMTP, então o link de 
 
 ```bash
 docker compose logs api | grep "redefinição"
+```
+
+No PowerShell:
+
+```powershell
+docker compose logs api | Select-String "redefinição"
 ```
 
 ---
@@ -421,6 +430,15 @@ seção 2. Para conferir o que o container recebeu:
 ```bash
 docker compose exec api printenv | grep __
 ```
+
+No PowerShell:
+
+```powershell
+docker compose exec api printenv | Select-String "__"
+```
+
+Sem Docker (seção 4), o que vale é o ambiente do terminal que rodou o `dotnet run`:
+`printenv | grep __` no Bash, `Get-ChildItem Env: | Where-Object Name -like "*__*"` no PowerShell.
 
 ### 7.6 `/processar` responde `422` "A Release '...' não tem histórias no Jira"
 

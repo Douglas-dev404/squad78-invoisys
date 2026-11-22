@@ -476,7 +476,7 @@ Resumo, com Docker Desktop, .NET 10 SDK e Node 22 instalados:
 
 ```bash
 cp .env.example .env        # preencha Auth__Jwt__Chave, Auth__AdminInicial__*, Jira__* e a chave da IA
-docker compose up --build   # API em http://localhost:8080, Postgres em :5432
+docker compose up -d --build   # API em http://localhost:8080, Postgres em :5432
 curl http://localhost:8080/health
 cd frontend && npm ci && npm run dev   # front em http://localhost:5173
 ```
