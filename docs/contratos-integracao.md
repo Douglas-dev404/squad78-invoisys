@@ -16,8 +16,10 @@ InvoiSys) perguntar "qual é o contrato real dessas integrações".
 ## Jira Cloud REST API v3
 
 Adapter: `src/InvoiSys.Infrastructure/Jira/JiraRestClient.cs`. Configuração:
-`src/InvoiSys.Infrastructure/Configuration/JiraOptions.cs` (`Jira__BaseUrl`,
-`Jira__Email`, `Jira__ApiToken`).
+`src/InvoiSys.Infrastructure/Configuration/JiraOptions.cs`. Obrigatórias: `Jira__BaseUrl`,
+`Jira__Email`, `Jira__ApiToken` e `Jira__Projeto` (sem qualquer uma delas as rotas do Jira
+respondem 501). Opcionais: `Jira__ReleaseNote__TipoSubtarefa` (padrão `Release Note`) e
+`Jira__ReleaseNote__CampoCustomizado`.
 
 ### Verificado contra a documentação oficial da Atlassian em 2026-08-24
 
@@ -27,8 +29,9 @@ Adapter: `src/InvoiSys.Infrastructure/Jira/JiraRestClient.cs`. Configuração:
 | Paginação | `nextPageToken` (não mais `startAt`). Cada página devolve `isLast` e, se houver próxima, `nextPageToken`. **Token expira em 7 dias** — o adapter não cacheia entre execuções, sempre pagina do zero. |
 | Autenticação | Basic Auth com **email + API token**, nunca senha — é o que a Jira Cloud exige. Header montado uma vez na composition root (`DependencyInjection.cs`). |
 | Query usada | JQL `project = "<Jira__Projeto>" AND fixVersion = "<chave>"`, com aspas e barra invertida escapadas nos dois valores (#136). Sem o projeto, versões de mesmo nome em outros projetos se misturavam. |
-| Campos pedidos | `summary,description,issuetype,labels,subtasks` — `fields.subtasks` retorna só `id/key/summary/issuetype` por padrão; **não** traz o corpo de texto da subtarefa. |
-| Corpo da subtarefa Release Note | Exige uma **segunda chamada** por subtarefa candidata: `GET /rest/api/3/issue/{key}?fields=description`. Custa 1 request extra por issue com subtarefa do tipo certo — aceitável no volume de uma Release (dezenas de issues, não milhares). |
+| Campos pedidos | `summary,description,issuetype,labels,subtasks`, mais o `Jira__ReleaseNote__CampoCustomizado` quando configurado. `fields.subtasks` retorna só `id/key/summary/issuetype` por padrão; **não** traz o corpo de texto da subtarefa. |
+| Corpo da Release Note | Com `CampoCustomizado` preenchido na história, o texto vem na própria busca, sem chamada extra. Sem ele, exige uma **segunda chamada** por subtarefa do tipo `Jira__ReleaseNote__TipoSubtarefa`: `GET /rest/api/3/issue/{key}?fields=description`. Custa 1 request extra por issue com subtarefa do tipo certo, aceitável no volume de uma Release (dezenas de issues, não milhares). |
+| Versões do projeto | `GET /rest/api/3/project/{Jira__Projeto}/versions` (não paginado; o paginado é `/version`). Usado por `GET /api/v1/jira/versoes` (#137); arquivadas ficam de fora e o nome é devolvido literal, porque é a chave do `fixVersion`. |
 | Formato da descrição | Vem em **ADF** (Atlassian Document Format), uma árvore de nós JSON, não texto puro. Uma instância mal configurada pode devolver string direta — o parser trata os dois casos (`ExtrairTextoDescription`). |
 | Retry | 429/5xx e falha de transporte são retentados pela policy de resiliência da composition root (3 tentativas, backoff exponencial) — o adapter em si não tem lógica de retry, só traduz HTTP em domínio. |
 
@@ -44,10 +47,10 @@ Fonte primária, consultada em 2026-08-24 e revalidada em 2026-09-22:
    `Jira__ReleaseNote__TipoSubtarefa` (padrão `Release Note`, comparado sem diferenciar
    maiúsculas) ou `Jira__ReleaseNote__CampoCustomizado` se a InvoiSys guardar o texto num
    campo da própria história. Falta só descobrir qual dos dois eles usam.
-2. **Nunca testado contra uma instância real do Jira.** Toda a cobertura de teste
-   (`JiraRestClientAdfTests.cs`) usa fixtures/fakes. O parsing de ADF só cobre nós de
-   texto simples — tabelas, listas e formatação rica em ADF real podem quebrar ou
-   perder conteúdo, e isso só aparece testando contra dado real.
+2. **Validado só contra o Jira de homologação da squad** (projeto INV, versão `2026.10.0`,
+   desde 03/10, e de novo em 17/11 com o projeto configurável). Os testes automatizados
+   (`JiraRestClientAdfTests.cs`) usam fixtures. O parsing de ADF cobre texto simples;
+   tabelas, listas e formatação rica de dado real da InvoiSys ainda não foram vistas.
 3. **Sem fallback de input.** Decisão de projeto (não limitação técnica): se a API do
    Jira estiver fora do ar ou mal configurada, não existe caminho alternativo
    (JSON/CSV colado) — é bloqueador de desenvolvimento, não só de produção.

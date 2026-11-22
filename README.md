@@ -529,7 +529,8 @@ de ambiente é `__` (dois underscores).**
 | Variável | Para quê | Sem ela |
 |---|---|---|
 | `ConnectionStrings__Default` | Postgres | a API sobe, mas qualquer acesso ao banco falha |
-| `Jira__BaseUrl`, `Jira__Email`, `Jira__ApiToken` | Jira Cloud (Basic Auth com **API token**) | endpoints respondem **501** "Jira não configurado" |
+| `Jira__BaseUrl`, `Jira__Email`, `Jira__ApiToken`, `Jira__Projeto` | Jira Cloud (Basic Auth com **API token**) e a chave do projeto (ex.: `INV`) | endpoints respondem **501** "Jira não configurado" |
+| `Jira__ReleaseNote__TipoSubtarefa`, `Jira__ReleaseNote__CampoCustomizado` | Onde a Release Note mora no Jira: subtarefa (padrão `Release Note`) ou campo da história | opcionais; sem eles vale a subtarefa `Release Note` |
 | `OpenRouter__ApiKey` | LLM | `/processar` responde **501** "Nenhum LLM provider configurado" |
 | `OpenRouter__Modelo` | modelo `provedor/modelo` (padrão `openai/gpt-4o-mini`) | usa o padrão |
 | `OpenRouter__ModelosFallback__0`, `__1`… | modelos alternativos, tentados pela própria OpenRouter em 5xx/429 | sem fallback |
