@@ -8,7 +8,8 @@ export const BOTAO_PERIGO =
 
 export const BOTAO_TEXTO =
   'rounded-md px-sm py-xs font-label-md text-label-md text-primary transition-colors hover:bg-primary/5 disabled:cursor-not-allowed disabled:opacity-50';
-  const FOCAVEIS =
+
+const FOCAVEIS =
   'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
 
 /**
@@ -27,7 +28,11 @@ export function Dialogo({ titulo, onClose, bloqueado = false, largura = 'max-w-m
 
   useEffect(() => {
     const anterior = document.activeElement;
-    caixaRef.current?.focus();  const prenderFoco = (event) => {
+    caixaRef.current?.focus();
+    return () => anterior?.focus?.();
+  }, []);
+
+  const prenderFoco = (event) => {
     if (event.key !== 'Tab') return;
     const caixa = caixaRef.current;
     const itens = [...caixa.querySelectorAll(FOCAVEIS)];
@@ -47,8 +52,6 @@ export function Dialogo({ titulo, onClose, bloqueado = false, largura = 'max-w-m
       primeiro.focus();
     }
   };
-    return () => anterior?.focus?.();
-  }, []);
 
   useEffect(() => {
     if (bloqueado) return undefined;
