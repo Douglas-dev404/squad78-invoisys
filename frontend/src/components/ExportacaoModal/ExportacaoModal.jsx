@@ -105,7 +105,7 @@ export function ExportacaoModal({
 
         {exportando && (
           <p role="status" className="font-body-md text-body-md text-on-surface-variant">
-            {`Gerando o ${infoSelecionado.label}…`}
+            {textoCarregando ?? `Gerando o ${infoSelecionado.label}…`}
           </p>
         )}
 
