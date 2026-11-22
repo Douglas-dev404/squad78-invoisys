@@ -76,9 +76,6 @@ export function nomeArquivoExportacao(chave, publico, formato = 'markdown') {
   return `${limpar(chave)}-${limpar(publico)}.${extensao}`;
 }
 
-/** Ex.: ("INV-123", "cliente") → "INV-123-cliente.md". */
-export const nomeArquivoMarkdown = (chave, publico) => nomeArquivoExportacao(chave, publico, 'markdown');
-
 export const mensagemDeErro = (erro, padrao = REVISAO_TEXTOS.ERRO_GENERICO) =>
   erro?.detail || erro?.message || padrao;
 

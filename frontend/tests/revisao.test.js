@@ -80,10 +80,10 @@ test('substituirItem troca só o item devolvido pela API e preserva a ordem', ()
   assert.equal(lista[1].textoFinal, 'B', 'não muta a lista original');
 });
 
-test('nomeArquivoMarkdown e validações de texto', () => {
-  assert.equal(revisao.nomeArquivoMarkdown('INV-123', 'cliente'), 'INV-123-cliente.md');
-  assert.equal(revisao.nomeArquivoMarkdown('2026.10 / hotfix', 'cliente'), '2026.10-hotfix-cliente.md');
-  assert.equal(revisao.nomeArquivoMarkdown('a\\b:c', 'interno'), 'a-b-c-interno.md');
+test('nomeArquivoExportacao limpa o nome e validações de texto', () => {
+  assert.equal(revisao.nomeArquivoExportacao('INV-123', 'cliente', 'markdown'), 'INV-123-cliente.md');
+  assert.equal(revisao.nomeArquivoExportacao('2026.10 / hotfix', 'cliente', 'markdown'), '2026.10-hotfix-cliente.md');
+  assert.equal(revisao.nomeArquivoExportacao('a\\b:c', 'interno', 'markdown'), 'a-b-c-interno.md');
   assert.equal(revisao.textoItemValido('   '), false);
   assert.equal(revisao.textoItemValido(' ok '), true);
   assert.equal(revisao.erroDoCampo({ errors: { texto: ['Texto vazio.', 'Outro.'] } }, 'texto'), 'Texto vazio. Outro.');

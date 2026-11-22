@@ -32,7 +32,7 @@ export function ExportacaoModal({
 }) {
   const [copiado, setCopiado] = useState(false);
   const [erroCopia, setErroCopia] = useState(null);
-  const [formatoEscolhido, setFormatoEscolhido] = useState('markdown');
+  const [formatoPedido, setFormatoPedido] = useState(null);
   const temporizador = useRef(null);
 
   useEffect(() => () => window.clearTimeout(temporizador.current), []);
@@ -40,11 +40,12 @@ export function ExportacaoModal({
   const conteudo = exportacao?.conteudo ?? '';
   const formato = exportacao?.formato ?? 'markdown';
   const infoFormato = FORMATOS_EXPORTACAO[formato] ?? FORMATOS_EXPORTACAO.markdown;
-  const infoEscolhido = FORMATOS_EXPORTACAO[formatoEscolhido] ?? FORMATOS_EXPORTACAO.markdown;
+  const formatoSelecionado = exportando && formatoPedido ? formatoPedido : formato;
+  const infoSelecionado = FORMATOS_EXPORTACAO[formatoSelecionado] ?? FORMATOS_EXPORTACAO.markdown;
 
   const escolherFormato = (novo) => {
-    if (novo === formatoEscolhido || exportando) return;
-    setFormatoEscolhido(novo);
+    if (exportando || novo === formato) return;
+    setFormatoPedido(novo);
     onFormatoChange(novo);
   };
 
@@ -82,7 +83,7 @@ export function ExportacaoModal({
               <label
                 key={valor}
                 className={`cursor-pointer rounded-full border px-sm py-xs font-label-md text-label-md transition-colors has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-primary ${
-                  formatoEscolhido === valor
+                  formatoSelecionado === valor
                     ? 'border-primary bg-primary text-on-primary'
                     : 'border-outline-variant text-on-surface-variant hover:bg-surface-container'
                 } ${exportando ? 'cursor-not-allowed opacity-60' : ''}`}
@@ -91,7 +92,7 @@ export function ExportacaoModal({
                   type="radio"
                   name="formato-exportacao"
                   value={valor}
-                  checked={formatoEscolhido === valor}
+                  checked={formatoSelecionado === valor}
                   disabled={exportando}
                   onChange={() => escolherFormato(valor)}
                   className="sr-only"
@@ -104,7 +105,7 @@ export function ExportacaoModal({
 
         {exportando && (
           <p role="status" className="font-body-md text-body-md text-on-surface-variant">
-            {textoCarregando ?? `Gerando o ${infoEscolhido.label}…`}
+            {`Gerando o ${infoSelecionado.label}…`}
           </p>
         )}
 

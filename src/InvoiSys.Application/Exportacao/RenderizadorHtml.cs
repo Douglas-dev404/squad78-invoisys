@@ -13,8 +13,8 @@ public static class RenderizadorHtml
         + "max-width:760px;margin:40px auto;padding:0 16px;color:#1b1c1a;line-height:1.6;background:#fff}"
         + "h1{font-size:1.8rem;margin:0 0 .5rem;color:#1b4332}"
         + "h2{font-size:1.25rem;margin:2rem 0 .5rem;padding-bottom:.25rem;border-bottom:1px solid #c1c8c2;color:#1b4332}"
-        + "p.resumo{font-size:1.05rem;color:#414844}"
-        + "ul{padding-left:1.25rem}li{margin:.35rem 0}";
+        + "p.resumo{font-size:1.05rem;color:#414844;white-space:pre-line}"
+        + "ul{padding-left:1.25rem}li{margin:.35rem 0;white-space:pre-line}";
 
     public static string Renderizar(VersaoComunicado versao)
     {

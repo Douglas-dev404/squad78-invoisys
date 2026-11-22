@@ -80,6 +80,23 @@ public class RenderizadorHtmlTests
     }
 
     [Fact]
+    public void Quebra_de_linha_no_resumo_e_nos_itens_e_mantida_pelo_estilo_e_o_texto_segue_escapado()
+    {
+        var versao = VersaoCom(
+            "Release",
+            "Primeira linha.\nSegunda <b>linha</b>.",
+            Item(CategoriaAlteracao.Melhoria, "Passo 1.\nPasso <2>."));
+
+        var html = RenderizadorHtml.Renderizar(versao);
+
+        html.Should().Contain("p.resumo{font-size:1.05rem;color:#414844;white-space:pre-line}");
+        html.Should().Contain("li{margin:.35rem 0;white-space:pre-line}");
+        html.Should().Contain("<p class=\"resumo\">Primeira linha.\nSegunda &lt;b&gt;linha&lt;/b&gt;.</p>");
+        html.Should().Contain("<li>Passo 1.\nPasso &lt;2&gt;.</li>");
+        html.Should().NotContain("<b>");
+    }
+
+    [Fact]
     public void Item_excluido_e_categoria_vazia_nao_aparecem()
     {
         var excluido = Item(CategoriaAlteracao.Correcao, "Detalhe interno.");

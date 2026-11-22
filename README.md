@@ -65,7 +65,7 @@ flowchart LR
 | **Pipeline de IA** | Limpa → agrupa semelhantes → categoriza → reescreve em linguagem de negócio → gera título e resumo | ✅ implementado (testado com fakes; falta validar com LLM real) |
 | **Persistência** | Grava Release, histórias, comunicado e log da execução | ✅ implementado (reprocessar reaproveita a Release; versão aprovada exige reabrir) |
 | **Revisão** | Humano vê, edita, exclui itens, aprova ou reprova, **por público-alvo** | 🔶 domínio pronto, falta API (#21–#23) e tela |
-| **Exportação** | Gera Markdown (HTML/PDF como diferencial) só de versão aprovada | ✅ Markdown implementado (`POST /releases/{chave}/exportar`); HTML/PDF pendentes |
+| **Exportação** | Gera Markdown (HTML/PDF como diferencial) só de versão aprovada | ✅ Markdown e HTML implementados (`POST /releases/{chave}/exportar`); PDF pendente |
 | **Autenticação** | Login JWT de quem revisa e aprova | ❌ só a entidade `Usuario` e o repository |
 
 ---
@@ -271,7 +271,7 @@ Toda mutação passa pela `Release` carregada via `IReleaseRepository`, porque
 `VersaoComunicado` e `ItemComunicado` **não têm repository próprio** (ver
 [ADR-009](docs/decisoes-arquiteturais.md#adr-009--repository-por-agregado-portas-de-leitura-isoladas)).
 
-### 4. Exportação *(Markdown implementado em #24; HTML/PDF pendentes)*
+### 4. Exportação *(Markdown implementado em #24, HTML em #89; PDF pendente)*
 
 `new ComunicadoExportado(versao, formato, conteudo, caminhoArquivo, geradoPor)` **lança
 `ReleaseNaoAprovadaException`** se a versão não estiver `ProntaParaExportar`. Não existe

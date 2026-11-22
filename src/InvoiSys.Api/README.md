@@ -64,7 +64,7 @@ InvoiSys.Api/
 | `PATCH` | `/api/v1/releases/{chaveRelease}/itens/{itemId}` | `EditarItemAsync` → `RevisaoComunicado` | `ItemRevisaoOut` · corpo `{ "texto": "..." }` | 404, 409, 422 |
 | `POST` | `/api/v1/releases/{chaveRelease}/itens/{itemId}/excluir` | `ExcluirItemAsync` → `RevisaoComunicado` | `ItemRevisaoOut` · corpo opcional `{ "motivo": "..." }` | 404, 409 |
 | `POST` | `/api/v1/releases/{chaveRelease}/itens/{itemId}/reincluir` | `ReincluirItemAsync` → `RevisaoComunicado` | `ItemRevisaoOut` | 404, 409 |
-| `POST` | `/api/v1/releases/{chaveRelease}/exportar` | `ExportarAsync` → `ExportacaoComunicado` | 201 `ComunicadoExportadoOut` (com `conteudo`) · corpo `{ "publico", "formato": "markdown" }` | 404, 409 (versão não aprovada), 422 |
+| `POST` | `/api/v1/releases/{chaveRelease}/exportar` | `ExportarAsync` → `ExportacaoComunicado` | 201 `ComunicadoExportadoOut` (com `conteudo`) · corpo `{ "publico", "formato" }` com `formato` `markdown` ou `html` | 404, 409 (versão não aprovada), 422 (formato desconhecido ou `pdf`) |
 | `GET` | `/api/v1/exportacoes?pagina=&tamanho=&publico=&busca=` | `ListarAsync` → `ConsultaExportacoes` | `PaginaOut<ExportacaoResumoOut>` `{ itens, total, pagina, tamanho }`, mais recente primeiro, sem `conteudo`. Padrão página 1, tamanho 20 (máx. 100). `busca` casa parte da chave ou do título, sem diferenciar maiúsculas (`%` e `_` são texto) | 422 |
 | `GET` | `/api/v1/exportacoes/{id}` | `BuscarAsync` → `ConsultaExportacoes` | `ExportacaoDetalheOut` (os campos da lista + `conteudo`) | 404 |
 | `GET` | `/openapi/v1.json` | gerado (só em Development) | spec OpenAPI 3.1 | — |
@@ -313,7 +313,7 @@ usar o último IP de `X-Forwarded-For`. Sem proxy, fica `false`, senão o cabeç
 | Item | Issue / fase |
 |---|---|
 | Paginação de `GET /api/v1/releases` (hoje lista tudo) | quando o volume pedir |
-| ~~Exportar Markdown~~ feito: `POST /{chaveRelease}/exportar` (201; `ReleaseNaoAprovadaException` → 409; público/formato inválido ou html/pdf → 422) | #24 |
+| ~~Exportar Markdown e HTML~~ feito: `POST /{chaveRelease}/exportar` (201 para `markdown` e `html`; `ReleaseNaoAprovadaException` → 409; público/formato inválido ou `pdf` → 422) | #24, #89 |
 | ~~`/auth/login`, `/auth/me`, `/auth/logout`~~ feito (CORS e rate limit do login incluídos). Falta `/auth/forgot-password` e `[Authorize]` nas rotas de revisão | #49 feito; #52 e #50 |
 
 | `/auth/login`, `/auth/me`, `/auth/logout` + JWT + `[Authorize]` nas rotas de revisão | Fase 3 |
