@@ -160,11 +160,11 @@ Não há página nem rota nesta entrega: as peças abaixo são montadas pela tel
 
 | Peça | Arquivo | O que faz |
 |---|---|---|
-| Regras | [`utils/revisao.js`](src/utils/revisao.js) | `acoesDaVersao(versao, statusRelease)` diz o que o status permite (espelha o domínio, a UI nunca oferece um 409). `substituirItem`, `nomeArquivoMarkdown`, `erroDoCampo` |
+| Regras | [`utils/revisao.js`](src/utils/revisao.js) | `acoesDaVersao(versao, statusRelease)` diz o que o status permite (espelha o domínio, a UI nunca oferece um 409). `substituirItem`, `nomeArquivoExportacao(chave, publico, formato)`, `erroDoCampo` |
 | Services | [`services/releases.service.js`](src/services/releases.service.js) | `editarItem`, `excluirItem`, `reincluirItem`, `aprovarVersao`, `reprovarVersao`, `reabrirVersao`, `exportarComunicado` |
 | Item (F-07) | `useRevisaoItem` + [`ItemRevisavel`](src/components/ItemRevisavel/ItemRevisavel.jsx) | Editar (textarea, contador, Esc cancela, Ctrl+Enter salva), excluir com motivo opcional, reincluir. `salvando`/`erro` por item; o item devolvido pela API substitui o da lista, sem novo GET |
 | Versão (F-08) | `useRevisaoVersao` + [`BarraRevisao`](src/components/BarraRevisao/BarraRevisao.jsx) | Aprovar, reprovar (motivo obrigatório), reabrir e reprocessar com confirmação; chama `recarregar()` depois de cada sucesso |
-| Exportação (F-09) | `useExportacao` + [`ExportacaoModal`](src/components/ExportacaoModal/ExportacaoModal.jsx) | Aberto pela `BarraRevisao` quando a versão está aprovada: prévia em texto puro, Copiar, Baixar `<chave>-<publico>.md` (UTF-8) |
+| Exportação (F-09) | `useExportacao` + [`ExportacaoModal`](src/components/ExportacaoModal/ExportacaoModal.jsx) | Aberto pela `BarraRevisao` quando a versão está aprovada; abrir já gera o Markdown. O seletor Markdown/HTML exporta de novo e só fica no formato novo quando a API responde: se falhar, volta ao formato da prévia mostrada, com o erro, e dá para tentar outra vez. Prévia em texto puro (Markdown) ou `<iframe sandbox>` (HTML), Copiar, Baixar `<chave>-<publico>.md` ou `.html` (UTF-8) |
 
 | Status da versão | Barra mostra | Itens editáveis |
 |---|---|---|

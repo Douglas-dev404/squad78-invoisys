@@ -50,3 +50,6 @@ export const reabrirVersao = (chave, publico) => api.post(`${caminhoRelease(chav
 /** 201 { id, publico, formato, conteudo, geradoPor, geradoEm } · 409 se a versão não está aprovada. */
 export const exportarComunicado = (chave, publico, formato = 'markdown') =>
   api.post(`${caminhoRelease(chave)}/exportar`, { publico, formato });
+
+/** Prévia sem IA: { chaveJira, status, totalHistorias, historias: [{ chave, titulo, tipoIssue, possuiReleaseNoteDedicada }] }. */
+export const listarHistorias = (chave, options) => api.get(`${caminhoRelease(chave)}/historias`, options);

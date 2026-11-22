@@ -80,10 +80,10 @@ test('substituirItem troca só o item devolvido pela API e preserva a ordem', ()
   assert.equal(lista[1].textoFinal, 'B', 'não muta a lista original');
 });
 
-test('nomeArquivoMarkdown e validações de texto', () => {
-  assert.equal(revisao.nomeArquivoMarkdown('INV-123', 'cliente'), 'INV-123-cliente.md');
-  assert.equal(revisao.nomeArquivoMarkdown('2026.10 / hotfix', 'cliente'), '2026.10-hotfix-cliente.md');
-  assert.equal(revisao.nomeArquivoMarkdown('a\\b:c', 'interno'), 'a-b-c-interno.md');
+test('nomeArquivoExportacao limpa o nome e validações de texto', () => {
+  assert.equal(revisao.nomeArquivoExportacao('INV-123', 'cliente', 'markdown'), 'INV-123-cliente.md');
+  assert.equal(revisao.nomeArquivoExportacao('2026.10 / hotfix', 'cliente', 'markdown'), '2026.10-hotfix-cliente.md');
+  assert.equal(revisao.nomeArquivoExportacao('a\\b:c', 'interno', 'markdown'), 'a-b-c-interno.md');
   assert.equal(revisao.textoItemValido('   '), false);
   assert.equal(revisao.textoItemValido(' ok '), true);
   assert.equal(revisao.erroDoCampo({ errors: { texto: ['Texto vazio.', 'Outro.'] } }, 'texto'), 'Texto vazio. Outro.');
@@ -128,4 +128,17 @@ test('409 da API chega com o detail para a UI mostrar', async () => {
     assert.equal(revisao.mensagemDeErro(err), 'A versão cliente está aprovada — reabra antes de editar.');
     return true;
   });
+});
+
+test('nomeArquivoExportacao usa a extensão do formato', () => {
+  assert.equal(revisao.nomeArquivoExportacao('INV-123', 'cliente', 'html'), 'INV-123-cliente.html');
+  assert.equal(revisao.nomeArquivoExportacao('INV-123', 'suporte', 'markdown'), 'INV-123-suporte.md');
+  assert.equal(revisao.nomeArquivoExportacao('INV-123', 'cliente'), 'INV-123-cliente.md');
+  assert.equal(revisao.FORMATOS_EXPORTACAO.html.tipo, 'text/html;charset=utf-8');
+});
+
+test('exportarComunicado em html manda o formato no corpo', async () => {
+  const chamadas = capturar(201, { id: 'e1', formato: 'html', conteudo: '<!DOCTYPE html>' });
+  await releases.exportarComunicado('INV-123', 'cliente', 'html');
+  assert.deepEqual(chamadas[0].body, { publico: 'cliente', formato: 'html' });
 });

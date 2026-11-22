@@ -3,7 +3,7 @@ import { exportarComunicado } from '../services/releases.service';
 import { mensagemDeErro } from '../utils/revisao';
 
 /**
- * Exportar o comunicado aprovado em Markdown (#72). Cada chamada cria um registro novo no histórico.
+ * Exportar o comunicado aprovado em Markdown (#72) ou HTML (#89). Cada chamada cria um registro novo no histórico.
  * @param {Object} params
  * @param {string} params.chave
  * @param {string} params.publico
@@ -16,13 +16,13 @@ export function useExportacao({ chave, publico }) {
   const [resultado, setResultado] = useState(null);
   const ocupado = useRef(false);
 
-  const exportar = useCallback(async () => {
+  const exportar = useCallback(async (formato = 'markdown') => {
     if (ocupado.current) return null;
     ocupado.current = true;
     setExportando(true);
     setErro(null);
     try {
-      const exportado = await exportarComunicado(chave, publico, 'markdown');
+      const exportado = await exportarComunicado(chave, publico, formato);
       setResultado(exportado);
       return exportado;
     } catch (err) {

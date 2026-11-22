@@ -15,6 +15,7 @@ InvoiSys.Api/
 │   ├── AuthEndpoints.cs           # rotas /api/v1/auth (esqueci a senha, redefinir)
 │   ├── ReleaseEndpoints.cs        # rotas /api/v1/releases (listar, detalhe, historias, processar)
 │   ├── DashboardEndpoints.cs      # GET /api/v1/dashboard (KPIs, últimos 7 dias, recentes, qualidade da IA)
+│   ├── JiraEndpoints.cs           # GET /api/v1/jira/versoes (versões do Jira + status no InvoiSys)
 │   ├── UsuarioEndpoints.cs        # rotas /api/v1/usuarios (só admin: cadastrar, listar, desativar)
 │   ├── RevisaoEndpoints.cs        # revisão humana por público (aprovar, reprovar, reabrir)
 │   ├── ExportacaoEndpoints.cs     # exportar (POST) e histórico de exportações (GET /api/v1/exportacoes)
@@ -34,7 +35,7 @@ InvoiSys.Api/
 
 ## Endpoints atuais
 
-> **Autenticação:** todas as rotas `/api/v1/releases/**`, `/api/v1/exportacoes/**` e `/api/v1/dashboard` exigem `Authorization: Bearer <token>` (401 sem ele, com token inválido/expirado ou de usuário inexistente/desativado). Públicas: `/health` e `/api/v1/auth/*`.
+> **Autenticação:** todas as rotas `/api/v1/releases/**`, `/api/v1/exportacoes/**`, `/api/v1/jira/**` e `/api/v1/dashboard` exigem `Authorization: Bearer <token>` (401 sem ele, com token inválido/expirado ou de usuário inexistente/desativado). Públicas: `/health` e `/api/v1/auth/*`.
 
 | Método | Rota | Handler | Resposta | Erros |
 |---|---|---|---|---|
@@ -54,6 +55,7 @@ InvoiSys.Api/
 | `GET` | `/api/v1/branding/highlights` | `ListarDestaquesAsync` → `ConsultaDestaques` | `DestaqueOut[]` (ativos, por ordem de exibição; público) | — |
 | `GET` | `/api/v1/releases?status=` | `ListarReleasesAsync` → `ConsultaReleases` | `ReleaseResumoOut[]` (mais recente primeiro) | 422 (status desconhecido) |
 | `GET` | `/api/v1/releases/{chaveRelease}` | `BuscarReleaseAsync` → `ConsultaReleases` | `ReleaseDetalheOut` (todas as versões por público; itens como `ItemRevisaoOut`, com `id`) | 404 |
+| `GET` | `/api/v1/jira/versoes?incluirLancadas=true` | `ListarVersoesAsync` → `ConsultaVersoesJira` | lista de `VersaoJiraOut` `{ nome, descricao, dataLancamento, lancada, statusInvoisys }`: sem arquivadas; não lançadas primeiro, depois `dataLancamento` decrescente; `statusInvoisys` = status no banco ou `null` (uma consulta só, `ChaveJira IN (...)`) | 401, 501, 502 |
 | `GET` | `/api/v1/releases/{chaveRelease}/historias` | `BuscarHistoriasAsync` → `IJiraClient` | `ReleaseOut` | 501, 502 |
 | `POST` | `/api/v1/releases/{chaveRelease}/processar` | `ProcessarReleaseAsync` → `PipelineGeracaoReleaseNote` | `ReleaseProcessadaOut` | 409, 501, 502 |
 | `POST` | `/api/v1/releases/{chaveRelease}/aprovar` | `AprovarAsync` → `RevisaoComunicado` | 204 | 404, 409, 422 |
@@ -62,7 +64,7 @@ InvoiSys.Api/
 | `PATCH` | `/api/v1/releases/{chaveRelease}/itens/{itemId}` | `EditarItemAsync` → `RevisaoComunicado` | `ItemRevisaoOut` · corpo `{ "texto": "..." }` | 404, 409, 422 |
 | `POST` | `/api/v1/releases/{chaveRelease}/itens/{itemId}/excluir` | `ExcluirItemAsync` → `RevisaoComunicado` | `ItemRevisaoOut` · corpo opcional `{ "motivo": "..." }` | 404, 409 |
 | `POST` | `/api/v1/releases/{chaveRelease}/itens/{itemId}/reincluir` | `ReincluirItemAsync` → `RevisaoComunicado` | `ItemRevisaoOut` | 404, 409 |
-| `POST` | `/api/v1/releases/{chaveRelease}/exportar` | `ExportarAsync` → `ExportacaoComunicado` | 201 `ComunicadoExportadoOut` (com `conteudo`) · corpo `{ "publico", "formato": "markdown" }` | 404, 409 (versão não aprovada), 422 |
+| `POST` | `/api/v1/releases/{chaveRelease}/exportar` | `ExportarAsync` → `ExportacaoComunicado` | 201 `ComunicadoExportadoOut` (com `conteudo`) · corpo `{ "publico", "formato" }` com `formato` `markdown` ou `html` | 404, 409 (versão não aprovada), 422 (formato desconhecido ou `pdf`) |
 | `GET` | `/api/v1/exportacoes?pagina=&tamanho=&publico=&busca=` | `ListarAsync` → `ConsultaExportacoes` | `PaginaOut<ExportacaoResumoOut>` `{ itens, total, pagina, tamanho }`, mais recente primeiro, sem `conteudo`. Padrão página 1, tamanho 20 (máx. 100). `busca` casa parte da chave ou do título, sem diferenciar maiúsculas (`%` e `_` são texto) | 422 |
 | `GET` | `/api/v1/exportacoes/{id}` | `BuscarAsync` → `ConsultaExportacoes` | `ExportacaoDetalheOut` (os campos da lista + `conteudo`) | 404 |
 | `GET` | `/openapi/v1.json` | gerado (só em Development) | spec OpenAPI 3.1 | — |
@@ -311,7 +313,7 @@ usar o último IP de `X-Forwarded-For`. Sem proxy, fica `false`, senão o cabeç
 | Item | Issue / fase |
 |---|---|
 | Paginação de `GET /api/v1/releases` (hoje lista tudo) | quando o volume pedir |
-| ~~Exportar Markdown~~ feito: `POST /{chaveRelease}/exportar` (201; `ReleaseNaoAprovadaException` → 409; público/formato inválido ou html/pdf → 422) | #24 |
+| ~~Exportar Markdown e HTML~~ feito: `POST /{chaveRelease}/exportar` (201 para `markdown` e `html`; `ReleaseNaoAprovadaException` → 409; público/formato inválido ou `pdf` → 422) | #24, #89 |
 | ~~`/auth/login`, `/auth/me`, `/auth/logout`~~ feito (CORS e rate limit do login incluídos). Falta `/auth/forgot-password` e `[Authorize]` nas rotas de revisão | #49 feito; #52 e #50 |
 
 | `/auth/login`, `/auth/me`, `/auth/logout` + JWT + `[Authorize]` nas rotas de revisão | Fase 3 |

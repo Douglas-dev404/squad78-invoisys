@@ -52,3 +52,10 @@ public sealed record ReleaseDetalheOut(
     IReadOnlyList<HistoriaJiraOut> Historias,
     IReadOnlyList<VersaoComunicadoOut> Versoes,
     IReadOnlyList<ExecucaoPipelineOut> Execucoes);
+
+public sealed record VersaoJiraOut(
+    string Nome,
+    string? Descricao,
+    DateOnly? DataLancamento,
+    bool Lancada,
+    string? StatusInvoisys);
