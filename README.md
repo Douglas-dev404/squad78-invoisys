@@ -548,6 +548,7 @@ Modelo completo em [.env.example](.env.example).
 | [docs/decisoes-arquiteturais.md](docs/decisoes-arquiteturais.md) | **Todas as decisões (ADRs)**: contexto, alternativas, consequências |
 | [docs/modelagem-de-dominio.md](docs/modelagem-de-dominio.md) | ERD, tabela por tabela, índices, constraints, triggers |
 | [docs/contratos-integracao.md](docs/contratos-integracao.md) | Contratos Jira e OpenRouter: o que foi verificado × o que é pendência |
+| [docs/documentacao-funcional.md](docs/documentacao-funcional.md) | Atores, casos de uso, requisitos, fluxos, regras de negócio e telas do produto |
 | [AGENTS.md](AGENTS.md) | Regras para qualquer agente de IA (e humano) que for mexer no código |
 | [CONTRIBUTING.md](CONTRIBUTING.md) | Fluxo de branches, PR e CI |
 

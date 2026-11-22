@@ -33,7 +33,7 @@ subtarefas. Escrever o comunicado toma tempo e o resultado varia de Release para
 Jira, agrupa as semelhantes, classifica cada grupo em uma categoria fixa e reescreve o
 texto em linguagem de negócio usando um modelo de IA. O resultado é um rascunho de
 comunicado que **nunca sai sem revisão humana**: alguém edita, exclui ou aprova item por
-item, e só a versão aprovada pode ser exportada (hoje em Markdown).
+item, e só a versão aprovada pode ser exportada (em Markdown ou HTML).
 
 **Quem usa.** A equipe que fecha Releases na InvoiSys: o *release manager*, que processa,
 revisa, aprova e exporta os comunicados, e o *administrador*, que além disso gerencia os
@@ -160,7 +160,7 @@ de Release por papel) e tem, só ele, "Gerenciar usuários" (cadastrar, listar, 
 | RF-15 | Aprovar a versão de um público, registrando quem aprovou e quando | `POST /api/v1/releases/{chave}/aprovar` |
 | RF-16 | Reprovar a versão de um público, com motivo obrigatório | `POST /api/v1/releases/{chave}/reprovar` |
 | RF-17 | Reabrir a revisão de uma versão aprovada | `POST /api/v1/releases/{chave}/reabrir` |
-| RF-18 | Exportar o comunicado aprovado de um público (hoje só `markdown`; `html` e `pdf` respondem 422) | `POST /api/v1/releases/{chave}/exportar` |
+| RF-18 | Exportar o comunicado aprovado de um público em `markdown` ou `html` (`pdf` responde 422) | `POST /api/v1/releases/{chave}/exportar` |
 | RF-19 | Consultar o histórico de exportações (paginado, filtro por público, busca por chave ou título) e o conteúdo de uma exportação | `GET /api/v1/exportacoes`, `GET /api/v1/exportacoes/{id}` |
 | RF-20 | Exibir indicadores (aprovadas, aguardando revisão, falharam, exportações), série dos últimos dias, Releases recentes e qualidade da IA (itens gerados, editados, excluídos) | `GET /api/v1/dashboard` |
 | RF-21 | Cadastrar usuário com nome, e-mail, papel e senha inicial (só admin) | `POST /api/v1/usuarios` |
@@ -305,19 +305,19 @@ sequenceDiagram
     participant E as ExportacaoComunicado
     participant DB as PostgreSQL
 
-    U->>F: Exportar Markdown (só aparece com a versão aprovada)
-    F->>A: POST /releases/{chave}/exportar {publico, formato: "markdown"}
+    U->>F: Exportar (só aparece com a versão aprovada, abre em Markdown, o seletor troca para HTML)
+    F->>A: POST /releases/{chave}/exportar {publico, formato: "markdown" ou "html"}
     A->>E: ExportarAsync(chave, publico, formato, usuário do token)
     E->>DB: carrega a Release e a versão do público
-    alt versão não aprovada ou sem item incluído
-        A-->>F: 409
-    else formato html ou pdf
+    alt formato pdf
         A-->>F: 422 (ainda não suportado)
+    else versão não aprovada ou sem item incluído
+        A-->>F: 409
     else aprovada
-        E->>E: renderiza Markdown só com itens incluídos, agrupados por categoria
+        E->>E: renderiza Markdown ou HTML só com itens incluídos, agrupados por categoria
         E->>DB: grava ComunicadoExportado (append-only, com quem gerou)
         A-->>F: 201 com o conteúdo
-        F-->>U: mostra o Markdown com Copiar e Baixar .md
+        F-->>U: mostra a prévia com Copiar e Baixar .md ou .html
     end
 ```
 
@@ -405,7 +405,7 @@ qualquer caminho de entrada, não só para a API.
 | RN-01 | Nenhum comunicado é exportado sem aprovação humana: só versão `aprovado` **com pelo menos um item incluído** pode ser exportada | Domínio: `VersaoComunicado.ProntaParaExportar`, checada no construtor de `ComunicadoExportado` | `409` |
 | RN-02 | Versão aprovada não é reprocessada pela IA; é preciso reabrir antes | Domínio: `Release.GarantirQuePodeReprocessar`, `VersaoComunicado.PreencherConteudo` (ADR-020) | `409` |
 | RN-03 | Item de versão aprovada não é editado, excluído nem reincluído; é preciso reabrir antes | Domínio: `VersaoComunicado.GarantirQuePodeAlterarItem` (ADR-021) | `409` |
-| RN-04 | Item excluído não vai para a exportação; a exclusão não apaga o registro (pode ser reincluído) | Domínio: `ItemComunicado.Incluido`, `VersaoComunicado.ItensPublicaveis`, usado por `RenderizadorMarkdown` | — |
+| RN-04 | Item excluído não vai para a exportação; a exclusão não apaga o registro (pode ser reincluído) | Domínio: `ItemComunicado.Incluido`, `VersaoComunicado.ItensPublicaveis`, usado por `RenderizadorMarkdown` e `RenderizadorHtml` | — |
 | RN-05 | Não se aprova versão sem itens nem versão com todos os itens excluídos | Domínio: `VersaoComunicado.Aprovar` | `409` |
 | RN-06 | Só se aprova ou reprova versão em `aguardando_revisao`; só se reabre versão `aprovado` | Domínio: `VersaoComunicado.Aprovar/Reprovar/Reabrir` | `409` |
 | RN-07 | Reprovar exige motivo | Domínio: `VersaoComunicado.Reprovar`; também validado na borda (`ReprovarInValidator`) | `422` |
@@ -438,8 +438,6 @@ Toda tela protegida usa o `Layout` (menu lateral e cabeçalho); 401 em qualquer 
 devolve o usuário para `/login`.
 
 Prints tirados em 18/11/2026 com o código da `develop` (o mesmo da `main` publicada), rodando localmente com dados de teste, numa janela de 1280×800. A tela de detalhe está em página inteira.
-
-**Achado:** nas telas de recuperação de senha (8.2 a 8.4) o logotipo aparece quebrado. A imagem vem de um endereço do Google (`BRAND_LOGO_URL` em `frontend/src/utils/constants.js`) que hoje responde 403, inclusive no deploy.
 
 ### 8.1 Login — `LoginPage` (`/login`)
 
@@ -501,7 +499,7 @@ processadas (`GET /releases`), paginada no cliente, com abas de filtro: Todas, A
 revisão, Aprovadas, Falharam, Pendentes (`?status=`).
 
 **Ações:** filtrar por status; paginar; abrir o detalhe de uma Release; **Processar
-Release**, que abre o modal `ProcessarReleaseModal` para informar a chave da Release
+Release**, que abre o modal `ProcessReleaseModal` para informar a chave da Release
 (fixVersion do Jira) e chama `POST /releases/{chave}/processar` (o modal avisa que a
 operação pode demorar). O modal também abre com `?nova=1` na URL.
 
@@ -523,7 +521,7 @@ execução. Trata 404 ("Release não encontrada").
 | Status da versão | Ações |
 |---|---|
 | `aguardando_revisao` | editar, excluir (com motivo) e reincluir item; Aprovar (desabilitado sem item incluído, e oculto se o pipeline falhou); Reprovar (motivo obrigatório); Reprocessar com IA |
-| `aprovado` | Reabrir; Exportar Markdown (abre modal com o conteúdo, **Copiar** e **Baixar .md**) |
+| `aprovado` | Reabrir; Exportar (abre o modal já com o Markdown; o seletor troca para HTML; **Copiar** e **Baixar .md** ou **.html**) |
 | `reprovado` | Reprocessar com IA |
 
 Aprovar, Reabrir e Reprocessar pedem confirmação em diálogo.
@@ -564,7 +562,7 @@ a própria conta; ir para "Novo Usuário".
 ### 8.11 Novo Usuário — `CreateUserPage` (`/usuarios/novo`, só admin)
 
 **Mostra:** formulário com nome completo, e-mail corporativo, papel (Administrador ou
-Release Manager, com descrição de cada um) e senha inicial.
+Gestor de Release, com descrição de cada um) e senha inicial.
 
 **Ações:** cadastrar (`POST /usuarios`; e-mail duplicado volta como erro `409`); ao
 concluir, volta para a lista de usuários.
