@@ -10,7 +10,7 @@ registerHooks({
       : result;
   },
 });
-const { carregarVersoes } = await import('../src/hooks/useVersoesJira.js');
+const { listarVersoesJira } = await import('../src/services/jira.service.js');
 const { listarHistorias } = await import('../src/services/releases.service.js');
 const util = await import('../src/utils/versoesJira.js');
 const { saveSession } = await import('../src/utils/session.js');
@@ -28,33 +28,35 @@ beforeEach(() => {
 });
 afterEach(() => { globalThis.fetch = originalFetch; });
 
-test('useVersoesJira: carrega GET /jira/versoes com Bearer e normaliza', async () => {
+const versaoJira = {
+  nome: '2026.10.0',
+  descricao: 'Release de outubro',
+  dataLancamento: '2026-10-15',
+  lancada: true,
+  statusInvoisys: 'aguardando_revisao',
+};
+
+test('listarVersoesJira: GET /jira/versoes com Bearer devolve a lista do backend como veio', async () => {
   let chamada;
   globalThis.fetch = async (url, options) => {
     chamada = { url, method: options.method, auth: options.headers.Authorization };
-    return Response.json([{ nome: '2026.10.0', dataLancamento: '2026-10-15', lancada: true, statusRelease: 'aguardando_revisao' }]);
+    return Response.json([versaoJira, { ...versaoJira, nome: '2026.11.0', lancada: false, statusInvoisys: null }]);
   };
-  const r = await carregarVersoes();
+  const versoes = await listarVersoesJira();
   assert.deepEqual(chamada, { url: 'http://localhost:8080/api/v1/jira/versoes', method: 'GET', auth: 'Bearer tk' });
-  assert.equal(r.erro, null);
-  assert.deepEqual(r.versoes, [{ nome: '2026.10.0', dataLancamento: '2026-10-15', lancada: true, statusRelease: 'aguardando_revisao' }]);
+  assert.deepEqual(versoes.map((v) => [v.nome, v.statusInvoisys]), [['2026.10.0', 'aguardando_revisao'], ['2026.11.0', null]]);
 });
 
-test('useVersoesJira: 502 do Jira vira mensagem da API, sem rejeitar', async () => {
+test('listarVersoesJira: 502 do Jira chega com o detail para a UI mostrar', async () => {
   globalThis.fetch = async () => Response.json({ detail: 'Jira indisponível.' }, { status: 502 });
-  assert.deepEqual(await carregarVersoes(), { versoes: [], erro: 'Jira indisponível.' });
+  await assert.rejects(listarVersoesJira(), { status: 502, detail: 'Jira indisponível.' });
 });
 
-test('useVersoesJira: lista vazia é respeitada', async () => {
-  globalThis.fetch = async () => Response.json([]);
-  assert.deepEqual(await carregarVersoes(), { versoes: [], erro: null });
-});
-
-test('useVersoesJira: cancelamento propaga em vez de virar erro de tela', async () => {
+test('listarVersoesJira: cancelamento propaga como AbortError', async () => {
   globalThis.fetch = (_url, { signal }) =>
     new Promise((_ok, reject) => signal.addEventListener('abort', () => reject(signal.reason), { once: true }));
   const controller = new AbortController();
-  const pendente = carregarVersoes({ signal: controller.signal });
+  const pendente = listarVersoesJira({ signal: controller.signal });
   controller.abort();
   await assert.rejects(pendente, { name: 'AbortError' });
 });
@@ -63,19 +65,11 @@ test('listarHistorias: codifica a chave e usa GET', async () => {
   let chamada;
   globalThis.fetch = async (url, options) => {
     chamada = { url, method: options.method };
-    return Response.json([]);
+    return Response.json({ chaveJira: '2026.10 / hotfix', status: 'pendente', totalHistorias: 0, historias: [] });
   };
   await listarHistorias('2026.10 / hotfix');
   assert.equal(chamada.url, 'http://localhost:8080/api/v1/releases/2026.10%20%2F%20hotfix/historias');
   assert.equal(chamada.method, 'GET');
-});
-
-test('normalizarVersoes aceita lista, objeto com versoes e ignora lixo', () => {
-  assert.deepEqual(util.normalizarVersoes({ versoes: [{ name: 'A', released: true }] }), [
-    { nome: 'A', dataLancamento: null, lancada: true, statusRelease: null },
-  ]);
-  assert.deepEqual(util.normalizarVersoes(null), []);
-  assert.deepEqual(util.normalizarVersoes([{}]), []);
 });
 
 test('filtrarVersoes ignora acento e maiúsculas', () => {
@@ -85,14 +79,17 @@ test('filtrarVersoes ignora acento e maiúsculas', () => {
 });
 
 test('resumirHistorias conta por tipo e Release Note dedicada', () => {
-  const resumo = util.resumirHistorias([
-    { chave: 'A-1', tipoIssue: 'História', possuiReleaseNoteDedicada: true },
-    { chave: 'A-2', tipoIssue: 'Bug' },
-    { chave: 'A-3', tipoIssue: 'Tarefa', possuiReleaseNoteDedicada: true },
-    { chave: 'A-4', tipoIssue: 'Épico' },
-  ]);
-  assert.deepEqual(resumo, { total: 4, porTipo: { historia: 1, bug: 1, tarefa: 1, outros: 1 }, comReleaseNote: 2 });
-  assert.equal(util.resumirHistorias([]).total, 0);
+  const historia = (chave, tipoIssue, possuiReleaseNoteDedicada = false) => ({ chave, titulo: chave, tipoIssue, possuiReleaseNoteDedicada });
+  const release = {
+    chaveJira: '2026.10.0',
+    status: 'pendente',
+    totalHistorias: 4,
+    historias: [historia('A-1', 'História', true), historia('A-2', 'Bug'), historia('A-3', 'Tarefa', true), historia('A-4', 'Épico')],
+  };
+  assert.deepEqual(util.resumirHistorias(release), { total: 4, porTipo: { historia: 1, bug: 1, tarefa: 1, outros: 1 }, comReleaseNote: 2 });
+  assert.deepEqual(util.listaDeHistorias(release).map((h) => h.chave), ['A-1', 'A-2', 'A-3', 'A-4']);
+  assert.equal(util.resumirHistorias({ ...release, totalHistorias: 0, historias: [] }).total, 0);
+  assert.equal(util.resumirHistorias(null).total, 0);
 });
 
 test('formatarDataLancamento não recua o dia no fuso do Brasil', () => {

@@ -8,6 +8,7 @@ import { useHistoriasVersao } from '../../hooks/useHistoriasVersao';
 import { useVersoesJira } from '../../hooks/useVersoesJira';
 import { processarRelease } from '../../services/releases.service';
 import { UI_STRINGS } from '../../utils/constants';
+import { mensagemDeErro } from '../../utils/revisao';
 import { RELEASE_STATUS } from '../../utils/releases';
 import { ROTULO_TIPO, filtrarVersoes, formatarDataLancamento } from '../../utils/versoesJira';
 
@@ -73,7 +74,7 @@ function ListaVersoes({ versoes, selecionada, onSelecionar }) {
                 {UI_STRINGS.PROCESS_MODAL_RELEASED}
               </span>
             )}
-            {versao.statusRelease && <SeloStatus status={versao.statusRelease} />}
+            {versao.statusInvoisys && <SeloStatus status={versao.statusInvoisys} />}
           </li>
         );
       })}
@@ -160,7 +161,7 @@ export function ProcessarReleaseModal({ onClose, onSucesso }) {
 
   const versao = jira.versoes.find((v) => v.nome === selecionada) ?? null;
   const visiveis = useMemo(() => filtrarVersoes(jira.versoes, busca), [jira.versoes, busca]);
-  const aprovada = versao?.statusRelease === 'aprovado';
+  const aprovada = versao?.statusInvoisys === 'aprovado';
   const previaPronta = !previa.carregando && !previa.erro && previa.resumo.total > 0;
   const podeProcessar = manual ? true : Boolean(versao) && previaPronta && !aprovada;
 
@@ -193,7 +194,7 @@ export function ProcessarReleaseModal({ onClose, onSucesso }) {
     try {
       await processarRelease(chave);
     } catch (err) {
-      setErroApi(err?.detail || err?.message || UI_STRINGS.PROCESS_MODAL_GENERIC_ERROR);
+      setErroApi(mensagemDeErro(err, UI_STRINGS.PROCESS_MODAL_GENERIC_ERROR));
       enviandoRef.current = false;
       setEnviando(false);
       return;
@@ -238,7 +239,7 @@ export function ProcessarReleaseModal({ onClose, onSucesso }) {
               </div>
             )}
 
-            {!jira.carregando && !jira.erro && jira.versoes.length === 0 && (
+            {jira.vazio && (
               <p role="status" className="font-body-sm text-body-sm text-on-surface-variant">
                 {UI_STRINGS.PROCESS_MODAL_LIST_EMPTY}
               </p>
@@ -268,7 +269,7 @@ export function ProcessarReleaseModal({ onClose, onSucesso }) {
               </div>
             )}
 
-            {versao?.statusRelease && (
+            {versao?.statusInvoisys && (
               <div className="flex flex-wrap items-center gap-xs font-body-sm text-body-sm text-on-surface-variant">
                 <span>
                   {aprovada ? UI_STRINGS.PROCESS_MODAL_APPROVED_WARNING : UI_STRINGS.PROCESS_MODAL_ALREADY_PROCESSED}

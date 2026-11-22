@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { listarHistorias } from '../services/releases.service.js';
 import { listaDeHistorias, resumirHistorias } from '../utils/versoesJira.js';
 import { UI_STRINGS } from '../utils/constants.js';
+import { mensagemDeErro } from '../utils/revisao.js';
 
 /**
  * Prévia das histórias de uma versão. Sem `versao`, não busca nada.
@@ -22,7 +23,7 @@ export function useHistoriasVersao(versao) {
       })
       .catch((err) => {
         if (!controller.signal.aborted) {
-          setResultado({ pedido, dados: null, erro: err?.detail || err?.message || UI_STRINGS.PROCESS_MODAL_PREVIEW_ERROR });
+          setResultado({ pedido, dados: null, erro: mensagemDeErro(err, UI_STRINGS.PROCESS_MODAL_PREVIEW_ERROR) });
         }
       });
 

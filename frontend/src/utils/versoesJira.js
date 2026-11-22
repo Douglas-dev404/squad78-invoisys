@@ -1,22 +1,5 @@
-// Regras puras (sem React) do fluxo "Processar Release" (F-17).
-
 const semAcento = (texto) =>
   String(texto ?? '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
-
-/** Único lugar que conhece o formato de uma versão vinda de GET /jira/versoes. */
-export function normalizarVersao(v = {}) {
-  return {
-    nome: v.nome ?? v.name ?? '',
-    dataLancamento: v.dataLancamento ?? v.releaseDate ?? null,
-    lancada: Boolean(v.lancada ?? v.released),
-    statusRelease: v.statusRelease ?? v.status ?? null,
-  };
-}
-
-export function normalizarVersoes(dados) {
-  const lista = Array.isArray(dados) ? dados : dados?.versoes;
-  return Array.isArray(lista) ? lista.map(normalizarVersao).filter((v) => v.nome) : [];
-}
 
 export function filtrarVersoes(versoes, busca) {
   const termo = semAcento(busca).trim();
@@ -39,11 +22,11 @@ export function tipoDaHistoria(tipoIssue) {
   return 'outros';
 }
 
-export const listaDeHistorias = (dados) => (Array.isArray(dados) ? dados : dados?.historias ?? []);
+export const listaDeHistorias = (release) => release?.historias ?? [];
 
 /** Total, contagem por tipo e quantas têm Release Note dedicada. */
-export function resumirHistorias(dados) {
-  const historias = listaDeHistorias(dados);
+export function resumirHistorias(release) {
+  const historias = listaDeHistorias(release);
   const porTipo = { historia: 0, bug: 0, tarefa: 0, outros: 0 };
   let comReleaseNote = 0;
   for (const h of historias) {

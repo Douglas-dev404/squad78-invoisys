@@ -85,7 +85,7 @@ export const UI_STRINGS = {
   PROCESS_MODAL_CANCEL: 'Cancelar',
   PROCESS_MODAL_WAIT: 'Isso pode levar até 2 minutos. Não feche esta janela.',
   PROCESS_MODAL_GENERIC_ERROR: 'Não foi possível processar a Release.',
-    JIRA_VERSOES_ERRO: 'Não foi possível carregar as versões do Jira.',
+  JIRA_VERSOES_ERRO: 'Não foi possível carregar as versões do Jira.',
   PROCESS_MODAL_LIST_LABEL: 'Versões do Jira',
   PROCESS_MODAL_LIST_LOADING: 'Carregando versões do Jira…',
   PROCESS_MODAL_LIST_EMPTY: 'Nenhuma versão encontrada no Jira. Você pode digitar o nome manualmente.',
