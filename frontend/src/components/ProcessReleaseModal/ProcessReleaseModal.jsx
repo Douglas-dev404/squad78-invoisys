@@ -166,6 +166,7 @@ export function ProcessarReleaseModal({ onClose, onSucesso }) {
   const podeProcessar = manual ? true : Boolean(versao) && previaPronta && !aprovada;
 
   const selecionar = (nome) => {
+    if (enviandoRef.current) return;
     setSelecionada(nome);
     setErroApi(null);
   };
@@ -274,13 +275,19 @@ export function ProcessarReleaseModal({ onClose, onSucesso }) {
                 <span>
                   {aprovada ? UI_STRINGS.PROCESS_MODAL_APPROVED_WARNING : UI_STRINGS.PROCESS_MODAL_ALREADY_PROCESSED}
                 </span>
-                <Link
-                  to={`/releases/${encodeURIComponent(versao.nome)}`}
-                  onClick={onClose}
-                  className="font-label-md text-primary underline"
-                >
-                  {UI_STRINGS.PROCESS_MODAL_SEE_DETAILS}
-                </Link>
+                {enviando ? (
+                  <span aria-disabled="true" className="cursor-not-allowed font-label-md text-primary underline opacity-50">
+                    {UI_STRINGS.PROCESS_MODAL_SEE_DETAILS}
+                  </span>
+                ) : (
+                  <Link
+                    to={`/releases/${encodeURIComponent(versao.nome)}`}
+                    onClick={onClose}
+                    className="font-label-md text-primary underline"
+                  >
+                    {UI_STRINGS.PROCESS_MODAL_SEE_DETAILS}
+                  </Link>
+                )}
               </div>
             )}
 
