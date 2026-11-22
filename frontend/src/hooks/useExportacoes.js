@@ -1,19 +1,10 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { listarExportacoes, TAMANHO_PAGINA } from '../services/exportacoes.service';
-import { PUBLICO_LABEL } from '../utils/revisao';
+import { lerFiltros } from '../utils/exportacoes';
+import { mensagemDeErro } from '../utils/revisao';
 
 const DEBOUNCE_MS = 400;
-
-function lerFiltros(params) {
-  const numero = Number.parseInt(params.get('pagina') ?? '', 10);
-  const publico = params.get('publico') ?? '';
-  return {
-    pagina: Number.isInteger(numero) && numero >= 1 ? numero : 1,
-    publico: Object.hasOwn(PUBLICO_LABEL, publico) ? publico : '',
-    busca: (params.get('busca') ?? '').trim(),
-  };
-}
 
 /**
  * Histórico de exportações com filtros na URL (`?pagina=2&publico=cliente&busca=INV`).
@@ -76,7 +67,7 @@ export function useExportacoes() {
       })
       .catch((err) => {
         if (!controller.signal.aborted) {
-          setResultado({ pedido: chave, dados: null, erro: err?.detail || err?.message || 'Não foi possível carregar o histórico.' });
+          setResultado({ pedido: chave, dados: null, erro: mensagemDeErro(err, 'Não foi possível carregar o histórico.') });
         }
       });
     return () => controller.abort();
@@ -88,12 +79,17 @@ export function useExportacoes() {
   const dados = carregando ? null : resultado.dados;
   const total = dados?.total ?? 0;
   const tamanho = dados?.tamanho ?? TAMANHO_PAGINA;
+  const totalPaginas = Math.max(1, Math.ceil(total / tamanho));
+
+  useEffect(() => {
+    if (total > 0 && pagina > totalPaginas) gravar({ pagina: totalPaginas }, { replace: true });
+  }, [total, pagina, totalPaginas, gravar]);
 
   return {
     itens: dados?.itens ?? [],
     total,
     pagina,
-    totalPaginas: Math.max(1, Math.ceil(total / tamanho)),
+    totalPaginas,
     carregando,
     erro: carregando ? null : resultado.erro,
     recarregar,

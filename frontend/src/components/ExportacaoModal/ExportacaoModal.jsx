@@ -16,8 +16,18 @@ import { nomeArquivoMarkdown } from '../../utils/revisao';
  * @param {string|null} props.erro mensagem da API (ex.: 409 "aprove a versão antes de exportar")
  * @param {Function} props.onClose
  * @param {string} [props.textoCarregando] mensagem enquanto `exportando`
+ * @param {boolean} [props.bloqueado] impede fechar o modal; padrão é `exportando`
  */
-export function ExportacaoModal({ chave, publico, exportacao, exportando, erro, onClose, textoCarregando = 'Gerando o Markdown…' }) {
+export function ExportacaoModal({
+  chave,
+  publico,
+  exportacao,
+  exportando,
+  erro,
+  onClose,
+  textoCarregando = 'Gerando o Markdown…',
+  bloqueado = exportando,
+}) {
   const [copiado, setCopiado] = useState(false);
   const [erroCopia, setErroCopia] = useState(null);
   const temporizador = useRef(null);
@@ -50,7 +60,7 @@ export function ExportacaoModal({ chave, publico, exportacao, exportando, erro, 
   };
 
   return (
-    <Dialogo titulo="Prévia da exportação" onClose={onClose} bloqueado={exportando} largura="max-w-3xl">
+    <Dialogo titulo="Prévia da exportação" onClose={onClose} bloqueado={bloqueado} largura="max-w-3xl">
       <div className="space-y-md">
         {exportando && (
           <p role="status" className="font-body-md text-body-md text-on-surface-variant">
@@ -77,7 +87,7 @@ export function ExportacaoModal({ chave, publico, exportacao, exportando, erro, 
         )}
 
         <div className="flex flex-col-reverse justify-end gap-sm sm:flex-row">
-          <button type="button" onClick={onClose} disabled={exportando} className={BOTAO_SECUNDARIO}>
+          <button type="button" onClick={onClose} disabled={bloqueado} className={BOTAO_SECUNDARIO}>
             Fechar
           </button>
           {exportacao && (

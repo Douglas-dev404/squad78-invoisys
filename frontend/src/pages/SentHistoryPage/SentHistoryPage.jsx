@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Layout } from '../../components/Layout/Layout';
 import { Button } from '../../components/Button/Button';
 import { ExportacaoModal } from '../../components/ExportacaoModal/ExportacaoModal';
@@ -7,6 +7,7 @@ import { SentHistoryTable } from '../../components/SentHistoryTable/SentHistoryT
 import { useExportacoes } from '../../hooks/useExportacoes';
 import { buscarExportacao } from '../../services/exportacoes.service';
 import { UI_STRINGS } from '../../utils/constants';
+import { mensagemDeErro } from '../../utils/revisao';
 
 const CARD_CLASS =
   'rounded-xl border border-surface-variant/50 bg-surface-container-lowest shadow-[0px_4px_12px_rgba(27,67,50,0.08)]';
@@ -44,18 +45,28 @@ function Vazio({ comFiltro, onLimpar }) {
 export function SentHistoryPage() {
   const historico = useExportacoes();
   const [previa, setPrevia] = useState(null);
+  const leitura = useRef(null);
+
+  useEffect(() => () => leitura.current?.abort(), []);
+
+  const fecharPrevia = () => {
+    leitura.current?.abort();
+    leitura.current = null;
+    setPrevia(null);
+  };
 
   const verConteudo = async (item) => {
+    leitura.current?.abort();
+    const controller = new AbortController();
+    leitura.current = controller;
     setPrevia({ item, exportacao: null, carregando: true, erro: null });
     try {
-      const detalhe = await buscarExportacao(item.id);
-      setPrevia((atual) => (atual?.item.id === item.id ? { item, exportacao: detalhe, carregando: false, erro: null } : atual));
+      const detalhe = await buscarExportacao(item.id, { signal: controller.signal });
+      if (!controller.signal.aborted) setPrevia({ item, exportacao: detalhe, carregando: false, erro: null });
     } catch (err) {
-      setPrevia((atual) =>
-        atual?.item.id === item.id
-          ? { item, exportacao: null, carregando: false, erro: err?.detail || err?.message || 'Não foi possível abrir o conteúdo.' }
-          : atual
-      );
+      if (!controller.signal.aborted) {
+        setPrevia({ item, exportacao: null, carregando: false, erro: mensagemDeErro(err, 'Não foi possível abrir o conteúdo.') });
+      }
     }
   };
 
@@ -113,9 +124,10 @@ export function SentHistoryPage() {
           publico={previa.item.publico}
           exportacao={previa.exportacao}
           exportando={previa.carregando}
+          bloqueado={false}
           erro={previa.erro}
           textoCarregando="Carregando o conteúdo…"
-          onClose={() => setPrevia(null)}
+          onClose={fecharPrevia}
         />
       )}
     </Layout>

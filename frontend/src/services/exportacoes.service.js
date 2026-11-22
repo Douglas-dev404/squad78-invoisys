@@ -15,4 +15,4 @@ export function listarExportacoes({ pagina = 1, tamanho = TAMANHO_PAGINA, public
 }
 
 /** Uma exportação com o `conteudo` gerado. 404 se não existe. */
-export const buscarExportacao = (id) => api.get(`/exportacoes/${encodeURIComponent(id)}`);
+export const buscarExportacao = (id, options) => api.get(`/exportacoes/${encodeURIComponent(id)}`, options);
