@@ -41,13 +41,9 @@ public static class JiraEndpoints
                 v.Versao.Lancada,
                 v.StatusInvoisys?.ParaValor())).ToList());
         }
-        catch (ProviderNaoConfiguradoException exc)
+        catch (Exception exc) when (FalhaDeIntegracao.ParaProblema(exc) is { } problema)
         {
-            return Results.Problem(detail: exc.Message, statusCode: StatusCodes.Status501NotImplemented);
-        }
-        catch (IntegracaoExternaException exc)
-        {
-            return Results.Problem(detail: exc.Message, statusCode: StatusCodes.Status502BadGateway);
+            return problema;
         }
     }
 }
