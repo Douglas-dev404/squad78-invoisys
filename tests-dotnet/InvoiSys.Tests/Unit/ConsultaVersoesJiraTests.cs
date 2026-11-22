@@ -76,10 +76,10 @@ public class ConsultaVersoesJiraTests
     }
 
     [Fact]
-    public void Converte_versao_da_API_do_Jira_e_ignora_versao_sem_nome()
+    public void Converte_versao_da_API_do_Jira_mantendo_o_nome_literal_e_ignora_versao_sem_nome()
     {
         var json = JsonDocument.Parse("""
-            { "id": "10001", "name": " 2026.10.0 ", "description": "Release de outubro", "released": true,
+            { "id": "10001", "name": "2026.10.0", "description": "Release de outubro", "released": true,
               "archived": false, "releaseDate": "2026-10-31", "projectId": 10000 }
             """).RootElement;
 
@@ -87,5 +87,7 @@ public class ConsultaVersoesJiraTests
             new VersaoJira("2026.10.0", "Release de outubro", new DateOnly(2026, 10, 31), true, false));
         JiraRestClient.ParaVersaoJira(JsonDocument.Parse("""{ "id": "1", "description": "" }""").RootElement)
             .Should().BeNull();
+        JiraRestClient.ParaVersaoJira(JsonDocument.Parse("""{ "id": "2", "name": "Sprint 3 " }""").RootElement)!
+            .Nome.Should().Be("Sprint 3 ");
     }
 }

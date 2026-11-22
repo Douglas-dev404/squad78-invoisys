@@ -49,8 +49,8 @@ public sealed class JiraRestClient(
 
     internal static VersaoJira? ParaVersaoJira(JsonElement versao)
     {
-        var nome = LerString(versao, "name").Trim();
-        if (nome.Length == 0)
+        var nome = LerString(versao, "name");
+        if (string.IsNullOrWhiteSpace(nome))
         {
             return null;
         }
