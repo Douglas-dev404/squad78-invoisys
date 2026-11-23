@@ -18,7 +18,7 @@ import { erroDoCampo, mensagemDeErro } from '../utils/revisao';
  * @returns {{ aprovar, reprovar, reabrir, reprocessar, executando: string|null, erro: string|null,
  *   erroMotivo: string|null, limparErro: Function }}
  */
-export function useRevisaoVersao({ chave, publico, recarregar }) {
+export function useRevisaoVersao({ chave, publico, chavesHistorias, recarregar }) {
   const [executando, setExecutando] = useState(null);
   const [erro, setErro] = useState(null);
   const [erroMotivo, setErroMotivo] = useState(null);
@@ -53,7 +53,10 @@ export function useRevisaoVersao({ chave, publico, recarregar }) {
     [chave, publico, executar],
   );
   const reabrir = useCallback(() => executar('reabrir', () => reabrirVersao(chave, publico)), [chave, publico, executar]);
-  const reprocessar = useCallback(() => executar('reprocessar', () => processarRelease(chave)), [chave, executar]);
+  const reprocessar = useCallback(
+    () => executar('reprocessar', () => processarRelease(chave, chavesHistorias)),
+    [chave, chavesHistorias, executar],
+  );
   const limparErro = useCallback(() => {
     setErro(null);
     setErroMotivo(null);

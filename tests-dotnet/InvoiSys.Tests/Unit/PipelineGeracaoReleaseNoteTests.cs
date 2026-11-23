@@ -170,4 +170,76 @@ public class PipelineGeracaoReleaseNoteTests
         (await acao.Should().ThrowAsync<ReleaseSemHistoriasException>()).WithMessage("*REL-VAZIA*");
         (await repositorio.BuscarPorChaveJiraAsync("REL-VAZIA")).Should().BeNull();
     }
+
+    [Fact]
+    public async Task Sem_filtro_de_historias_todas_as_historias_da_release_sao_processadas()
+    {
+        var jira = new FakeJiraClient { Historias = [Historia("INV-1"), Historia("INV-2")] };
+        var llm = new FakeLlmProvider();
+
+        var release = await new PipelineGeracaoReleaseNote(jira, llm, new FakeReleaseRepository(), new FakeBloqueioProcessamento())
+            .ExecutarAsync("REL-1", chavesHistoriasSelecionadas: null);
+
+        release.Historias.Select(h => h.Chave).Should().BeEquivalentTo(["INV-1", "INV-2"]);
+    }
+
+    [Fact]
+    public async Task Filtro_de_historias_processa_apenas_as_chaves_selecionadas()
+    {
+        var jira = new FakeJiraClient { Historias = [Historia("INV-1"), Historia("INV-2"), Historia("INV-3")] };
+        var llm = new FakeLlmProvider();
+
+        var release = await new PipelineGeracaoReleaseNote(jira, llm, new FakeReleaseRepository(), new FakeBloqueioProcessamento())
+            .ExecutarAsync("REL-1", chavesHistoriasSelecionadas: ["INV-1", "INV-3"]);
+
+        release.Historias.Select(h => h.Chave).Should().BeEquivalentTo(["INV-1", "INV-3"]);
+    }
+
+    [Fact]
+    public async Task Filtro_de_historias_ignora_caixa_e_espacos_nas_chaves_selecionadas()
+    {
+        var jira = new FakeJiraClient { Historias = [Historia("INV-1"), Historia("INV-2")] };
+        var llm = new FakeLlmProvider();
+
+        var release = await new PipelineGeracaoReleaseNote(jira, llm, new FakeReleaseRepository(), new FakeBloqueioProcessamento())
+            .ExecutarAsync("REL-1", chavesHistoriasSelecionadas: [" inv-1 "]);
+
+        release.Historias.Select(h => h.Chave).Should().Equal("INV-1");
+    }
+
+    [Fact]
+    public async Task Filtro_de_historias_vazio_e_recusado_sem_chamar_o_LLM()
+    {
+        var jira = new FakeJiraClient { Historias = [Historia("INV-1")] };
+        var llm = new FakeLlmProvider { FalhaAoChamar = new InvalidOperationException("a IA não devia ser chamada") };
+
+        var acao = () => new PipelineGeracaoReleaseNote(jira, llm, new FakeReleaseRepository(), new FakeBloqueioProcessamento())
+            .ExecutarAsync("REL-1", chavesHistoriasSelecionadas: []);
+
+        (await acao.Should().ThrowAsync<HistoriasSelecionadasInvalidasException>()).WithMessage("*REL-1*");
+    }
+
+    [Fact]
+    public async Task Filtro_de_historias_com_chave_em_branco_e_recusado()
+    {
+        var jira = new FakeJiraClient { Historias = [Historia("INV-1")] };
+        var llm = new FakeLlmProvider { FalhaAoChamar = new InvalidOperationException("a IA não devia ser chamada") };
+
+        var acao = () => new PipelineGeracaoReleaseNote(jira, llm, new FakeReleaseRepository(), new FakeBloqueioProcessamento())
+            .ExecutarAsync("REL-1", chavesHistoriasSelecionadas: ["INV-1", "  "]);
+
+        await acao.Should().ThrowAsync<HistoriasSelecionadasInvalidasException>();
+    }
+
+    [Fact]
+    public async Task Filtro_de_historias_com_chave_fora_da_release_e_recusado()
+    {
+        var jira = new FakeJiraClient { Historias = [Historia("INV-1")] };
+        var llm = new FakeLlmProvider { FalhaAoChamar = new InvalidOperationException("a IA não devia ser chamada") };
+
+        var acao = () => new PipelineGeracaoReleaseNote(jira, llm, new FakeReleaseRepository(), new FakeBloqueioProcessamento())
+            .ExecutarAsync("REL-1", chavesHistoriasSelecionadas: ["INV-FANTASMA"]);
+
+        await acao.Should().ThrowAsync<HistoriasSelecionadasInvalidasException>();
+    }
 }

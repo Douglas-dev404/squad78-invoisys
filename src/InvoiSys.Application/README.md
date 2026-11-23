@@ -12,7 +12,8 @@ InvoiSys.Application/
 ├── Autenticacao/
 │   └── RecuperacaoSenha.cs             # esqueci a senha: solicitar, reenviar, redefinir
 ├── Consulta/
-│   └── ConsultaReleases.cs             # listagem (resumo) e detalhe (agregado completo)
+│   ├── ConsultaReleases.cs             # listagem (resumo) e detalhe (agregado completo)
+│   └── ConsultaVersoesJira.cs           # versões disponíveis no projeto Jira configurado
 ├── Pipeline/
 │   └── PipelineGeracaoReleaseNote.cs   # o caso de uso central
 ├── Revisao/
@@ -51,12 +52,14 @@ a versão Cliente gerada e pronta para **revisão** (nunca publicada direto).
 1. release = IReleaseRepository.BuscarPorChaveJiraAsync(chave)   ← já existe?
 2. release?.GarantirQuePodeReprocessar()        ← versão aprovada? recusa aqui (409),
                                                   sem chamar Jira/LLM (ADR-020)
-3. historias = IJiraClient.BuscarHistoriasDaReleaseAsync(chave)
-4. release nova → new Release(chave, historias)
-   release existente → release.AtualizarHistorias(historias)  (reprocessar não duplica)
-5. release.MarcarProcessando()
-6. execucao = release.RegistrarExecucao(modeloLlm)        ← rastro, mesmo se falhar
-7. try
+3. historiasDisponiveis = IJiraClient.BuscarHistoriasDaReleaseAsync(chave)
+4. Se a interface enviou chaves selecionadas, valida que todas pertencem à lista do Jira
+   e usa somente essas histórias; sem seleção (chamadas legadas), usa todas.
+5. release nova → new Release(chave, historiasSelecionadas)
+   release existente → release.AtualizarHistorias(historiasSelecionadas)  (reprocessar não duplica)
+6. release.MarcarProcessando()
+7. execucao = release.RegistrarExecucao(modeloLlm)        ← rastro, mesmo se falhar
+8. try
      a. historiasLimpas = historias.Select(ExtrairELimpar)          [estágio 1, sem LLM]
      b. grupos = AgruparSemelhantesAsync((chave, TextoFonte)[])     [estágio 3]
      c. itens  = ProcessarGruposAsync(...)                           [estágios 2 e 4]
@@ -79,13 +82,13 @@ a versão Cliente gerada e pronta para **revisão** (nunca publicada direto).
 
 Por que cada passo é assim:
 
-- **1 e 4:** a Release já existente é **reusada**, nunca recriada com `new`. O
+- **1 e 5:** a Release já existente é **reusada**, nunca recriada com `new`. O
   `SalvarAsync` decide INSERT ou UPDATE pelo rastreamento do EF, então reusar a instância
   carregada é o que faz reprocessar virar UPDATE em vez de linha duplicada.
 - **2:** a recusa vem antes do Jira e do LLM: não gasta token nem toca no agregado.
-- **6:** a execução é registrada antes do `try`, para a rodada deixar rastro mesmo se
+- **7:** a execução é registrada antes do `try`, para a rodada deixar rastro mesmo se
   falhar. Esse rastro é o log que o requisito pede.
-- **7c:** a categoria vem da 1ª história do grupo, porque as histórias foram agrupadas
+- **8c:** a categoria vem da 1ª história do grupo, porque as histórias foram agrupadas
   por tratarem do mesmo assunto. Grupo só com chaves inexistentes é omitido: gerar item
   do nada seria pior que não gerar. O caso inverso (chave real que o modelo esqueceu) é
   tratado no adapter, que a devolve como grupo próprio, então nenhuma história se perde.
@@ -194,5 +197,6 @@ forçada). Sem rede, sem token, determinístico.
 | Caso de uso | Issue | Observação |
 |---|---|---|
 | ~~Exportar Markdown~~ feito em `Exportacao/` (`ExportacaoComunicado` + `RenderizadorMarkdown`) | #24 | ver [P-03](../../docs/decisoes-arquiteturais.md#p-03--onde-mora-o-render-da-exportação) |
+| ~~Exportar HTML~~ feito em `Exportacao/RenderizadorHtml` (texto escapado, arquivo autocontido; resumo e itens com `white-space: pre-line` para manter as quebras de linha da edição sem inserir `<br>` no texto escapado); PDF fora | #89 | ver [ADR-032](../../docs/decisoes-arquiteturais.md#adr-032--exportação-em-html-autocontido-pdf-fica-fora) |
 | Gerar versões Comercial/Suporte/Interno | Fase 6 | chamar `ConcluirProcessamento(..., publico)` por público, com prompt por público |
 | Paralelizar o loop por grupo | opcional | só se a latência de Releases grandes incomodar |

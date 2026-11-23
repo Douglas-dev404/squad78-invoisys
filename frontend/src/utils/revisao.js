@@ -64,10 +64,16 @@ export const textoItemValido = (texto) => typeof texto === 'string' && texto.tri
 export const substituirItem = (itens, atualizado) =>
   itens.map((item) => (item.id === atualizado.id ? { ...item, ...atualizado } : item));
 
-/** Ex.: ("INV-123", "cliente") → "INV-123-cliente.md". Tira caracteres que quebram nome de arquivo. */
-export function nomeArquivoMarkdown(chave, publico) {
+export const FORMATOS_EXPORTACAO = {
+  markdown: { label: 'Markdown', extensao: 'md', tipo: 'text/markdown;charset=utf-8' },
+  html: { label: 'HTML', extensao: 'html', tipo: 'text/html;charset=utf-8' },
+};
+
+/** Ex.: ("INV-123", "cliente", "html") → "INV-123-cliente.html". Tira caracteres que quebram nome de arquivo. */
+export function nomeArquivoExportacao(chave, publico, formato = 'markdown') {
   const limpar = (valor) => String(valor ?? '').trim().replace(/[/\\:*?"<>|\s]+/g, '-');
-  return `${limpar(chave)}-${limpar(publico)}.md`;
+  const extensao = FORMATOS_EXPORTACAO[formato]?.extensao ?? 'txt';
+  return `${limpar(chave)}-${limpar(publico)}.${extensao}`;
 }
 
 export const mensagemDeErro = (erro, padrao = REVISAO_TEXTOS.ERRO_GENERICO) =>

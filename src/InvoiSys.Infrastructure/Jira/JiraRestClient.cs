@@ -1,15 +1,76 @@
+using System.Globalization;
 using System.Net.Http.Json;
 using System.Text.Json;
 using System.Web;
 using InvoiSys.Domain.Entities;
 using InvoiSys.Domain.Ports;
+using InvoiSys.Infrastructure.Configuration;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 
 namespace InvoiSys.Infrastructure.Jira;
 
-public sealed class JiraRestClient(HttpClient http, ILogger<JiraRestClient> logger) : IJiraClient
+public sealed class JiraRestClient(
+    HttpClient http,
+    IOptions<JiraOptions> opcoes,
+    ILogger<JiraRestClient> logger) : IJiraClient
 {
-    private const string TipoIssueReleaseNote = "Release Note";
+    private const string CamposBase = "summary,description,issuetype,labels,subtasks";
+
+    private string Projeto => opcoes.Value.ProjetoEfetivo.Trim();
+
+    private string TipoSubtarefaReleaseNote =>
+        string.IsNullOrWhiteSpace(opcoes.Value.ReleaseNote.TipoSubtarefa)
+            ? JiraReleaseNoteOptions.TipoSubtarefaPadrao
+            : opcoes.Value.ReleaseNote.TipoSubtarefa.Trim();
+
+    private string? CampoCustomizadoReleaseNote =>
+        string.IsNullOrWhiteSpace(opcoes.Value.ReleaseNote.CampoCustomizado)
+            ? null
+            : opcoes.Value.ReleaseNote.CampoCustomizado.Trim();
+
+    internal static string MontarJql(string projeto, string fixVersion) =>
+        $"project = \"{EscaparJql(projeto)}\" AND fixVersion = \"{EscaparJql(fixVersion)}\"";
+
+    // Barra invertida primeiro: escapar as aspas antes duplicaria a barra que elas ganham.
+    internal static string EscaparJql(string valor) =>
+        valor.Replace("\\", "\\\\", StringComparison.Ordinal).Replace("\"", "\\\"", StringComparison.Ordinal);
+
+    public async Task<IReadOnlyList<VersaoJira>> ListarVersoesAsync(CancellationToken cancellationToken = default)
+    {
+        var resposta = await GetAsync(
+            $"/rest/api/3/project/{Uri.EscapeDataString(Projeto)}/versions",
+            cancellationToken);
+
+        return resposta.ValueKind == JsonValueKind.Array
+            ? [.. resposta.EnumerateArray().Select(ParaVersaoJira).OfType<VersaoJira>()]
+            : [];
+    }
+
+    internal static VersaoJira? ParaVersaoJira(JsonElement versao)
+    {
+        var nome = LerString(versao, "name");
+        if (string.IsNullOrWhiteSpace(nome))
+        {
+            return null;
+        }
+
+        var descricao = LerString(versao, "description");
+
+        return new VersaoJira(
+            nome,
+            string.IsNullOrWhiteSpace(descricao) ? null : descricao.Trim(),
+            DateOnly.TryParseExact(LerString(versao, "releaseDate"), "yyyy-MM-dd", CultureInfo.InvariantCulture, DateTimeStyles.None, out var data)
+                ? data
+                : null,
+            LerBool(versao, "released"),
+            LerBool(versao, "archived"));
+    }
+
+    private static bool LerBool(JsonElement elemento, string propriedade) =>
+        elemento.ValueKind == JsonValueKind.Object
+        && elemento.TryGetProperty(propriedade, out var valor)
+        && valor.ValueKind == JsonValueKind.True;
 
     public async Task<IReadOnlyList<HistoriaJira>> BuscarHistoriasDaReleaseAsync(
         string fixVersion,
@@ -31,7 +92,7 @@ public sealed class JiraRestClient(HttpClient http, ILogger<JiraRestClient> logg
         string fixVersion,
         CancellationToken cancellationToken)
     {
-        var jql = $"fixVersion = \"{fixVersion}\"";
+        var jql = MontarJql(Projeto, fixVersion);
         var issues = new List<JsonElement>();
         string? nextPageToken = null;
 
@@ -39,7 +100,7 @@ public sealed class JiraRestClient(HttpClient http, ILogger<JiraRestClient> logg
         {
             var query = HttpUtility.ParseQueryString(string.Empty);
             query["jql"] = jql;
-            query["fields"] = "summary,description,issuetype,labels,subtasks";
+            query["fields"] = CampoCustomizadoReleaseNote is { } campo ? $"{CamposBase},{campo}" : CamposBase;
             query["maxResults"] = "100";
             if (nextPageToken is not null)
             {
@@ -75,8 +136,18 @@ public sealed class JiraRestClient(HttpClient http, ILogger<JiraRestClient> logg
         JsonElement issue,
         CancellationToken cancellationToken)
     {
-        if (!issue.TryGetProperty("fields", out var fields)
-            || !fields.TryGetProperty("subtasks", out var subtasks)
+        if (!issue.TryGetProperty("fields", out var fields))
+        {
+            return null;
+        }
+
+        if (CampoCustomizadoReleaseNote is { } campo
+            && ExtrairTextoCampo(fields, campo) is { Length: > 0 } textoDoCampo)
+        {
+            return textoDoCampo;
+        }
+
+        if (!fields.TryGetProperty("subtasks", out var subtasks)
             || subtasks.ValueKind != JsonValueKind.Array)
         {
             return null;
@@ -90,7 +161,12 @@ public sealed class JiraRestClient(HttpClient http, ILogger<JiraRestClient> logg
                     ? nome.GetString()
                     : null;
 
-            if (tipo != TipoIssueReleaseNote)
+            var resumo = subtask.TryGetProperty("fields", out subFields)
+                ? LerString(subFields, "summary")
+                : string.Empty;
+            var ehReleaseNote = string.Equals(tipo?.Trim(), TipoSubtarefaReleaseNote, StringComparison.OrdinalIgnoreCase)
+                || string.Equals(resumo.Trim(), JiraReleaseNoteOptions.TipoSubtarefaPadrao, StringComparison.OrdinalIgnoreCase);
+            if (!ehReleaseNote)
             {
                 continue;
             }
@@ -147,6 +223,23 @@ public sealed class JiraRestClient(HttpClient http, ILogger<JiraRestClient> logg
             JsonValueKind.Object => ExtrairTextoAdf(description),
             _ => string.Empty,
         };
+    }
+
+    internal static string? ExtrairTextoCampo(JsonElement fields, string campo)
+    {
+        if (fields.ValueKind != JsonValueKind.Object || !fields.TryGetProperty(campo, out var valor))
+        {
+            return null;
+        }
+
+        var texto = valor.ValueKind switch
+        {
+            JsonValueKind.String => valor.GetString(),
+            JsonValueKind.Object => ExtrairTextoAdf(valor),
+            _ => null,
+        };
+
+        return string.IsNullOrWhiteSpace(texto) ? null : texto.Trim();
     }
 
     internal static string ExtrairTextoAdf(JsonElement node)

@@ -22,7 +22,7 @@ const DIALOGOS = {
 /**
  * Barra de ações da revisão de uma versão (#71) + exportação (#72), para o topo da aba do público
  * na tela de detalhe (#69). Só mostra o que o status permite:
- * aguardando_revisao → Aprovar, Reprovar, Reprocessar · aprovado → Reabrir, Exportar Markdown ·
+ * aguardando_revisao → Aprovar, Reprovar, Reprocessar · aprovado → Reabrir, Exportar (Markdown ou HTML) ·
  * reprovado → Reprocessar.
  *
  * @example
@@ -36,10 +36,10 @@ const DIALOGOS = {
  * @param {string} [props.statusRelease]
  * @param {Function} props.recarregar refaz o GET da Release depois de cada ação
  */
-export function BarraRevisao({ chave, versao, statusRelease, recarregar }) {
+export function BarraRevisao({ chave, versao, chavesHistorias, statusRelease, recarregar }) {
   const [dialogo, setDialogo] = useState(null);
   const [exportacaoAberta, setExportacaoAberta] = useState(false);
-  const revisao = useRevisaoVersao({ chave, publico: versao.publico, recarregar });
+  const revisao = useRevisaoVersao({ chave, publico: versao.publico, chavesHistorias, recarregar });
   const exportacao = useExportacao({ chave, publico: versao.publico });
   const acoes = acoesDaVersao(versao, statusRelease);
   const ocupado = revisao.executando !== null;
@@ -80,7 +80,7 @@ export function BarraRevisao({ chave, versao, statusRelease, recarregar }) {
           </button>
         )}
         {acoes.exportar && (
-          <Button onClick={exportar} disabled={ocupado} icon="download">Exportar Markdown</Button>
+          <Button onClick={exportar} disabled={ocupado} icon="download">Exportar</Button>
         )}
         {acoes.aprovar && (
           <span title={acoes.aprovarDesabilitadoMotivo ?? undefined}>
@@ -144,6 +144,7 @@ export function BarraRevisao({ chave, versao, statusRelease, recarregar }) {
           exportacao={exportacao.resultado}
           exportando={exportacao.exportando}
           erro={exportacao.erro}
+          onFormatoChange={exportacao.exportar}
           onClose={() => setExportacaoAberta(false)}
         />
       )}
