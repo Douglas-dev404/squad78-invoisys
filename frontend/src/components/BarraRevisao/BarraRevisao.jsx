@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Alert } from '../Alert/Alert';
 import { Button } from '../Button/Button';
 import { BOTAO_PERIGO, BOTAO_SECUNDARIO, Dialogo } from '../Dialogo/Dialogo';
+import { EnvioEmailModal } from '../EnvioEmailModal/EnvioEmailModal';
 import { ExportacaoModal } from '../ExportacaoModal/ExportacaoModal';
 import { useExportacao } from '../../hooks/useExportacao';
 import { useRevisaoVersao } from '../../hooks/useRevisaoVersao';
@@ -39,6 +40,7 @@ const DIALOGOS = {
 export function BarraRevisao({ chave, versao, statusRelease, recarregar }) {
   const [dialogo, setDialogo] = useState(null);
   const [exportacaoAberta, setExportacaoAberta] = useState(false);
+  const [envioAberto, setEnvioAberto] = useState(false);
   const revisao = useRevisaoVersao({ chave, publico: versao.publico, recarregar });
   const exportacao = useExportacao({ chave, publico: versao.publico });
   const acoes = acoesDaVersao(versao, statusRelease);
@@ -78,6 +80,18 @@ export function BarraRevisao({ chave, versao, statusRelease, recarregar }) {
           <button type="button" onClick={() => abrir('reabrir')} disabled={ocupado} className={BOTAO_SECUNDARIO}>
             Reabrir
           </button>
+        )}
+        {versao.status !== 'reprovado' && (
+          <span title={acoes.exportar ? undefined : REVISAO_TEXTOS.ENVIO_SO_APROVADA}>
+            <button
+              type="button"
+              onClick={() => setEnvioAberto(true)}
+              disabled={ocupado || !acoes.exportar}
+              className={BOTAO_SECUNDARIO}
+            >
+              Enviar por e-mail
+            </button>
+          </span>
         )}
         {acoes.exportar && (
           <Button onClick={exportar} disabled={ocupado} icon="download">Exportar</Button>
@@ -135,6 +149,10 @@ export function BarraRevisao({ chave, versao, statusRelease, recarregar }) {
           onCancelar={() => setDialogo(null)}
           onConfirmar={(motivo) => confirmar('reprovar', motivo)}
         />
+      )}
+
+      {envioAberto && (
+        <EnvioEmailModal chave={chave} versao={versao} onClose={() => setEnvioAberto(false)} />
       )}
 
       {exportacaoAberta && (

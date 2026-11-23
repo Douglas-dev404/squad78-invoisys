@@ -199,3 +199,17 @@ restringe a admin, porque quem envia a Release também mantém a lista.
 | Regras | [`utils/destinatarios.js`](src/utils/destinatarios.js) | `lerFiltrosDestinatarios` (URL), `validarDestinatario` (mesmas regras do validator da API), textos da tela |
 | Estado | [`hooks/useDestinatarios.js`](src/hooks/useDestinatarios.js) | filtros na URL (`?publico=cliente&inativos=1`), lista, `salvar`, `mudarSituacao`; recarrega depois de cada ação |
 | Tela | [`DestinatariosPage`](src/pages/DestinatariosPage/DestinatariosPage.jsx) + [`DestinatarioModal`](src/components/DestinatarioModal/DestinatarioModal.jsx) | tabela (nome, e-mail, público, situação), filtro por público, "Mostrar inativos", modal de novo/editar, desativar com confirmação. 409 (e-mail já no público) e `errors.<campo>` aparecem embaixo do campo |
+
+## Enviar por e-mail (F-19, #148)
+
+Na tela da Release, a `BarraRevisao` mostra **Enviar por e-mail** ao lado de Exportar. Com a versão
+aguardando revisão o botão fica desabilitado ("Aprove a versão antes de enviar."); reprovada, some.
+
+| Peça | Arquivo | O que faz |
+|---|---|---|
+| Service | [`services/exportacoes.service.js`](src/services/exportacoes.service.js) | `enviarRelease(chave, { publico, destinatarioIds })` → `POST /releases/{chave}/enviar` |
+| Modal | [`EnvioEmailModal`](src/components/EnvioEmailModal/EnvioEmailModal.jsx) | lista só os destinatários **ativos do público da versão** (checkbox + "Selecionar todos"); lista vazia leva a `/destinatarios?publico=<publico>`; mostra o assunto (título executivo); confirmação; durante o envio não fecha; resultado por destinatário e **"Tentar de novo para os que falharam"** (reenvia só esses ids) |
+| Histórico | [`ExportacaoModal`](src/components/ExportacaoModal/ExportacaoModal.jsx) | "Ver conteúdo" de uma exportação enviada mostra **Enviado para** com nome, e-mail e status (`ListaDeEnvios`) |
+| Regras | [`utils/destinatarios.js`](src/utils/destinatarios.js) | `resumirEnvio(envios)` separa enviados de falhas e devolve os ids que falharam |
+
+A prévia do HTML que vai no e-mail é a mesma do botão **Exportar** (formato HTML).

@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Alert } from '../Alert/Alert';
 import { Button } from '../Button/Button';
 import { BOTAO_SECUNDARIO, Dialogo } from '../Dialogo/Dialogo';
+import { ListaDeEnvios } from '../EnvioEmailModal/EnvioEmailModal';
 import { formatarData } from '../../utils/releases';
 import { FORMATOS_EXPORTACAO, nomeArquivoExportacao } from '../../utils/revisao';
 
@@ -133,6 +134,12 @@ export function ExportacaoModal({
             <p className="font-body-sm text-body-sm text-on-surface-variant">
               Gerado por {exportacao.geradoPor ?? '—'} em {exportacao.geradoEm ? formatarData(exportacao.geradoEm) : '—'}
             </p>
+            {exportacao.envios?.length > 0 && (
+              <section aria-label="Enviado para" className="space-y-xs">
+                <h4 className="font-label-md text-label-md text-on-surface">Enviado para</h4>
+                <ListaDeEnvios envios={exportacao.envios} />
+              </section>
+            )}
           </>
         )}
 
