@@ -50,7 +50,34 @@ public static class DependencyInjection
         services.AddSingleton<IHashSenha, Argon2idHashSenha>();
         services.AddSingleton<IEmissorToken, JwtEmissorToken>();
         services.AddScoped<AdminInicialSemeador>();
-        services.AddScoped<IEnvioEmail, EnvioEmailPendente>();
+        AddEnvioEmail(services, configuration);
+    }
+
+    private static void AddEnvioEmail(IServiceCollection services, IConfiguration configuration)
+    {
+        services.Configure<EmailOptions>(configuration.GetSection(EmailOptions.SecaoConfig));
+
+        services.AddHttpClient<BrevoEnvioEmail>((provider, http) =>
+        {
+            var opcoes = provider.GetRequiredService<IOptions<EmailOptions>>().Value;
+            http.DefaultRequestHeaders.Add("api-key", opcoes.ApiKey);
+            http.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
+            http.Timeout = TimeSpan.FromSeconds(30);
+        })
+        .AddStandardResilienceHandler(opcoes =>
+        {
+            opcoes.Retry.MaxRetryAttempts = 2;
+            opcoes.Retry.Delay = TimeSpan.FromSeconds(1);
+            opcoes.AttemptTimeout.Timeout = TimeSpan.FromSeconds(10);
+            opcoes.TotalRequestTimeout.Timeout = TimeSpan.FromSeconds(30);
+            opcoes.CircuitBreaker.SamplingDuration = TimeSpan.FromSeconds(30);
+        });
+
+        services.AddScoped<EnvioEmailPendente>();
+        services.AddScoped<IEnvioEmail>(provider =>
+            provider.GetRequiredService<IOptions<EmailOptions>>().Value.EstaConfigurado
+                ? provider.GetRequiredService<BrevoEnvioEmail>()
+                : provider.GetRequiredService<EnvioEmailPendente>());
     }
 
     private static void AddDatabase(IServiceCollection services, IConfiguration configuration)
@@ -71,6 +98,8 @@ public static class DependencyInjection
         services.AddScoped<IUsuarioRepository, UsuarioRepository>();
         services.AddScoped<ITokenRedefinicaoSenhaRepository, TokenRedefinicaoSenhaRepository>();
         services.AddScoped<IDestaqueHeroRepository, DestaqueHeroRepository>();
+        services.AddScoped<IDestinatarioRepository, DestinatarioRepository>();
+        services.AddScoped<IEnvioComunicadoRepository, EnvioComunicadoRepository>();
 
         // Trava por Release (ADR-031): advisory lock de sessão numa conexão própria, fora do DbContext,
         // para durar a execução inteira do pipeline sem depender de transação.

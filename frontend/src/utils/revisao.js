@@ -25,6 +25,7 @@ export const REVISAO_TEXTOS = {
   CONFIRMAR_REPROCESSAR:
     'A IA vai gerar o comunicado de novo. Isso substitui o texto gerado, inclusive suas edições.',
   ERRO_GENERICO: 'Não foi possível concluir a ação.',
+  ENVIO_SO_APROVADA: 'Aprove a versão antes de enviar.',
 };
 
 /**

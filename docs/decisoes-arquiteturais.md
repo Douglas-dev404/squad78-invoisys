@@ -48,6 +48,7 @@ histórico também é documentação.
 | [P-02](#p-02--desenho-da-autenticação) | Desenho da autenticação | **Resolvida** → ADR-024 | 2026-10-11 |
 | [032](#adr-032--exportação-em-html-autocontido-pdf-fica-fora) | Exportação em HTML autocontido; PDF fica fora | Aceita | 2026-11-16 |
 | [P-03](#p-03--onde-mora-o-render-da-exportação) | Onde mora o render da exportação | **Resolvida** → ADR-032 | 2026-11-16 |
+| [033](#adr-033--e-mail-real-pela-api-http-da-brevo) | E-mail real pela API HTTP da Brevo | Aceita | 2026-11-23 |
 
 ---
 
@@ -953,6 +954,43 @@ então não pode virar HTML ativo.
 - ✅ Markdown não muda (mesmo texto byte a byte).
 - ✅ O front mostra a prévia em `<iframe sandbox>`, sem permissão de script.
 - ⚠️ O HTML exportado tem estilo fixo; mudar a identidade visual é mudar o renderizador.
+
+---
+
+## ADR-033 — E-mail real pela API HTTP da Brevo
+
+**Contexto.** A porta `IEnvioEmail` só tinha o `EnvioEmailPendente`, que escreve no log
+([ADR-025](#adr-025--recuperação-de-senha-token-opaco-de-uso-único-e-resposta-uniforme): "SMTP
+real é issue futura"). Sem e-mail de verdade, a recuperação de senha não funciona em produção
+e não dá para mandar a Release aos destinatários (#146). A API roda no Azure App Service.
+
+**Decisão.**
+- **API HTTP de e-mail transacional, não SMTP.** O adapter `BrevoEnvioEmail` faz um `POST`
+  em `https://api.brevo.com/v3/smtp/email` com `HttpClient`, como os adapters de Jira e LLM.
+  Assim ganha a mesma resiliência do composition root
+  ([ADR-015](#adr-015--resiliência-http-no-composition-root): 2 retentativas, timeout por
+  tentativa e circuit breaker) e não depende de porta SMTP liberada no App Service. Nenhuma
+  dependência nova.
+- **Brevo** porque o plano gratuito (300 e-mails/dia) permite remetente verificado por
+  e-mail, sem domínio próprio. Resend e SendGrid exigem domínio verificado para mandar a
+  terceiros.
+- A porta ganha `EnviarComunicadoAsync(email, nome, assunto, html, texto)`. Falha do
+  provedor (status não 2xx ou rede, depois das retentativas) vira `EnvioEmailException`,
+  filha de `IntegracaoExternaException` ([ADR-013](#adr-013--exceções-de-integração-são-contrato-da-porta)).
+  Corpo da resposta vai só para o log (401/403 nem isso).
+- Configuração `Email__ApiKey`, `Email__Remetente` e `Email__NomeRemetente`. Sem chave e
+  remetente, o composition root usa o `EnvioEmailPendente`
+  ([ADR-014](#adr-014--adapters-pendente-quando-falta-credencial-501-honesto)): em dev nada
+  sai e tudo aparece no log, como antes.
+- Na recuperação de senha a falha do provedor é engolida pela `RecuperacaoSenha`. A resposta
+  continua uniforme (ADR-025): um erro só para e-mails existentes revelaria quem tem conta.
+
+**Consequências.**
+- ✅ Recuperação de senha passa a funcionar em produção assim que a chave for configurada.
+- ✅ Trocar de provedor é escrever outro adapter da mesma porta.
+- ⚠️ Limite de 300 e-mails/dia no plano gratuito; o envio em massa fica fora do MVP.
+- ⚠️ Se o provedor cair, quem pediu a senha não recebe o link e não é avisado (preço da
+  resposta uniforme); o erro fica no log.
 
 ---
 

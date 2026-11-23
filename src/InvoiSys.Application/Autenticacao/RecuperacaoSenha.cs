@@ -44,8 +44,15 @@ public sealed class RecuperacaoSenha(
         await tokens.AdicionarAsync(emitido, cancellationToken);
 
         var link = $"{opcoes.UrlBase.TrimEnd('/')}#token={token}";
-        await envioEmail.EnviarRedefinicaoSenhaAsync(
-            usuario.Email, usuario.Nome, link, emitido.ExpiraEm, cancellationToken);
+        try
+        {
+            await envioEmail.EnviarRedefinicaoSenhaAsync(
+                usuario.Email, usuario.Nome, link, emitido.ExpiraEm, cancellationToken);
+        }
+        catch (EnvioEmailException)
+        {
+            // Resposta uniforme (ADR-025): falha do provedor não pode revelar que o e-mail existe; o adapter já logou.
+        }
     }
 
     public Task ReenviarAsync(string? email, CancellationToken cancellationToken = default) =>

@@ -34,6 +34,7 @@ segredo do GitHub é `AZURE_WEBAPP_PUBLISH_PROFILE`, que o workflow usa para faz
 | `Jira__BaseUrl` / `Jira__Email` / `Jira__ApiToken` | credenciais do Jira (o token só vale para a conta do e-mail) |
 | `Jira__Projeto` | chave do projeto das Releases, ex.: `INV` (obrigatória: sem ela a API responde 501) |
 | `Jira__ReleaseNote__TipoSubtarefa` / `Jira__ReleaseNote__CampoCustomizado` | opcionais: nome do tipo de subtarefa da Release Note (padrão `Release Note`) ou id do campo customizado |
+| `Email__ApiKey` / `Email__Remetente` / `Email__NomeRemetente` | chave da API da Brevo (app.brevo.com → SMTP & API → API Keys) / e-mail remetente verificado na Brevo / `InvoiSys`. Sem os dois primeiros, nenhum e-mail sai: o link de senha e os envios só aparecem no log (ADR-033) |
 | `Llm__Provedor` / `OpenAi__ApiKey` / `OpenAi__Modelo` | `OpenAi` / chave de platform.openai.com / `gpt-4o-mini` |
 | `Database__MigrarAoIniciar` | `true` |
 | `Proxy__ConfiarCabecalhosEncaminhados` | `true` (o App Service tem proxy na frente; sem isso o rate limit do login vale para todos juntos) |

@@ -2,6 +2,7 @@ using InvoiSys.Application.Acesso;
 
 using InvoiSys.Application.Autenticacao;
 using InvoiSys.Application.Consulta;
+using InvoiSys.Application.Destinatarios;
 using InvoiSys.Application.Exportacao;
 using InvoiSys.Application.Pipeline;
 using InvoiSys.Application.Revisao;
@@ -54,8 +55,10 @@ public static class DependencyInjection
         services.AddScoped<ConsultaExportacoes>();
         services.AddScoped<ConsultaDestaques>();
         services.AddScoped<ExportacaoComunicado>();
+        services.AddScoped<EnvioComunicadoPorEmail>();
         services.AddScoped<Acesso.Autenticacao>();
         services.AddScoped<AdministracaoUsuarios>();
+        services.AddScoped<CadastroDestinatarios>();
 
         return services;
     }

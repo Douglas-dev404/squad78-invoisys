@@ -75,6 +75,8 @@ classDiagram
 | [`TokenRedefinicaoSenha`](Entities/TokenRedefinicaoSenha.cs) | Token de "esqueci a senha": guarda só o hash, vale 30 minutos e é de uso único (`MarcarComoUsado`) |
 | [`Usuario`](Entities/Usuario.cs) | Quem faz login, revisa e aprova. Papéis aceitos nesta fase: `admin` e `release_manager`. O e-mail é normalizado (trim + minúsculas) no construtor e por `NormalizarEmail`. Desligar = `Desativar()`, nunca DELETE |
 | [`DestaqueHero`](Entities/DestaqueHero.cs) | Conteúdo institucional da tela de login (`GET /branding/highlights`). Sem relação com o pipeline |
+| [`Destinatario`](Entities/Destinatario.cs) | E-mail que recebe os comunicados de **um** público (#144). E-mail normalizado como o do `Usuario`; nome e e-mail vazios lançam `ArgumentException`. Mesmo e-mail pode existir em públicos diferentes, nunca duas vezes no mesmo. Desligar = `Desativar()` (e `Reativar()`), nunca DELETE: o histórico de envios aponta para ele |
+| [`EnvioComunicado`](Entities/EnvioComunicado.cs) | Um e-mail de uma exportação para um destinatário (#146), **append-only** como a exportação. Guarda **cópia** do nome e do e-mail no momento do envio, `Status` (`enviado`/`falhou`) e o erro. Só nasce por `Enviado(...)`/`Falhou(...)` e recusa destinatário de público diferente do da exportação |
 
 ### Exceções de regra de negócio
 
@@ -110,6 +112,7 @@ Python.
 | [`StatusRevisao`](Enums/StatusRevisao.cs) | `aguardando_revisao` · `aprovado` · `reprovado` | versão (revisão) |
 | [`StatusExecucaoPipeline`](Enums/StatusExecucaoPipeline.cs) | `iniciada` · `concluida` · `falhou` | execução |
 | [`FormatoExportacao`](Enums/FormatoExportacao.cs) | `markdown` · `html` · `pdf` | exportação |
+| [`StatusEnvio`](Enums/StatusEnvio.cs) | `enviado` · `falhou` | envio por e-mail |
 
 `CategoriaAlteracaoExtensions.TentarConverter` é case-insensitive de propósito, porque a
 entrada é resposta de LLM. `StatusPipelineExtensions.TentarConverter` (filtro `?status=` da listagem) e
@@ -133,9 +136,11 @@ errado em silêncio).
 | [`IUsuarioRepository`](Ports/IUsuarioRepository.cs) | persistência (agregado) | `UsuarioRepository` | `BuscarPorIdAsync`, `BuscarPorEmailAsync` (normaliza o argumento), `ExisteAlgumAsync`, `ListarAsync`, `SalvarAsync` (sem delete) |
 | [`IHashSenha`](Ports/IHashSenha.cs) | saída (criptografia) | `Argon2idHashSenha` | `Gerar`, `Verificar` |
 | [`IEmissorToken`](Ports/IEmissorToken.cs) | saída (criptografia) | `JwtEmissorToken` | `Emitir(usuario)` → `TokenEmitido(Token, ExpiraEm)` |
-| [`IEnvioEmail`](Ports/IEnvioEmail.cs) | saída (e-mail) | `EnvioEmailPendente` | `EnviarRedefinicaoSenhaAsync` |
+| [`IEnvioEmail`](Ports/IEnvioEmail.cs) | saída (e-mail) | `BrevoEnvioEmail` / `EnvioEmailPendente` | `EnviarRedefinicaoSenhaAsync`, `EnviarComunicadoAsync(email, nome, assunto, html, texto)`; falha do provedor lança `EnvioEmailException` |
 | [`ITokenRedefinicaoSenhaRepository`](Ports/ITokenRedefinicaoSenhaRepository.cs) | persistência | `TokenRedefinicaoSenhaRepository` | `AdicionarAsync`, `BuscarPorHashAsync`, `BuscarUltimoDoUsuarioAsync`, `ConsumirAsync` (atômico), `InvalidarPendentesDoUsuarioAsync` |
 | [`IDestaqueHeroRepository`](Ports/IDestaqueHeroRepository.cs) | somente leitura | `DestaqueHeroRepository` | `ListarAtivosAsync` (ordenado) |
+| [`IEnvioComunicadoRepository`](Ports/IEnvioComunicadoRepository.cs) | **append-only** | `EnvioComunicadoRepository` | `AdicionarAsync(envios)`, `ListarPorExportacaoAsync` (por nome). Sem alterar nem apagar: é auditoria de envio |
+| [`IDestinatarioRepository`](Ports/IDestinatarioRepository.cs) | persistência (agregado) | `DestinatarioRepository` | `BuscarPorIdAsync`, `BuscarPorIdsAsync`, `ExisteEmailNoPublicoAsync` (normaliza; `ignorarId` para a edição), `ListarAsync(publico?, incluirInativos)` (por nome), `SalvarAsync` (sem delete) |
 
 **Não existe** porta para `VersaoComunicado` nem `ItemComunicado`, e isso é proposital:
 aprovar, editar ou excluir passa pela `Release` carregada ([ADR-009](../../docs/decisoes-arquiteturais.md#adr-009--repository-por-agregado-portas-de-leitura-isoladas)).
@@ -150,7 +155,8 @@ contrato da porta, então mora aqui, não no adapter
 IntegracaoExternaException (abstract) ─► 502
  ├─ JiraApiException
  ├─ LlmApiException
- └─ LlmRespostaInvalidaException
+ ├─ LlmRespostaInvalidaException
+ └─ EnvioEmailException
 ProviderNaoConfiguradoException ─► 501
 ```
 
