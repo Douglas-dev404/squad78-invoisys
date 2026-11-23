@@ -47,7 +47,7 @@ function Filtros({ publico, inativos, onPublico, onInativos }) {
 function Tabela({ itens, onEditar, onSituacao }) {
   return (
     <div className={`${CARD_CLASS} overflow-x-auto`}>
-      <table className="w-full text-left">
+      <table className="w-full min-w-[720px] text-left">
         <caption className="sr-only">Destinatários de e-mail</caption>
         <thead className="border-b border-surface-variant bg-surface-container-low">
           <tr className="font-label-md text-label-md text-on-surface-variant">
@@ -62,7 +62,7 @@ function Tabela({ itens, onEditar, onSituacao }) {
           {itens.map((d) => (
             <tr key={d.id} className="border-b border-surface-variant/50 last:border-0">
               <td className="px-md py-sm font-body-md text-body-md text-on-surface">{d.nome}</td>
-              <td className="px-md py-sm font-body-sm text-body-sm text-on-surface-variant break-all">{d.email}</td>
+              <td className="px-md py-sm font-body-sm text-body-sm text-on-surface-variant break-words">{d.email}</td>
               <td className="px-md py-sm">
                 <span className="rounded-full bg-secondary-container px-sm py-0.5 font-label-sm text-label-sm text-on-secondary-container">
                   {PUBLICO_LABEL[d.publico] ?? d.publico}
