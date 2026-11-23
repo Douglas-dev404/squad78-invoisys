@@ -1,6 +1,8 @@
 using InvoiSys.Api.Contracts;
 using InvoiSys.Application.Consulta;
+using InvoiSys.Domain.Enums;
 using InvoiSys.Domain.Ports;
+using Microsoft.AspNetCore.Mvc;
 
 namespace InvoiSys.Api.Endpoints;
 
@@ -8,13 +10,15 @@ public static class JiraEndpoints
 {
     public static IEndpointRouteBuilder MapJiraEndpoints(this IEndpointRouteBuilder rotas)
     {
-        rotas.MapGet("/api/v1/jira/versoes", ListarVersoesAsync)
-            .WithTags("jira")
-            .WithName("ListarVersoesJira")
-            .WithSummary("Lista as versões do projeto Jira configurado para seleção.")
+        var grupo = rotas.MapGroup("/api/v1/jira").WithTags("jira")
             .RequireAuthorization()
+            .ProducesProblem(StatusCodes.Status401Unauthorized);
+
+        grupo.MapGet("/versoes", ListarVersoesAsync)
+            .WithName("ListarVersoesJira")
+            .WithSummary("Versões (fixVersions) do projeto no Jira, com o status da Release no InvoiSys. "
+                + "Não lançadas primeiro; incluirLancadas=false traz só as não lançadas.")
             .Produces<IReadOnlyList<VersaoJiraOut>>()
-            .ProducesProblem(StatusCodes.Status401Unauthorized)
             .ProducesProblem(StatusCodes.Status501NotImplemented)
             .ProducesProblem(StatusCodes.Status502BadGateway);
 
@@ -22,24 +26,24 @@ public static class JiraEndpoints
     }
 
     private static async Task<IResult> ListarVersoesAsync(
-        ConsultaVersoesJira consulta,
-        CancellationToken cancellationToken)
+        [FromServices] ConsultaVersoesJira consulta,
+        CancellationToken cancellationToken,
+        [FromQuery] bool incluirLancadas = true)
     {
         try
         {
-            var versoes = await consulta.ListarAsync(cancellationToken);
+            var versoes = await consulta.ListarAsync(incluirLancadas, cancellationToken);
+
             return Results.Ok(versoes.Select(v => new VersaoJiraOut(
-                v.Nome,
-                v.Lancada,
-                v.Arquivada,
-                v.DataLancamento)).ToList());
+                v.Versao.Nome,
+                v.Versao.Descricao,
+                v.Versao.DataLancamento,
+                v.Versao.Lancada,
+                v.StatusInvoisys?.ParaValor())).ToList());
         }
-        catch (Exception exc) when (exc is ProviderNaoConfiguradoException or IntegracaoExternaException)
+        catch (Exception exc) when (FalhaDeIntegracao.ParaProblema(exc) is { } problema)
         {
-            var status = exc is ProviderNaoConfiguradoException
-                ? StatusCodes.Status501NotImplemented
-                : StatusCodes.Status502BadGateway;
-            return Results.Problem(detail: exc.Message, statusCode: status);
+            return problema;
         }
     }
 }

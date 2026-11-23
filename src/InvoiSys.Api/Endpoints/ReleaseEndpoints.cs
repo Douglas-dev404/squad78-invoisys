@@ -138,7 +138,7 @@ public static class ReleaseEndpoints
                     h.TipoIssue,
                     h.PossuiReleaseNoteDedicada))]));
         }
-        catch (Exception exc) when (MapearFalhaDeIntegracao(exc) is { } problema)
+        catch (Exception exc) when (FalhaDeIntegracao.ParaProblema(exc) is { } problema)
         {
             return problema;
         }
@@ -146,17 +146,13 @@ public static class ReleaseEndpoints
 
     private static async Task<IResult> ProcessarReleaseAsync(
         string chaveRelease,
-        [FromBody(EmptyBodyBehavior = Microsoft.AspNetCore.Mvc.ModelBinding.EmptyBodyBehavior.Allow)]
-        ProcessarReleaseIn? corpo,
+        [FromBody(EmptyBodyBehavior = Microsoft.AspNetCore.Mvc.ModelBinding.EmptyBodyBehavior.Allow)] ProcessarReleaseIn? entrada,
         [FromServices] PipelineGeracaoReleaseNote pipeline,
         CancellationToken cancellationToken)
     {
         try
         {
-            var release = await pipeline.ExecutarAsync(
-                chaveRelease,
-                corpo is null ? null : corpo.ChavesHistorias ?? [],
-                cancellationToken);
+            var release = await pipeline.ExecutarAsync(chaveRelease, entrada?.ChavesHistorias, cancellationToken);
 
             return Results.Ok(new ReleaseProcessadaOut(
                 ChaveJira: release.ChaveJira,
@@ -180,18 +176,9 @@ public static class ReleaseEndpoints
         {
             return Results.Problem(detail: exc.Message, statusCode: StatusCodes.Status422UnprocessableEntity);
         }
-        catch (Exception exc) when (MapearFalhaDeIntegracao(exc) is { } problema)
+        catch (Exception exc) when (FalhaDeIntegracao.ParaProblema(exc) is { } problema)
         {
             return problema;
         }
     }
-
-    private static IResult? MapearFalhaDeIntegracao(Exception exc) => exc switch
-    {
-        ProviderNaoConfiguradoException =>
-            Results.Problem(detail: exc.Message, statusCode: StatusCodes.Status501NotImplemented),
-        IntegracaoExternaException =>
-            Results.Problem(detail: exc.Message, statusCode: StatusCodes.Status502BadGateway),
-        _ => null,
-    };
 }

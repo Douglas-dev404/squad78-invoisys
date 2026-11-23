@@ -61,11 +61,11 @@ flowchart LR
 
 | Etapa | O que acontece | Status |
 |---|---|---|
-| **Ingestão** | Lista versões do projeto Jira; a pessoa escolhe uma `fixVersion` e marca quais histórias processar. O sistema valida as chaves dentro dessa versão e usa a descrição da subtarefa intitulada "Release Note" quando existir | ✅ implementado |
+| **Ingestão** | Busca no Jira todas as issues da Release (`fixVersion`), com o texto da subtarefa "Release Note" quando existir | ✅ implementado |
 | **Pipeline de IA** | Limpa → agrupa semelhantes → categoriza → reescreve em linguagem de negócio → gera título e resumo | ✅ implementado (testado com fakes; falta validar com LLM real) |
 | **Persistência** | Grava Release, histórias, comunicado e log da execução | ✅ implementado (reprocessar reaproveita a Release; versão aprovada exige reabrir) |
 | **Revisão** | Humano vê, edita, exclui itens, aprova ou reprova, **por público-alvo** | 🔶 domínio pronto, falta API (#21–#23) e tela |
-| **Exportação** | Gera Markdown (HTML/PDF como diferencial) só de versão aprovada | ✅ Markdown implementado (`POST /releases/{chave}/exportar`); HTML/PDF pendentes |
+| **Exportação** | Gera Markdown (HTML/PDF como diferencial) só de versão aprovada | ✅ Markdown e HTML implementados (`POST /releases/{chave}/exportar`); PDF pendente |
 | **Autenticação** | Login JWT de quem revisa e aprova | ❌ só a entidade `Usuario` e o repository |
 
 ---
@@ -176,20 +176,14 @@ diretamente pelo domínio. Ver [Configuração](#configuração).
 
 ### 1. Conferir o que vem do Jira (sem gastar token)
 
-`GET /api/v1/jira/versoes` → a interface permite escolher uma versão; depois, para conferência:
 `GET /api/v1/releases/{chaveRelease}/historias`
 
 ```
-JiraEndpoints.ListarVersoesAsync
-  └─► IJiraClient.ListarVersoesDoProjetoAsync()
-        └─► JiraRestClient
-              └─ GET /rest/api/3/project/{projectKey}/version (paginado)
-
 ReleaseEndpoints.BuscarHistoriasAsync
   └─► IJiraClient.BuscarHistoriasDaReleaseAsync(fixVersion)
         └─► JiraRestClient
-              ├─ GET /rest/api/3/search/jql?jql=project="INV" AND fixVersion="X" (nextPageToken)
-              ├─ para cada issue com subtarefa intitulada "Release Note":
+              ├─ GET /rest/api/3/search/jql?jql=fixVersion="X"   (pagina por nextPageToken, 100 por página)
+              ├─ para cada issue com subtarefa do tipo "Release Note":
               │     GET /rest/api/3/issue/{key}?fields=description
               └─ ADF (Atlassian Document Format) → texto puro → HistoriaJira
   ◄── ReleaseOut { chaveJira, status: "pendente", totalHistorias, historias[] }
@@ -199,9 +193,8 @@ Serve para o revisor ver o que vai entrar no processamento antes de rodar a IA.
 
 ### 2. Rodar o pipeline de IA
 
-Antes do processamento, `GET /api/v1/releases/{chaveRelease}/historias` lista as histórias para seleção.
-Depois, `POST /api/v1/releases/{chaveRelease}/processar` recebe as chaves selecionadas e chama
-`PipelineGeracaoReleaseNote.ExecutarAsync(chaveRelease, chavesHistorias)`.
+`POST /api/v1/releases/{chaveRelease}/processar` →
+`PipelineGeracaoReleaseNote.ExecutarAsync(chaveRelease)`
 
 ```mermaid
 sequenceDiagram
@@ -213,12 +206,11 @@ sequenceDiagram
     participant L as ILlmProvider
     participant DB as IReleaseRepository
 
-    API->>PL: ExecutarAsync("RELEASE-2026-08", ["INV-1", "INV-3"])
+    API->>PL: ExecutarAsync("RELEASE-2026-08")
     PL->>DB: BuscarPorChaveJiraAsync (Release já existe?)
     Note over PL,DB: versão Cliente aprovada → recusa com 409 antes de chamar Jira/LLM (ADR-020)
     PL->>J: BuscarHistoriasDaReleaseAsync
-    J-->>PL: historiasDisponiveis[]
-    PL->>PL: valida as chaves e filtra as histórias selecionadas
+    J-->>PL: HistoriaJira[]
     PL->>R: new Release(chave, historias) ou AtualizarHistorias (reprocessar não duplica)
     PL->>R: MarcarProcessando() + RegistrarExecucao(modelo)
     PL->>PL: Estágio 1 — ExtrairELimpar (sem LLM)
@@ -279,7 +271,7 @@ Toda mutação passa pela `Release` carregada via `IReleaseRepository`, porque
 `VersaoComunicado` e `ItemComunicado` **não têm repository próprio** (ver
 [ADR-009](docs/decisoes-arquiteturais.md#adr-009--repository-por-agregado-portas-de-leitura-isoladas)).
 
-### 4. Exportação *(Markdown implementado em #24; HTML/PDF pendentes)*
+### 4. Exportação *(Markdown implementado em #24, HTML em #89; PDF pendente)*
 
 `new ComunicadoExportado(versao, formato, conteudo, caminhoArquivo, geradoPor)` **lança
 `ReleaseNaoAprovadaException`** se a versão não estiver `ProntaParaExportar`. Não existe
@@ -470,57 +462,27 @@ versão Cliente) e mapeamento das exceções de domínio de revisão
 ### ⬜ Entrega final
 
 - Documentação técnica (este repositório) + documentação funcional/UML.
-- Guia de instalação e execução (seção abaixo).
+- Guia de instalação e execução: [docs/guia-instalacao.md](docs/guia-instalacao.md).
 - Demo ponta a ponta: Release real do Jira → comunicado revisado → Markdown exportado.
 
 ---
 
 ## Rodando o projeto
 
-**Pré-requisitos:** .NET SDK 10, Node 22, Docker (para o Postgres e para os testes de
-integração).
+Passo a passo completo (pré-requisitos, variáveis, Docker, execução local, testes, primeiro
+uso e solução de problemas): **[docs/guia-instalacao.md](docs/guia-instalacao.md)**.
 
-### Tudo via Docker (mais simples)
+Resumo, com Docker Desktop, .NET 10 SDK e Node 22 instalados:
 
 ```bash
-cp .env.example .env        # preencha Jira__* e OpenRouter__ApiKey para usar as integrações
-docker compose up --build   # API em http://localhost:8080, Postgres em :5432
+cp .env.example .env        # preencha Auth__Jwt__Chave, Auth__AdminInicial__*, Jira__* e a chave da IA
+docker compose up -d --build   # API em http://localhost:8080, Postgres em :5432
 curl http://localhost:8080/health
+cd frontend && npm ci && npm run dev   # front em http://localhost:5173
 ```
 
-O compose aplica as migrations sozinho ao subir (`Database__MigrarAoIniciar=true`).
-
-### Backend local
-
-```bash
-docker compose up -d db                 # só o Postgres
-dotnet restore InvoiSys.slnx
-dotnet build InvoiSys.slnx
-dotnet run --project src/InvoiSys.Api   # http://localhost:5049
-```
-
-Com a API rodando em Development:
-
-- **Swagger UI** (explorar e testar as rotas no navegador): `http://localhost:5049/swagger`
-- Contrato OpenAPI em JSON: `http://localhost:5049/openapi/v1.json`
-
-### Frontend
-
-```bash
-cd frontend
-npm ci
-npm run dev      # http://localhost:5173
-```
-
-### Testes e formatação
-
-```bash
-dotnet test InvoiSys.slnx      # unitários + integração (sobe Postgres via Testcontainers)
-dotnet format InvoiSys.slnx    # o CI reprova com --verify-no-changes
-cd frontend && npm run lint && npm run build
-```
-
-### Migrations
+Testes: `dotnet test InvoiSys.slnx` (os de integração exigem Docker rodando) e, no front,
+`npm run lint && npm run build`. Migrations à mão:
 
 ```bash
 dotnet ef migrations add <Nome> --project src/InvoiSys.Infrastructure --startup-project src/InvoiSys.Api --output-dir Database/Migrations
@@ -531,20 +493,10 @@ dotnet ef database update --project src/InvoiSys.Infrastructure --startup-projec
 
 ## Configuração
 
-O .NET lê `appsettings.json` e variáveis de ambiente. **O separador de seção em variável
-de ambiente é `__` (dois underscores).**
-
-| Variável | Para quê | Sem ela |
-|---|---|---|
-| `ConnectionStrings__Default` | Postgres | a API sobe, mas qualquer acesso ao banco falha |
-| `Jira__BaseUrl`, `Jira__Email`, `Jira__ApiToken`, `Jira__ProjectKey` | Jira Cloud (Basic Auth com **API token**; projeto `INV` no exemplo) | endpoints respondem **501** "Jira não configurado" |
-| `OpenRouter__ApiKey` | LLM | `/processar` responde **501** "Nenhum LLM provider configurado" |
-| `OpenRouter__Modelo` | modelo `provedor/modelo` (padrão `openai/gpt-4o-mini`) | usa o padrão |
-| `OpenRouter__ModelosFallback__0`, `__1`… | modelos alternativos, tentados pela própria OpenRouter em 5xx/429 | sem fallback |
-| `Database__MigrarAoIniciar` | aplica migrations no startup (ligado no compose, desligado por padrão) | não migra |
-| `VITE_API_BASE_URL` (front) | base da API | `http://localhost:8080/api/v1` |
-
-Modelo completo em [.env.example](.env.example).
+Todas as variáveis de ambiente (nome, se é obrigatória, exemplo e para que serve) estão na
+[seção 2 do guia de instalação](docs/guia-instalacao.md#2-variáveis-de-ambiente). Modelo
+pronto em [.env.example](.env.example). Em variável de ambiente o separador de seção é
+`__` (dois underscores).
 
 ---
 
@@ -552,9 +504,11 @@ Modelo completo em [.env.example](.env.example).
 
 | Documento | Conteúdo |
 |---|---|
+| [docs/guia-instalacao.md](docs/guia-instalacao.md) | Instalação, variáveis de ambiente, execução, testes, primeiro uso e solução de problemas |
 | [docs/decisoes-arquiteturais.md](docs/decisoes-arquiteturais.md) | **Todas as decisões (ADRs)**: contexto, alternativas, consequências |
 | [docs/modelagem-de-dominio.md](docs/modelagem-de-dominio.md) | ERD, tabela por tabela, índices, constraints, triggers |
 | [docs/contratos-integracao.md](docs/contratos-integracao.md) | Contratos Jira e OpenRouter: o que foi verificado × o que é pendência |
+| [docs/documentacao-funcional.md](docs/documentacao-funcional.md) | Atores, casos de uso, requisitos, fluxos, regras de negócio e telas do produto |
 | [AGENTS.md](AGENTS.md) | Regras para qualquer agente de IA (e humano) que for mexer no código |
 | [CONTRIBUTING.md](CONTRIBUTING.md) | Fluxo de branches, PR e CI |
 

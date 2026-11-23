@@ -9,6 +9,9 @@ export const BOTAO_PERIGO =
 export const BOTAO_TEXTO =
   'rounded-md px-sm py-xs font-label-md text-label-md text-primary transition-colors hover:bg-primary/5 disabled:cursor-not-allowed disabled:opacity-50';
 
+const FOCAVEIS =
+  'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
+
 /**
  * Caixa de diálogo modal (mesmo visual do "Processar Release").
  * Esc e clique fora fecham, exceto enquanto `bloqueado` (chamada em andamento).
@@ -24,8 +27,31 @@ export function Dialogo({ titulo, onClose, bloqueado = false, largura = 'max-w-m
   const caixaRef = useRef(null);
 
   useEffect(() => {
+    const anterior = document.activeElement;
     caixaRef.current?.focus();
+    return () => anterior?.focus?.();
   }, []);
+
+  const prenderFoco = (event) => {
+    if (event.key !== 'Tab') return;
+    const caixa = caixaRef.current;
+    const itens = [...caixa.querySelectorAll(FOCAVEIS)];
+    if (itens.length === 0) {
+      event.preventDefault();
+      caixa.focus();
+      return;
+    }
+    const primeiro = itens[0];
+    const ultimo = itens[itens.length - 1];
+    const ativo = document.activeElement;
+    if (event.shiftKey && (ativo === primeiro || ativo === caixa)) {
+      event.preventDefault();
+      ultimo.focus();
+    } else if (!event.shiftKey && ativo === ultimo) {
+      event.preventDefault();
+      primeiro.focus();
+    }
+  };
 
   useEffect(() => {
     if (bloqueado) return undefined;
@@ -49,6 +75,7 @@ export function Dialogo({ titulo, onClose, bloqueado = false, largura = 'max-w-m
         role="dialog"
         aria-modal="true"
         aria-labelledby={idTitulo}
+        onKeyDown={prenderFoco}
         className={`w-full ${largura} max-h-[90vh] overflow-y-auto rounded-xl border border-surface-variant/50 bg-surface-container-lowest p-md shadow-[0px_4px_12px_rgba(27,67,50,0.08)] outline-none`}
       >
         <div className="mb-md flex items-start justify-between gap-sm">

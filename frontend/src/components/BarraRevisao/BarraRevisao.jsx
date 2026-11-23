@@ -22,7 +22,7 @@ const DIALOGOS = {
 /**
  * Barra de ações da revisão de uma versão (#71) + exportação (#72), para o topo da aba do público
  * na tela de detalhe (#69). Só mostra o que o status permite:
- * aguardando_revisao → Aprovar, Reprovar, Reprocessar · aprovado → Reabrir, Exportar Markdown ·
+ * aguardando_revisao → Aprovar, Reprovar, Reprocessar · aprovado → Reabrir, Exportar (Markdown ou HTML) ·
  * reprovado → Reprocessar.
  *
  * @example
@@ -80,7 +80,7 @@ export function BarraRevisao({ chave, versao, chavesHistorias, statusRelease, re
           </button>
         )}
         {acoes.exportar && (
-          <Button onClick={exportar} disabled={ocupado} icon="download">Exportar Markdown</Button>
+          <Button onClick={exportar} disabled={ocupado} icon="download">Exportar</Button>
         )}
         {acoes.aprovar && (
           <span title={acoes.aprovarDesabilitadoMotivo ?? undefined}>
@@ -144,6 +144,7 @@ export function BarraRevisao({ chave, versao, chavesHistorias, statusRelease, re
           exportacao={exportacao.resultado}
           exportando={exportacao.exportando}
           erro={exportacao.erro}
+          onFormatoChange={exportacao.exportar}
           onClose={() => setExportacaoAberta(false)}
         />
       )}
