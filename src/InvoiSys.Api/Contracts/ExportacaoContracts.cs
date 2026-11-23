@@ -1,3 +1,5 @@
+using InvoiSys.Application.Consulta;
+using InvoiSys.Application.Exportacao;
 using InvoiSys.Domain.Entities;
 using InvoiSys.Domain.Enums;
 using InvoiSys.Domain.Ports;
@@ -61,15 +63,40 @@ public sealed record ExportacaoDetalheOut(
     string Formato,
     string? GeradoPor,
     DateTimeOffset GeradoEm,
-    string? Conteudo)
+    string? Conteudo,
+    IReadOnlyList<EnvioOut> Envios)
 {
-    public static ExportacaoDetalheOut De(ExportacaoResumo resumo) => new(
-        resumo.Id,
-        resumo.ChaveRelease,
-        resumo.TituloExecutivo,
-        resumo.Publico.ParaValor(),
-        resumo.Formato.ParaValor(),
-        resumo.GeradoPor,
-        resumo.GeradoEm,
-        resumo.Conteudo);
+    public static ExportacaoDetalheOut De(ExportacaoComEnvios detalhe) => new(
+        detalhe.Exportacao.Id,
+        detalhe.Exportacao.ChaveRelease,
+        detalhe.Exportacao.TituloExecutivo,
+        detalhe.Exportacao.Publico.ParaValor(),
+        detalhe.Exportacao.Formato.ParaValor(),
+        detalhe.Exportacao.GeradoPor,
+        detalhe.Exportacao.GeradoEm,
+        detalhe.Exportacao.Conteudo,
+        [.. detalhe.Envios.Select(EnvioOut.De)]);
+}
+
+public sealed record EnviarIn(string? Publico, IReadOnlyList<Guid>? DestinatarioIds);
+
+public sealed record EnvioOut(Guid DestinatarioId, string Nome, string Email, string Status, string? Erro)
+{
+    public static EnvioOut De(EnvioComunicado envio) => new(
+        envio.DestinatarioId, envio.Nome, envio.Email, envio.Status.ParaValor(), envio.Erro);
+}
+
+public sealed record EnvioRealizadoOut(
+    Guid ExportacaoId,
+    string Publico,
+    string? EnviadoPor,
+    DateTimeOffset EnviadoEm,
+    IReadOnlyList<EnvioOut> Envios)
+{
+    public static EnvioRealizadoOut De(ResultadoEnvio resultado) => new(
+        resultado.Exportacao.Id,
+        resultado.Exportacao.Publico.ParaValor(),
+        resultado.Exportacao.GeradoPor,
+        resultado.Exportacao.GeradoEm,
+        [.. resultado.Envios.Select(EnvioOut.De)]);
 }

@@ -27,6 +27,16 @@ public static class ExportacaoEndpoints
             .ProducesProblem(StatusCodes.Status409Conflict)
             .ProducesProblem(StatusCodes.Status422UnprocessableEntity);
 
+        grupo.MapPost("/{chaveRelease}/enviar", EnviarAsync)
+            .ComValidacao<EnviarIn>()
+            .WithName("EnviarRelease")
+            .WithSummary("Envia por e-mail a versão aprovada de um público aos destinatários escolhidos.")
+            .Produces<EnvioRealizadoOut>(StatusCodes.Status201Created)
+            .ProducesProblem(StatusCodes.Status404NotFound)
+            .ProducesProblem(StatusCodes.Status409Conflict)
+            .ProducesProblem(StatusCodes.Status422UnprocessableEntity)
+            .ProducesProblem(StatusCodes.Status502BadGateway);
+
         var consulta = rotas.MapGroup("/api/v1/exportacoes").WithTags("exportacao")
             .RequireAuthorization()
             .ProducesProblem(StatusCodes.Status401Unauthorized);
@@ -74,6 +84,40 @@ public static class ExportacaoEndpoints
         await consulta.BuscarAsync(id, cancellationToken) is { } detalhe
             ? Results.Ok(ExportacaoDetalheOut.De(detalhe))
             : Results.Problem(detail: $"Exportação {id} não encontrada.", statusCode: StatusCodes.Status404NotFound);
+
+    private static async Task<IResult> EnviarAsync(
+        string chaveRelease,
+        [FromBody] EnviarIn corpo,
+        ClaimsPrincipal usuario,
+        [FromServices] EnvioComunicadoPorEmail envio,
+        CancellationToken cancellationToken)
+    {
+        if (!UsuarioAutenticado.TentarObterId(usuario, out var usuarioId))
+        {
+            return Results.Unauthorized();
+        }
+
+        // ComValidacao<EnviarIn> já recusou público inválido e lista vazia ou repetida com 422.
+        PublicoAlvoExtensions.TentarConverter(corpo.Publico, out var publico);
+
+        try
+        {
+            var resultado = await envio.EnviarAsync(
+                chaveRelease,
+                publico,
+                corpo.DestinatarioIds!,
+                usuarioId,
+                cancellationToken);
+
+            return Results.Created(
+                $"/api/v1/exportacoes/{resultado.Exportacao.Id}",
+                EnvioRealizadoOut.De(resultado));
+        }
+        catch (Exception exc) when ((MapearFalhaDeExportacao(exc) ?? FalhaDeIntegracao.ParaProblema(exc)) is { } problema)
+        {
+            return problema;
+        }
+    }
 
     private static async Task<IResult> ExportarAsync(
         string chaveRelease,
@@ -129,7 +173,7 @@ public static class ExportacaoEndpoints
             Results.Problem(detail: exc.Message, statusCode: StatusCodes.Status404NotFound),
         ReleaseNaoAprovadaException or ReleaseSemItensProcessadosException =>
             Results.Problem(detail: exc.Message, statusCode: StatusCodes.Status409Conflict),
-        FormatoNaoSuportadoException =>
+        FormatoNaoSuportadoException or DestinatarioInvalidoParaEnvioException =>
             Results.Problem(detail: exc.Message, statusCode: StatusCodes.Status422UnprocessableEntity),
         _ => null,
     };

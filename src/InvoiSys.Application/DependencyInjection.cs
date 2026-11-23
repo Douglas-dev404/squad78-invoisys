@@ -55,6 +55,7 @@ public static class DependencyInjection
         services.AddScoped<ConsultaExportacoes>();
         services.AddScoped<ConsultaDestaques>();
         services.AddScoped<ExportacaoComunicado>();
+        services.AddScoped<EnvioComunicadoPorEmail>();
         services.AddScoped<Acesso.Autenticacao>();
         services.AddScoped<AdministracaoUsuarios>();
         services.AddScoped<CadastroDestinatarios>();

@@ -19,6 +19,8 @@ public class ApiConsultaExportacoesTests
             builder.ConfigureServices(services =>
             {
                 services.RemoveAll<IComunicadoExportadoRepository>();
+                services.RemoveAll<IEnvioComunicadoRepository>();
+                services.AddSingleton<IEnvioComunicadoRepository>(new FakeEnvioComunicadoRepository());
                 services.ComUsuarios(AutenticacaoDeTeste.Revisor);
                 services.AddScoped(_ => exportados);
             }));

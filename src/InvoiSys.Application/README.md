@@ -166,6 +166,35 @@ Mantém a lista de e-mails que recebem os comunicados (#144). **Dependência:**
 
 ---
 
+## `EnvioComunicadoPorEmail`
+
+Envia a versão aprovada de um público para destinatários escolhidos (#146). **Dependências:**
+`IReleaseRepository`, `IComunicadoExportadoRepository`, `IDestinatarioRepository`,
+`IEnvioComunicadoRepository`, `IUsuarioRepository` e `IEnvioEmail`. Registrado como **Scoped**.
+
+`EnviarAsync(chave, publico, destinatarioIds, usuarioId)`, em ordem:
+
+1. Usuário do token ativo (`RevisorInvalidoException`, 401), Release existente (404) e versão
+   do público gerada e **aprovada** (`ReleaseNaoAprovadaException`, 409). Enviar é publicar:
+   nada sai antes da revisão humana.
+2. Destinatários: lista não vazia, sem repetição, todos existentes, **ativos** e do **mesmo
+   público** da versão. Qualquer problema → `DestinatarioInvalidoParaEnvioException` (422) e
+   ninguém recebe nada.
+3. Gera **uma** exportação HTML (`ComunicadoExportado`, o mesmo registro do histórico), com o
+   usuário como autor.
+4. Envia um e-mail por destinatário: assunto = título executivo (ou `Release <chave>`), corpo
+   HTML do `RenderizadorHtml` e texto do `RenderizadorMarkdown`. `EnvioEmailException` de um
+   destinatário vira `EnvioComunicado` com `falhou` e o erro; os outros seguem.
+5. Grava os envios. Se **todos** falharam, lança `EnvioEmailException` (502) depois de gravar.
+
+Sem provedor configurado (`EnvioEmailPendente`) os envios ficam `enviado` e o log mostra o
+envio simulado, igual à recuperação de senha em dev.
+
+`ConsultaExportacoes.BuscarAsync` devolve a exportação junto com os envios
+(`ExportacaoComEnvios`), que `GET /exportacoes/{id}` expõe em `envios`.
+
+---
+
 ## `Autenticacao`
 
 Casos de uso de sessão. **Dependências (construtor):** `IUsuarioRepository`, `IHashSenha`

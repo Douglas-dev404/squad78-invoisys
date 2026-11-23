@@ -191,6 +191,63 @@ namespace InvoiSys.Infrastructure.Database.Migrations
                         });
                 });
 
+            modelBuilder.Entity("InvoiSys.Domain.Entities.EnvioComunicado", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id")
+                        .HasDefaultValueSql("gen_random_uuid()");
+
+                    b.Property<Guid>("ComunicadoExportadoId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("comunicado_exportado_id");
+
+                    b.Property<Guid>("DestinatarioId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("destinatario_id");
+
+                    b.Property<string>("Email")
+                        .IsRequired()
+                        .HasMaxLength(320)
+                        .HasColumnType("character varying(320)")
+                        .HasColumnName("email");
+
+                    b.Property<DateTimeOffset>("EnviadoEm")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("enviado_em");
+
+                    b.Property<string>("Erro")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("erro");
+
+                    b.Property<string>("Nome")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("nome");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("status");
+
+                    b.HasKey("Id")
+                        .HasName("pk_envios_comunicado");
+
+                    b.HasIndex("ComunicadoExportadoId")
+                        .HasDatabaseName("ix_envios_comunicado_comunicado_exportado_id");
+
+                    b.HasIndex("DestinatarioId")
+                        .HasDatabaseName("ix_envios_comunicado_destinatario_id");
+
+                    b.ToTable("envios_comunicado", null, t =>
+                        {
+                            t.HasCheckConstraint("ck_envios_comunicado_status", "status IN ('enviado','falhou')");
+                        });
+                });
+
             modelBuilder.Entity("InvoiSys.Domain.Entities.ExecucaoPipeline", b =>
                 {
                     b.Property<Guid>("Id")
@@ -617,6 +674,23 @@ namespace InvoiSys.Infrastructure.Database.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
                         .HasConstraintName("fk_comunicados_exportados_versoes_comunicado_versao_comunicado");
+                });
+
+            modelBuilder.Entity("InvoiSys.Domain.Entities.EnvioComunicado", b =>
+                {
+                    b.HasOne("InvoiSys.Domain.Entities.ComunicadoExportado", null)
+                        .WithMany()
+                        .HasForeignKey("ComunicadoExportadoId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_envios_comunicado_comunicados_exportados_comunicado_exporta");
+
+                    b.HasOne("InvoiSys.Domain.Entities.Destinatario", null)
+                        .WithMany()
+                        .HasForeignKey("DestinatarioId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_envios_comunicado_destinatarios_destinatario_id");
                 });
 
             modelBuilder.Entity("InvoiSys.Domain.Entities.ExecucaoPipeline", b =>

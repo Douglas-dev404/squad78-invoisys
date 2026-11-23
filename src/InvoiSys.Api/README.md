@@ -70,8 +70,9 @@ InvoiSys.Api/
 | `POST` | `/api/v1/releases/{chaveRelease}/itens/{itemId}/excluir` | `ExcluirItemAsync` → `RevisaoComunicado` | `ItemRevisaoOut` · corpo opcional `{ "motivo": "..." }` | 404, 409 |
 | `POST` | `/api/v1/releases/{chaveRelease}/itens/{itemId}/reincluir` | `ReincluirItemAsync` → `RevisaoComunicado` | `ItemRevisaoOut` | 404, 409 |
 | `POST` | `/api/v1/releases/{chaveRelease}/exportar` | `ExportarAsync` → `ExportacaoComunicado` | 201 `ComunicadoExportadoOut` (com `conteudo`) · corpo `{ "publico", "formato" }` com `formato` `markdown` ou `html` | 404, 409 (versão não aprovada), 422 (formato desconhecido ou `pdf`) |
+| `POST` | `/api/v1/releases/{chaveRelease}/enviar` | `EnviarAsync` → `EnvioComunicadoPorEmail` | 201 `EnvioRealizadoOut` `{ exportacaoId, publico, enviadoPor, enviadoEm, envios: [{ destinatarioId, nome, email, status, erro }] }` · corpo `{ "publico", "destinatarioIds": [...] }` (1 a 100, sem repetir). Falha de um destinatário não derruba os outros | 401, 404, 409 (versão não aprovada), 422 (destinatário inexistente, inativo ou de outro público), 502 (provedor falhou para todos) |
 | `GET` | `/api/v1/exportacoes?pagina=&tamanho=&publico=&busca=` | `ListarAsync` → `ConsultaExportacoes` | `PaginaOut<ExportacaoResumoOut>` `{ itens, total, pagina, tamanho }`, mais recente primeiro, sem `conteudo`. Padrão página 1, tamanho 20 (máx. 100). `busca` casa parte da chave ou do título, sem diferenciar maiúsculas (`%` e `_` são texto) | 422 |
-| `GET` | `/api/v1/exportacoes/{id}` | `BuscarAsync` → `ConsultaExportacoes` | `ExportacaoDetalheOut` (os campos da lista + `conteudo`) | 404 |
+| `GET` | `/api/v1/exportacoes/{id}` | `BuscarAsync` → `ConsultaExportacoes` | `ExportacaoDetalheOut` (os campos da lista + `conteudo` + `envios`, vazio quando a exportação não foi enviada por e-mail) | 404 |
 | `GET` | `/openapi/v1.json` | gerado (só em Development) | spec OpenAPI 3.1 | — |
 | `GET` | `/swagger` | Swagger UI (só em Development) | tela para explorar e testar as rotas | — |
 

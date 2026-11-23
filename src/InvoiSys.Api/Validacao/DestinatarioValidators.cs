@@ -27,3 +27,20 @@ public sealed class ListarDestinatariosInValidator : AbstractValidator<ListarDes
             .When(entrada => !string.IsNullOrWhiteSpace(entrada.Publico))
             .WithMessage("Use cliente, comercial, suporte ou interno.");
 }
+
+public sealed class EnviarInValidator : AbstractValidator<EnviarIn>
+{
+    public const int MaximoDestinatarios = 100;
+
+    public EnviarInValidator()
+    {
+        RuleFor(entrada => entrada.Publico).PublicoObrigatorio();
+        RuleFor(entrada => entrada.DestinatarioIds)
+            .Cascade(CascadeMode.Stop)
+            .NotEmpty().WithMessage("Escolha pelo menos um destinatário.")
+            .Must(ids => ids!.Count <= MaximoDestinatarios)
+            .WithMessage($"No máximo {MaximoDestinatarios} destinatários por envio.")
+            .Must(ids => ids!.Distinct().Count() == ids!.Count)
+            .WithMessage("A lista de destinatários tem id repetido.");
+    }
+}

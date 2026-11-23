@@ -30,4 +30,12 @@ public class MigracaoSemDropTests
         operacoes.Where(o => o is not (CreateTableOperation or CreateIndexOperation)).Should().BeEmpty();
         operacoes.OfType<CreateIndexOperation>().Should().ContainSingle(i => i.IsUnique);
     }
+
+    [Fact]
+    public void AdicionarEnviosComunicado_so_cria_tabela_e_indices_no_Up()
+    {
+        var operacoes = new AdicionarEnviosComunicado().UpOperations;
+
+        operacoes.Where(o => o is not (CreateTableOperation or CreateIndexOperation)).Should().BeEmpty();
+    }
 }

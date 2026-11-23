@@ -26,6 +26,8 @@ public sealed class InvoiSysDbContext(DbContextOptions<InvoiSysDbContext> option
 
     public DbSet<Destinatario> Destinatarios => Set<Destinatario>();
 
+    public DbSet<EnvioComunicado> EnviosComunicado => Set<EnvioComunicado>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder.ApplyConfigurationsFromAssembly(typeof(InvoiSysDbContext).Assembly);

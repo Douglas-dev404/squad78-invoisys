@@ -84,6 +84,11 @@ Base: `/api/v1`. "Autenticado" = qualquer usuário ativo com token, de qualquer 
 | POST | `/releases/{chave}/exportar` | — | sim | sim | `ExportacaoEndpoints.cs` |
 | GET | `/exportacoes` | — | sim | sim | `ExportacaoEndpoints.cs` |
 | GET | `/exportacoes/{id}` | — | sim | sim | `ExportacaoEndpoints.cs` |
+| POST | `/releases/{chave}/enviar` | — | sim | sim | `ExportacaoEndpoints.cs` |
+| GET | `/destinatarios` | — | sim | sim | `DestinatarioEndpoints.cs` |
+| POST | `/destinatarios` | — | sim | sim | `DestinatarioEndpoints.cs` |
+| PUT | `/destinatarios/{id}` | — | sim | sim | `DestinatarioEndpoints.cs` |
+| POST | `/destinatarios/{id}/desativar` · `/reativar` | — | sim | sim | `DestinatarioEndpoints.cs` |
 | POST | `/usuarios` | — | não (403) | sim | `UsuarioEndpoints.cs` (policy `Admin`) |
 | GET | `/usuarios` | — | não (403) | sim | `UsuarioEndpoints.cs` (policy `Admin`) |
 | POST | `/usuarios/{id}/desativar` | — | não (403) | sim | `UsuarioEndpoints.cs` (policy `Admin`) |
@@ -167,6 +172,8 @@ de Release por papel) e tem, só ele, "Gerenciar usuários" (cadastrar, listar, 
 | RF-22 | Listar usuários (só admin) | `GET /api/v1/usuarios` |
 | RF-23 | Desativar usuário, exceto a própria conta (só admin) | `POST /api/v1/usuarios/{id}/desativar` |
 | RF-24 | Criar o administrador inicial no primeiro boot, se não houver nenhum usuário | sem rota: `AdminInicialSemeador`, no startup |
+| RF-25 | Cadastrar, editar, desativar e reativar destinatários de e-mail, cada um ligado a um público; o mesmo e-mail não se repete no mesmo público | `GET/POST /api/v1/destinatarios`, `PUT /api/v1/destinatarios/{id}`, `POST .../desativar` e `.../reativar` |
+| RF-26 | Enviar por e-mail a versão aprovada de um público aos destinatários escolhidos (ativos e do mesmo público), registrando o resultado de cada um | `POST /api/v1/releases/{chave}/enviar`; resultado em `GET /api/v1/exportacoes/{id}` (`envios`) |
 
 Limitações atuais, conferidas no código:
 
@@ -176,8 +183,9 @@ Limitações atuais, conferidas no código:
   ainda não são geradas.
 - A tela "Histórico de Envios" do front ainda usa dados de exemplo
   (`frontend/src/data/sentHistory.mock.js`), não a rota do RF-19.
-- O envio de e-mail do RF-04/RF-05 ainda não tem SMTP: o adapter `EnvioEmailPendente`
-  escreve o link no log da API (nível Warning).
+- O e-mail (RF-04, RF-05 e RF-26) só sai de verdade com `Email__ApiKey` e
+  `Email__Remetente` configurados (Brevo, ADR-033). Sem eles, o adapter `EnvioEmailPendente`
+  escreve no log da API (nível Warning) e o envio do RF-26 é registrado como `enviado`.
 
 ### 4.2 Requisitos não funcionais
 
