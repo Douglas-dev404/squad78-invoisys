@@ -141,6 +141,56 @@ namespace InvoiSys.Infrastructure.Database.Migrations
                     b.ToTable("destaques_hero", (string)null);
                 });
 
+            modelBuilder.Entity("InvoiSys.Domain.Entities.Destinatario", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id")
+                        .HasDefaultValueSql("gen_random_uuid()");
+
+                    b.Property<bool>("Ativo")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(true)
+                        .HasColumnName("ativo");
+
+                    b.Property<DateTimeOffset>("CriadoEm")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("criado_em")
+                        .HasDefaultValueSql("now()");
+
+                    b.Property<string>("Email")
+                        .IsRequired()
+                        .HasMaxLength(320)
+                        .HasColumnType("character varying(320)")
+                        .HasColumnName("email");
+
+                    b.Property<string>("Nome")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("nome");
+
+                    b.Property<string>("Publico")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .HasColumnType("character varying(30)")
+                        .HasColumnName("publico");
+
+                    b.HasKey("Id")
+                        .HasName("pk_destinatarios");
+
+                    b.HasIndex("Email", "Publico")
+                        .IsUnique()
+                        .HasDatabaseName("ix_destinatarios_email_publico");
+
+                    b.ToTable("destinatarios", null, t =>
+                        {
+                            t.HasCheckConstraint("ck_destinatarios_publico", "publico IN ('cliente','comercial','suporte','interno')");
+                        });
+                });
+
             modelBuilder.Entity("InvoiSys.Domain.Entities.ExecucaoPipeline", b =>
                 {
                     b.Property<Guid>("Id")

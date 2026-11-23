@@ -109,6 +109,7 @@ app.MapExportacaoEndpoints();
 app.MapBrandingEndpoints();
 app.MapDashboardEndpoints();
 app.MapUsuarioEndpoints();
+app.MapDestinatarioEndpoints();
 
 app.Run();
 return 0;

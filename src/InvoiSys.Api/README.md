@@ -17,6 +17,7 @@ InvoiSys.Api/
 │   ├── DashboardEndpoints.cs      # GET /api/v1/dashboard (KPIs, últimos 7 dias, recentes, qualidade da IA)
 │   ├── JiraEndpoints.cs           # GET /api/v1/jira/versoes (versões do Jira + status no InvoiSys)
 │   ├── UsuarioEndpoints.cs        # rotas /api/v1/usuarios (só admin: cadastrar, listar, desativar)
+│   ├── DestinatarioEndpoints.cs   # rotas /api/v1/destinatarios (e-mails por público; qualquer usuário logado)
 │   ├── RevisaoEndpoints.cs        # revisão humana por público (aprovar, reprovar, reabrir)
 │   ├── ExportacaoEndpoints.cs     # exportar (POST) e histórico de exportações (GET /api/v1/exportacoes)
 │   └── ItemComunicadoEndpoints.cs # revisão de item (editar, excluir, reincluir)
@@ -52,6 +53,10 @@ InvoiSys.Api/
 | `POST` | `/api/v1/usuarios` | `CadastrarAsync` → `AdministracaoUsuarios` | 201 `UsuarioAdminOut` · corpo `{ "nome", "email", "papel", "senhaInicial" }` · exige papel `admin` | 401, 403, 409 (e-mail repetido), 422 |
 | `GET` | `/api/v1/usuarios` | `ListarAsync` → `AdministracaoUsuarios` | `UsuarioAdminOut[]` (por nome, sem hash) · exige papel `admin` | 401, 403 |
 | `POST` | `/api/v1/usuarios/{id}/desativar` | `DesativarAsync` → `AdministracaoUsuarios` | 204 (não existe DELETE) · exige papel `admin` | 401, 403, 404, 422 (a própria conta) |
+| `GET` | `/api/v1/destinatarios?publico=&incluirInativos=` | `ListarAsync` → `CadastroDestinatarios` | `DestinatarioOut[]` `{ id, nome, email, publico, ativo, criadoEm }` por nome; sem `publico` traz todos; inativos só com `incluirInativos=true` | 401, 422 (público desconhecido) |
+| `POST` | `/api/v1/destinatarios` | `CadastrarAsync` → `CadastroDestinatarios` | 201 `DestinatarioOut` · corpo `{ "nome", "email", "publico" }` | 401, 409 (e-mail já cadastrado no público), 422 |
+| `PUT` | `/api/v1/destinatarios/{id}` | `AlterarAsync` → `CadastroDestinatarios` | `DestinatarioOut` · mesmo corpo do cadastro | 401, 404, 409, 422 |
+| `POST` | `/api/v1/destinatarios/{id}/desativar` · `/reativar` | `DesativarAsync` / `ReativarAsync` → `CadastroDestinatarios` | 204 (não existe DELETE) | 401, 404 |
 | `GET` | `/api/v1/branding/highlights` | `ListarDestaquesAsync` → `ConsultaDestaques` | `DestaqueOut[]` (ativos, por ordem de exibição; público) | — |
 | `GET` | `/api/v1/releases?status=` | `ListarReleasesAsync` → `ConsultaReleases` | `ReleaseResumoOut[]` (mais recente primeiro) | 422 (status desconhecido) |
 | `GET` | `/api/v1/releases/{chaveRelease}` | `BuscarReleaseAsync` → `ConsultaReleases` | `ReleaseDetalheOut` (todas as versões por público; itens como `ItemRevisaoOut`, com `id`) | 404 |

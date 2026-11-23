@@ -71,6 +71,7 @@ public static class DependencyInjection
         services.AddScoped<IUsuarioRepository, UsuarioRepository>();
         services.AddScoped<ITokenRedefinicaoSenhaRepository, TokenRedefinicaoSenhaRepository>();
         services.AddScoped<IDestaqueHeroRepository, DestaqueHeroRepository>();
+        services.AddScoped<IDestinatarioRepository, DestinatarioRepository>();
 
         // Trava por Release (ADR-031): advisory lock de sessão numa conexão própria, fora do DbContext,
         // para durar a execução inteira do pipeline sem depender de transação.

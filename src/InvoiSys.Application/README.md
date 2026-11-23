@@ -152,6 +152,20 @@ Registrado como **Scoped** (depende do repository, que é scoped).
 
 ---
 
+## `CadastroDestinatarios`
+
+Mantém a lista de e-mails que recebem os comunicados (#144). **Dependência:**
+`IDestinatarioRepository`. Registrado como **Scoped**.
+
+- `CadastrarAsync` e `AlterarAsync` recusam e-mail já cadastrado **no mesmo público**
+  (`EmailDestinatarioDuplicadoException`, 409); na edição o próprio destinatário não conta.
+- `DesativarAsync` / `ReativarAsync` só mudam `Ativo`. Id inexistente →
+  `DestinatarioNaoEncontradoException` (404).
+- Quem pode usar: qualquer usuário logado (`admin` ou `release_manager`), porque quem envia a
+  Release também mantém a lista.
+
+---
+
 ## `Autenticacao`
 
 Casos de uso de sessão. **Dependências (construtor):** `IUsuarioRepository`, `IHashSenha`

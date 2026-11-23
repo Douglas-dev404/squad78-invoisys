@@ -21,4 +21,13 @@ public class MigracaoSemDropTests
             f => f.OnDelete == Microsoft.EntityFrameworkCore.Migrations.ReferentialAction.Restrict
                 && f.PrincipalTable == "usuarios");
     }
+
+    [Fact]
+    public void AdicionarDestinatarios_so_cria_tabela_e_indice_no_Up()
+    {
+        var operacoes = new AdicionarDestinatarios().UpOperations;
+
+        operacoes.Where(o => o is not (CreateTableOperation or CreateIndexOperation)).Should().BeEmpty();
+        operacoes.OfType<CreateIndexOperation>().Should().ContainSingle(i => i.IsUnique);
+    }
 }
