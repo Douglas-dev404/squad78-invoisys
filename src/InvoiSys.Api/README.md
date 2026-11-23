@@ -14,6 +14,7 @@ InvoiSys.Api/
 
 │   ├── AuthEndpoints.cs           # rotas /api/v1/auth (esqueci a senha, redefinir)
 │   ├── ReleaseEndpoints.cs        # rotas /api/v1/releases (listar, detalhe, historias, processar)
+│   ├── JiraEndpoints.cs            # lista versões do projeto Jira para seleção
 │   ├── DashboardEndpoints.cs      # GET /api/v1/dashboard (KPIs, últimos 7 dias, recentes, qualidade da IA)
 │   ├── UsuarioEndpoints.cs        # rotas /api/v1/usuarios (só admin: cadastrar, listar, desativar)
 │   ├── RevisaoEndpoints.cs        # revisão humana por público (aprovar, reprovar, reabrir)
@@ -34,13 +35,14 @@ InvoiSys.Api/
 
 ## Endpoints atuais
 
-> **Autenticação:** todas as rotas `/api/v1/releases/**`, `/api/v1/exportacoes/**` e `/api/v1/dashboard` exigem `Authorization: Bearer <token>` (401 sem ele, com token inválido/expirado ou de usuário inexistente/desativado). Públicas: `/health` e `/api/v1/auth/*`.
+> **Autenticação:** todas as rotas `/api/v1/releases/**`, `/api/v1/jira/**`, `/api/v1/exportacoes/**` e `/api/v1/dashboard` exigem `Authorization: Bearer <token>` (401 sem ele, com token inválido/expirado ou de usuário inexistente/desativado). Públicas: `/health` e `/api/v1/auth/*`.
 
 | Método | Rota | Handler | Resposta | Erros |
 |---|---|---|---|---|
 | `GET` | `/health` | inline em `Program.cs` | `{ "status": "ok" }` | — |
 | `POST` | `/api/v1/auth/login` | `LoginAsync` → `Autenticacao` | `LoginOut` · corpo `{ "email": "...", "senha": "..." }` | 401, 422, 429 |
 | `GET` | `/api/v1/auth/me` | `MeAsync` → `Autenticacao` | `UsuarioOut` (exige Bearer) | 401 |
+| `GET` | `/api/v1/jira/versoes` | `ListarVersoesAsync` → `ConsultaVersoesJira` | versões do projeto Jira configurado (exige Bearer) | 401, 501, 502 |
 | `POST` | `/api/v1/auth/logout` | inline | 204 (não há o que revogar no servidor) | — |
 
 | `POST` | `/api/v1/auth/forgot-password` | `EsqueciSenhaAsync` → `RecuperacaoSenha` | `{ mensagem, expiraEmMinutos: 30 }` · corpo `{ "email" }` · mesma resposta para e-mail existente ou não | 422, 429 |
@@ -55,7 +57,7 @@ InvoiSys.Api/
 | `GET` | `/api/v1/releases?status=` | `ListarReleasesAsync` → `ConsultaReleases` | `ReleaseResumoOut[]` (mais recente primeiro) | 422 (status desconhecido) |
 | `GET` | `/api/v1/releases/{chaveRelease}` | `BuscarReleaseAsync` → `ConsultaReleases` | `ReleaseDetalheOut` (todas as versões por público; itens como `ItemRevisaoOut`, com `id`) | 404 |
 | `GET` | `/api/v1/releases/{chaveRelease}/historias` | `BuscarHistoriasAsync` → `IJiraClient` | `ReleaseOut` | 501, 502 |
-| `POST` | `/api/v1/releases/{chaveRelease}/processar` | `ProcessarReleaseAsync` → `PipelineGeracaoReleaseNote` | `ReleaseProcessadaOut` | 409, 501, 502 |
+| `POST` | `/api/v1/releases/{chaveRelease}/processar` | `ProcessarReleaseAsync` → `PipelineGeracaoReleaseNote` | `ReleaseProcessadaOut` · corpo `{ "chavesHistorias": ["INV-1", "INV-3"] }` | 409, 422, 501, 502 |
 | `POST` | `/api/v1/releases/{chaveRelease}/aprovar` | `AprovarAsync` → `RevisaoComunicado` | 204 | 404, 409, 422 |
 | `POST` | `/api/v1/releases/{chaveRelease}/reprovar` | `ReprovarAsync` → `RevisaoComunicado` | 204 | 404, 409, 422 |
 | `POST` | `/api/v1/releases/{chaveRelease}/reabrir` | `ReabrirAsync` → `RevisaoComunicado` | 204 | 404, 409, 422 |

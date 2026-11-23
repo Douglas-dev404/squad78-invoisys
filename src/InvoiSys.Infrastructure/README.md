@@ -26,7 +26,7 @@ InvoiSys.Infrastructure/
 
 | Porta | Adapter | Condição |
 |---|---|---|
-| `IJiraClient` | `JiraRestClient` | `Jira:BaseUrl`, `Jira:Email` e `Jira:ApiToken` preenchidos |
+| `IJiraClient` | `JiraRestClient` | `Jira:BaseUrl`, `Jira:Email`, `Jira:ApiToken` e `Jira:ProjectKey` preenchidos |
 | `IJiraClient` | `JiraClientPendente` | qualquer um vazio → **501** com instrução |
 | `ILlmProvider` | `OpenRouterProvider` | `OpenRouter:ApiKey` preenchida |
 | `ILlmProvider` | `ProviderPendente` | chave vazia → **501** com instrução |
@@ -58,18 +58,23 @@ e [ADR-015](../../docs/decisoes-arquiteturais.md#adr-015--resiliência-http-no-c
 Implementa `IJiraClient` contra a **Jira Cloud REST API v3** (contrato em
 [docs/contratos-integracao.md](../../docs/contratos-integracao.md)).
 
+O adapter lista as versões do projeto por `/rest/api/3/project/{projectKey}/version` e busca
+issues usando `project = "{projectKey}" AND fixVersion = "{fixVersion}"`. A API recebe a
+versão escolhida pelo revisor; não carrega as issues das demais versões. Uma subtarefa direta
+com resumo `Release Note` tem sua descrição usada como texto-fonte da história. Configure
+`Jira__ProjectKey` junto das credenciais Jira.
+
 | Método | O que faz |
 |---|---|
-| `BuscarHistoriasDaReleaseAsync(fixVersion)` | Ponto de entrada: busca todas as issues e, para cada uma, o texto da subtarefa Release Note |
-| `BuscarTodasIssuesAsync` | `GET /rest/api/3/search/jql` com `jql=fixVersion="X"`, `maxResults=100`, laço por `nextPageToken` até `isLast` |
-| `BuscarTextoReleaseNoteAsync` | Procura subtarefa com `issuetype.name == "Release Note"` e busca a `description` dela em `/rest/api/3/issue/{key}` (1 chamada extra por issue que tem a subtarefa) |
+| `ListarVersoesDoProjetoAsync()` | Lista as versões do projeto configurado via endpoint paginado de versões |
+| `BuscarHistoriasDaReleaseAsync(fixVersion)` | Busca issues somente do projeto configurado e da `fixVersion` escolhida; para cada issue, procura a subtarefa Release Note |
+| `BuscarTodasIssuesAsync` | `GET /rest/api/3/search/jql` com `project="{projectKey}" AND fixVersion="X"`, `maxResults=100`, laço por `nextPageToken` até `isLast` |
+| `BuscarTextoReleaseNoteAsync` | Procura subtarefa cujo resumo é `Release Note` e busca sua `description` em `/rest/api/3/issue/{key}` |
 | `ParaHistoriaJira` | `JsonElement` → `HistoriaJira` (chave, título, descrição, tipo, labels, texto da Release Note) |
 | `ExtrairTextoDescription` / `ExtrairTextoAdf` | Achata o ADF (árvore `type`/`content`/`text`) em texto. Aceita `description` string (instâncias antigas) |
 | `GetAsync` | Erro HTTP → loga corpo (até 500 chars) → lança `JiraApiException` **sem** o corpo |
 
-⚠️ **Pendências:** confirmar o nome exato do subtask type na instância real da InvoiSys
-(constante `TipoIssueReleaseNote`); ampliar a extração de ADF se as histórias reais
-usarem listas ou tabelas.
+⚠️ **Pendência:** ampliar a extração de ADF se as histórias reais usarem listas ou tabelas.
 
 ---
 

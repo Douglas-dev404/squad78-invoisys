@@ -2,6 +2,13 @@ import { api } from './http.js';
 
 const TIMEOUT_PROCESSAR_MS = 180000;
 
+/** Lista as versões do projeto Jira configurado, sem carregar as issues delas. */
+export const listarVersoesJira = () => api.get('/jira/versoes');
+
+/** Lista as histórias disponíveis numa versão do Jira antes de iniciar a geração. */
+export const buscarHistoriasDaRelease = (chave) =>
+  api.get(`/releases/${encodeURIComponent(chave)}/historias`);
+
 /**
  * Lista Releases. Sem status devolve todas.
  * @param {string} [status] pendente | processando | aguardando_revisao | aprovado | falhou
@@ -16,10 +23,11 @@ export async function listarReleases(status) {
  * Dispara a IA para uma Release (pode levar de 10 s a 2 min).
  * Erros: 409, 501 e 502 chegam com `detail` em português.
  */
-export async function processarRelease(chave) {
+export async function processarRelease(chave, chavesHistorias) {
+  const corpo = Array.isArray(chavesHistorias) ? { chavesHistorias } : undefined;
   return api.post(
     `/releases/${encodeURIComponent(chave)}/processar`,
-    undefined,
+    corpo,
     { timeoutMs: TIMEOUT_PROCESSAR_MS }
   );
 }

@@ -61,7 +61,7 @@ flowchart LR
 
 | Etapa | O que acontece | Status |
 |---|---|---|
-| **Ingestão** | Busca no Jira todas as issues da Release (`fixVersion`), com o texto da subtarefa "Release Note" quando existir | ✅ implementado |
+| **Ingestão** | Lista versões do projeto Jira; a pessoa escolhe uma `fixVersion` e marca quais histórias processar. O sistema valida as chaves dentro dessa versão e usa a descrição da subtarefa intitulada "Release Note" quando existir | ✅ implementado |
 | **Pipeline de IA** | Limpa → agrupa semelhantes → categoriza → reescreve em linguagem de negócio → gera título e resumo | ✅ implementado (testado com fakes; falta validar com LLM real) |
 | **Persistência** | Grava Release, histórias, comunicado e log da execução | ✅ implementado (reprocessar reaproveita a Release; versão aprovada exige reabrir) |
 | **Revisão** | Humano vê, edita, exclui itens, aprova ou reprova, **por público-alvo** | 🔶 domínio pronto, falta API (#21–#23) e tela |
@@ -176,14 +176,20 @@ diretamente pelo domínio. Ver [Configuração](#configuração).
 
 ### 1. Conferir o que vem do Jira (sem gastar token)
 
+`GET /api/v1/jira/versoes` → a interface permite escolher uma versão; depois, para conferência:
 `GET /api/v1/releases/{chaveRelease}/historias`
 
 ```
+JiraEndpoints.ListarVersoesAsync
+  └─► IJiraClient.ListarVersoesDoProjetoAsync()
+        └─► JiraRestClient
+              └─ GET /rest/api/3/project/{projectKey}/version (paginado)
+
 ReleaseEndpoints.BuscarHistoriasAsync
   └─► IJiraClient.BuscarHistoriasDaReleaseAsync(fixVersion)
         └─► JiraRestClient
-              ├─ GET /rest/api/3/search/jql?jql=fixVersion="X"   (pagina por nextPageToken, 100 por página)
-              ├─ para cada issue com subtarefa do tipo "Release Note":
+              ├─ GET /rest/api/3/search/jql?jql=project="INV" AND fixVersion="X" (nextPageToken)
+              ├─ para cada issue com subtarefa intitulada "Release Note":
               │     GET /rest/api/3/issue/{key}?fields=description
               └─ ADF (Atlassian Document Format) → texto puro → HistoriaJira
   ◄── ReleaseOut { chaveJira, status: "pendente", totalHistorias, historias[] }
@@ -193,8 +199,9 @@ Serve para o revisor ver o que vai entrar no processamento antes de rodar a IA.
 
 ### 2. Rodar o pipeline de IA
 
-`POST /api/v1/releases/{chaveRelease}/processar` →
-`PipelineGeracaoReleaseNote.ExecutarAsync(chaveRelease)`
+Antes do processamento, `GET /api/v1/releases/{chaveRelease}/historias` lista as histórias para seleção.
+Depois, `POST /api/v1/releases/{chaveRelease}/processar` recebe as chaves selecionadas e chama
+`PipelineGeracaoReleaseNote.ExecutarAsync(chaveRelease, chavesHistorias)`.
 
 ```mermaid
 sequenceDiagram
@@ -206,11 +213,12 @@ sequenceDiagram
     participant L as ILlmProvider
     participant DB as IReleaseRepository
 
-    API->>PL: ExecutarAsync("RELEASE-2026-08")
+    API->>PL: ExecutarAsync("RELEASE-2026-08", ["INV-1", "INV-3"])
     PL->>DB: BuscarPorChaveJiraAsync (Release já existe?)
     Note over PL,DB: versão Cliente aprovada → recusa com 409 antes de chamar Jira/LLM (ADR-020)
     PL->>J: BuscarHistoriasDaReleaseAsync
-    J-->>PL: HistoriaJira[]
+    J-->>PL: historiasDisponiveis[]
+    PL->>PL: valida as chaves e filtra as histórias selecionadas
     PL->>R: new Release(chave, historias) ou AtualizarHistorias (reprocessar não duplica)
     PL->>R: MarcarProcessando() + RegistrarExecucao(modelo)
     PL->>PL: Estágio 1 — ExtrairELimpar (sem LLM)
@@ -529,7 +537,7 @@ de ambiente é `__` (dois underscores).**
 | Variável | Para quê | Sem ela |
 |---|---|---|
 | `ConnectionStrings__Default` | Postgres | a API sobe, mas qualquer acesso ao banco falha |
-| `Jira__BaseUrl`, `Jira__Email`, `Jira__ApiToken` | Jira Cloud (Basic Auth com **API token**) | endpoints respondem **501** "Jira não configurado" |
+| `Jira__BaseUrl`, `Jira__Email`, `Jira__ApiToken`, `Jira__ProjectKey` | Jira Cloud (Basic Auth com **API token**; projeto `INV` no exemplo) | endpoints respondem **501** "Jira não configurado" |
 | `OpenRouter__ApiKey` | LLM | `/processar` responde **501** "Nenhum LLM provider configurado" |
 | `OpenRouter__Modelo` | modelo `provedor/modelo` (padrão `openai/gpt-4o-mini`) | usa o padrão |
 | `OpenRouter__ModelosFallback__0`, `__1`… | modelos alternativos, tentados pela própria OpenRouter em 5xx/429 | sem fallback |

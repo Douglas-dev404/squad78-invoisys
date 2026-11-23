@@ -3,13 +3,60 @@ using System.Text.Json;
 using System.Web;
 using InvoiSys.Domain.Entities;
 using InvoiSys.Domain.Ports;
+using InvoiSys.Infrastructure.Configuration;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 
 namespace InvoiSys.Infrastructure.Jira;
 
-public sealed class JiraRestClient(HttpClient http, ILogger<JiraRestClient> logger) : IJiraClient
+public sealed class JiraRestClient(
+    HttpClient http,
+    ILogger<JiraRestClient> logger,
+    IOptions<JiraOptions> jiraOptions) : IJiraClient
 {
-    private const string TipoIssueReleaseNote = "Release Note";
+    private readonly JiraOptions _jiraOptions = jiraOptions.Value;
+
+    public async Task<IReadOnlyList<VersaoJira>> ListarVersoesDoProjetoAsync(
+        CancellationToken cancellationToken = default)
+    {
+        var versoes = new List<VersaoJira>();
+        const int tamanhoPagina = 100;
+        var inicio = 0;
+
+        while (true)
+        {
+            var query = HttpUtility.ParseQueryString(string.Empty);
+            query["startAt"] = inicio.ToString(System.Globalization.CultureInfo.InvariantCulture);
+            query["maxResults"] = tamanhoPagina.ToString(System.Globalization.CultureInfo.InvariantCulture);
+            var payload = await GetAsync(
+                $"/rest/api/3/project/{Uri.EscapeDataString(_jiraOptions.ProjectKey)}/version?{query}",
+                cancellationToken);
+
+            if (!payload.TryGetProperty("values", out var lista)
+                || lista.ValueKind != JsonValueKind.Array)
+            {
+                break;
+            }
+
+            var pagina = lista.EnumerateArray().ToList();
+            versoes.AddRange(pagina.Select(ParaVersaoJira));
+
+            var chegouAoTotal = payload.TryGetProperty("total", out var total)
+                && total.TryGetInt32(out var totalVersoes)
+                && inicio + pagina.Count >= totalVersoes;
+            var ehUltima = payload.TryGetProperty("isLast", out var isLast)
+                && isLast.ValueKind == JsonValueKind.True;
+
+            if (ehUltima || chegouAoTotal || pagina.Count == 0)
+            {
+                break;
+            }
+
+            inicio += pagina.Count;
+        }
+
+        return versoes;
+    }
 
     public async Task<IReadOnlyList<HistoriaJira>> BuscarHistoriasDaReleaseAsync(
         string fixVersion,
@@ -31,7 +78,9 @@ public sealed class JiraRestClient(HttpClient http, ILogger<JiraRestClient> logg
         string fixVersion,
         CancellationToken cancellationToken)
     {
-        var jql = $"fixVersion = \"{fixVersion}\"";
+        var projeto = EscaparLiteralJql(_jiraOptions.ProjectKey);
+        var versao = EscaparLiteralJql(fixVersion);
+        var jql = $"project = \"{projeto}\" AND fixVersion = \"{versao}\"";
         var issues = new List<JsonElement>();
         string? nextPageToken = null;
 
@@ -84,13 +133,11 @@ public sealed class JiraRestClient(HttpClient http, ILogger<JiraRestClient> logg
 
         foreach (var subtask in subtasks.EnumerateArray())
         {
-            var tipo = subtask.TryGetProperty("fields", out var subFields)
-                && subFields.TryGetProperty("issuetype", out var issuetype)
-                && issuetype.TryGetProperty("name", out var nome)
-                    ? nome.GetString()
-                    : null;
+            var titulo = subtask.TryGetProperty("fields", out var subFields)
+                ? LerString(subFields, "summary")
+                : string.Empty;
 
-            if (tipo != TipoIssueReleaseNote)
+            if (!string.Equals(titulo.Trim(), "Release Note", StringComparison.OrdinalIgnoreCase))
             {
                 continue;
             }
@@ -132,6 +179,27 @@ public sealed class JiraRestClient(HttpClient http, ILogger<JiraRestClient> logg
                     : [],
         };
     }
+
+    private static VersaoJira ParaVersaoJira(JsonElement versao)
+    {
+        var dataLancamento = LerString(versao, "releaseDate");
+        return new VersaoJira(
+            LerString(versao, "name"),
+            versao.TryGetProperty("released", out var lancada)
+                && lancada.ValueKind == JsonValueKind.True,
+            versao.TryGetProperty("archived", out var arquivada)
+                && arquivada.ValueKind == JsonValueKind.True,
+            DateOnly.TryParse(
+                dataLancamento,
+                System.Globalization.CultureInfo.InvariantCulture,
+                out var data)
+                    ? data
+                    : null);
+    }
+
+    private static string EscaparLiteralJql(string valor) =>
+        valor.Replace("\\", "\\\\", StringComparison.Ordinal)
+            .Replace("\"", "\\\"", StringComparison.Ordinal);
 
     internal static string ExtrairTextoDescription(JsonElement fields)
     {

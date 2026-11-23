@@ -156,12 +156,18 @@ function ConteudoItem({ item, excluido }) {
  * Corpo da aba de um público. A BarraRevisao (#71/#72) mostra quem aprovou e o motivo da reprovação,
  * por isso esta tela não repete essas informações.
  */
-function CorpoVersao({ versao, chave, statusRelease, recarregar, revisaoItem }) {
+function CorpoVersao({ versao, chave, chavesHistorias, statusRelease, recarregar, revisaoItem }) {
   const itens = versao.itens ?? [];
   const acoes = acoesDaVersao(versao, statusRelease);
   return (
     <div className="space-y-md">
-      <BarraRevisao chave={chave} versao={versao} statusRelease={statusRelease} recarregar={recarregar} />
+      <BarraRevisao
+        chave={chave}
+        versao={versao}
+        chavesHistorias={chavesHistorias}
+        statusRelease={statusRelease}
+        recarregar={recarregar}
+      />
       <article className={`${CARD_CLASS} space-y-xs p-md`}>
         <h2 className="font-headline-md text-headline-md text-primary">{versao.tituloExecutivo}</h2>
         <p className="whitespace-pre-line font-body-md text-body-md text-on-surface">{versao.resumoExecutivo}</p>
@@ -398,6 +404,7 @@ function Detalhe({ release, recarregar }) {
               key={release.chaveJira}
               versoes={versoes}
               chave={release.chaveJira}
+              chavesHistorias={(release.historias ?? []).map((historia) => historia.chave)}
               statusRelease={release.status}
               recarregar={recarregarTudo}
               revisaoItem={revisaoItem}
