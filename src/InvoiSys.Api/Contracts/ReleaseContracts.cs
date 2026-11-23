@@ -14,6 +14,8 @@ public sealed record ReleaseOut(
     int TotalHistorias,
     IReadOnlyList<HistoriaJiraOut> Historias);
 
+public sealed record ProcessarReleaseIn(IReadOnlyList<string>? ChavesHistorias);
+
 public sealed record ItemComunicadoOut(
     string Categoria,
     string Texto,

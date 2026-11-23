@@ -13,6 +13,9 @@ public sealed class ReleaseSemHistoriasException(string chaveJira)
     : Exception($"A Release '{chaveJira}' não tem histórias no Jira. Confira se a fixVersion existe "
         + "e se a conta do Jira tem acesso ao projeto.");
 
+public sealed class HistoriasSelecionadasInvalidasException(string chaveJira)
+    : Exception($"Selecione ao menos uma história válida da Release '{chaveJira}'.");
+
 public sealed class ItemNaoEncontradoException(string mensagem) : Exception(mensagem);
 
 public sealed class ReleaseNaoEncontradaException(string chaveJira)

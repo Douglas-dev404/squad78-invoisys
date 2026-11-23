@@ -17,7 +17,7 @@ public sealed class JiraRestClient(
 {
     private const string CamposBase = "summary,description,issuetype,labels,subtasks";
 
-    private string Projeto => opcoes.Value.Projeto.Trim();
+    private string Projeto => opcoes.Value.ProjetoEfetivo.Trim();
 
     private string TipoSubtarefaReleaseNote =>
         string.IsNullOrWhiteSpace(opcoes.Value.ReleaseNote.TipoSubtarefa)
@@ -161,7 +161,12 @@ public sealed class JiraRestClient(
                     ? nome.GetString()
                     : null;
 
-            if (!string.Equals(tipo?.Trim(), TipoSubtarefaReleaseNote, StringComparison.OrdinalIgnoreCase))
+            var resumo = subtask.TryGetProperty("fields", out subFields)
+                ? LerString(subFields, "summary")
+                : string.Empty;
+            var ehReleaseNote = string.Equals(tipo?.Trim(), TipoSubtarefaReleaseNote, StringComparison.OrdinalIgnoreCase)
+                || string.Equals(resumo.Trim(), JiraReleaseNoteOptions.TipoSubtarefaPadrao, StringComparison.OrdinalIgnoreCase);
+            if (!ehReleaseNote)
             {
                 continue;
             }
