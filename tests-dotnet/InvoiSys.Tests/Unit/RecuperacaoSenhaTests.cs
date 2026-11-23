@@ -43,6 +43,17 @@ public class RecuperacaoSenhaTests
     }
 
     [Fact]
+    public async Task Falha_do_provedor_de_email_nao_muda_a_resposta_uniforme()
+    {
+        _email.EmailsQueFalham.Add("ana@invoisys.com");
+
+        var solicitar = () => Criar().SolicitarAsync("ana@invoisys.com");
+
+        await solicitar.Should().NotThrowAsync();
+        _tokens.Tokens.Should().ContainSingle();
+    }
+
+    [Fact]
     public async Task Email_inexistente_nao_envia_nada_nem_grava_token_e_nao_lanca()
     {
         await Criar().SolicitarAsync("ninguem@invoisys.com");

@@ -9,7 +9,7 @@ camada instancia estas classes direto; elas chegam via DI, amarradas no
 InvoiSys.Infrastructure/
 ├── DependencyInjection.cs      # composition root: porta → adapter, HttpClient, resiliência
 ├── Configuration/              # JiraOptions, OpenRouterOptions, AuthOptions (ligadas ao appsettings/env)
-├── Email/                      # EnvioEmailPendente (só loga o link)
+├── Email/                      # BrevoEnvioEmail (API HTTP da Brevo) e EnvioEmailPendente (só loga)
 
 ├── Configuration/              # JiraOptions, OpenRouterOptions, OpenAiOptions, AuthOptions (ligadas ao appsettings/env)
 ├── Auth/                       # Argon2idHashSenha, JwtEmissorToken, AdminInicialSemeador
@@ -30,7 +30,8 @@ InvoiSys.Infrastructure/
 | `IJiraClient` | `JiraClientPendente` | qualquer um vazio → **501** com instrução |
 | `ILlmProvider` | `OpenRouterProvider` | `OpenRouter:ApiKey` preenchida |
 | `ILlmProvider` | `ProviderPendente` | chave vazia → **501** com instrução |
-| `IEnvioEmail` | `EnvioEmailPendente` | sempre, até existir adapter SMTP; **não lança**: loga o link de redefinição em `Warning` |
+| `IEnvioEmail` | `BrevoEnvioEmail` | `Email:ApiKey` e `Email:Remetente` preenchidos (ADR-033). Erro do provedor vira `EnvioEmailException` (502), corpo da resposta só no log |
+| `IEnvioEmail` | `EnvioEmailPendente` | qualquer um vazio; **não lança**: loga o link de redefinição e o assunto/destinatário do comunicado em `Warning` |
 | `ITokenRedefinicaoSenhaRepository` | `TokenRedefinicaoSenhaRepository` | sempre (Scoped) |
 
 | `ILlmProvider` | `OpenRouterProvider` | `Llm:Provedor` ausente ou `OpenRouter` **e** `OpenRouter:ApiKey` preenchida |
@@ -301,4 +302,4 @@ o índice único de e-mail faz a perdedora ignorar. A senha não vai para log.
   [P-03](../../docs/decisoes-arquiteturais.md#p-03--onde-mora-o-render-da-exportação).
 - Proteção das rotas (#50) e recuperação de senha (#52). Login, `me` e logout já existem (#49).
 
-- Endpoints de login/`me` (#49), proteção das rotas (#50) e adapter SMTP real no lugar do `EnvioEmailPendente`.
+- ~~Adapter de e-mail real~~ feito: `BrevoEnvioEmail` (#145, ADR-033).

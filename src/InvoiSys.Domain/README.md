@@ -133,7 +133,7 @@ errado em silêncio).
 | [`IUsuarioRepository`](Ports/IUsuarioRepository.cs) | persistência (agregado) | `UsuarioRepository` | `BuscarPorIdAsync`, `BuscarPorEmailAsync` (normaliza o argumento), `ExisteAlgumAsync`, `ListarAsync`, `SalvarAsync` (sem delete) |
 | [`IHashSenha`](Ports/IHashSenha.cs) | saída (criptografia) | `Argon2idHashSenha` | `Gerar`, `Verificar` |
 | [`IEmissorToken`](Ports/IEmissorToken.cs) | saída (criptografia) | `JwtEmissorToken` | `Emitir(usuario)` → `TokenEmitido(Token, ExpiraEm)` |
-| [`IEnvioEmail`](Ports/IEnvioEmail.cs) | saída (e-mail) | `EnvioEmailPendente` | `EnviarRedefinicaoSenhaAsync` |
+| [`IEnvioEmail`](Ports/IEnvioEmail.cs) | saída (e-mail) | `BrevoEnvioEmail` / `EnvioEmailPendente` | `EnviarRedefinicaoSenhaAsync`, `EnviarComunicadoAsync(email, nome, assunto, html, texto)`; falha do provedor lança `EnvioEmailException` |
 | [`ITokenRedefinicaoSenhaRepository`](Ports/ITokenRedefinicaoSenhaRepository.cs) | persistência | `TokenRedefinicaoSenhaRepository` | `AdicionarAsync`, `BuscarPorHashAsync`, `BuscarUltimoDoUsuarioAsync`, `ConsumirAsync` (atômico), `InvalidarPendentesDoUsuarioAsync` |
 | [`IDestaqueHeroRepository`](Ports/IDestaqueHeroRepository.cs) | somente leitura | `DestaqueHeroRepository` | `ListarAtivosAsync` (ordenado) |
 | [`IDestinatarioRepository`](Ports/IDestinatarioRepository.cs) | persistência (agregado) | `DestinatarioRepository` | `BuscarPorIdAsync`, `BuscarPorIdsAsync`, `ExisteEmailNoPublicoAsync` (normaliza; `ignorarId` para a edição), `ListarAsync(publico?, incluirInativos)` (por nome), `SalvarAsync` (sem delete) |
@@ -151,7 +151,8 @@ contrato da porta, então mora aqui, não no adapter
 IntegracaoExternaException (abstract) ─► 502
  ├─ JiraApiException
  ├─ LlmApiException
- └─ LlmRespostaInvalidaException
+ ├─ LlmRespostaInvalidaException
+ └─ EnvioEmailException
 ProviderNaoConfiguradoException ─► 501
 ```
 

@@ -10,4 +10,7 @@ public sealed class LlmApiException(string mensagem) : IntegracaoExternaExceptio
 public sealed class LlmRespostaInvalidaException(string mensagem, Exception? causa = null)
     : IntegracaoExternaException(mensagem, causa);
 
+public sealed class EnvioEmailException(string mensagem, Exception? causa = null)
+    : IntegracaoExternaException(mensagem, causa);
+
 public sealed class ProviderNaoConfiguradoException(string mensagem) : Exception(mensagem);

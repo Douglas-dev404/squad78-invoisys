@@ -76,9 +76,29 @@ public sealed class FakeEnvioEmail : IEnvioEmail
 {
     public List<(string Email, string Nome, string Link, DateTimeOffset ExpiraEm)> Enviados { get; } = [];
 
+    public List<(string Email, string Nome, string Assunto, string Html, string Texto)> Comunicados { get; } = [];
+
+    public HashSet<string> EmailsQueFalham { get; } = new(StringComparer.OrdinalIgnoreCase);
+
     public Task EnviarRedefinicaoSenhaAsync(string email, string nome, string link, DateTimeOffset expiraEm, CancellationToken cancellationToken = default)
     {
+        if (EmailsQueFalham.Contains(email))
+        {
+            throw new EnvioEmailException("Provedor de e-mail retornou 503.");
+        }
+
         Enviados.Add((email, nome, link, expiraEm));
+        return Task.CompletedTask;
+    }
+
+    public Task EnviarComunicadoAsync(string email, string nome, string assunto, string corpoHtml, string corpoTexto, CancellationToken cancellationToken = default)
+    {
+        if (EmailsQueFalham.Contains(email))
+        {
+            throw new EnvioEmailException("Provedor de e-mail retornou 503.");
+        }
+
+        Comunicados.Add((email, nome, assunto, corpoHtml, corpoTexto));
         return Task.CompletedTask;
     }
 }
