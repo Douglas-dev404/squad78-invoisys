@@ -187,3 +187,15 @@ const acoes = acoesDaVersao(versao, release.status);
   </ItemRevisavel>
 ))}
 ```
+
+## Destinatários (F-18, #147)
+
+Tela `/destinatarios` (item **Destinatários** do menu), para qualquer usuário logado: a API não
+restringe a admin, porque quem envia a Release também mantém a lista.
+
+| Peça | Arquivo | O que faz |
+|---|---|---|
+| Service | [`services/destinatarios.service.js`](src/services/destinatarios.service.js) | `listarDestinatarios({ publico, incluirInativos })`, `cadastrarDestinatario`, `alterarDestinatario` (PUT), `desativarDestinatario`, `reativarDestinatario` |
+| Regras | [`utils/destinatarios.js`](src/utils/destinatarios.js) | `lerFiltrosDestinatarios` (URL), `validarDestinatario` (mesmas regras do validator da API), textos da tela |
+| Estado | [`hooks/useDestinatarios.js`](src/hooks/useDestinatarios.js) | filtros na URL (`?publico=cliente&inativos=1`), lista, `salvar`, `mudarSituacao`; recarrega depois de cada ação |
+| Tela | [`DestinatariosPage`](src/pages/DestinatariosPage/DestinatariosPage.jsx) + [`DestinatarioModal`](src/components/DestinatarioModal/DestinatarioModal.jsx) | tabela (nome, e-mail, público, situação), filtro por público, "Mostrar inativos", modal de novo/editar, desativar com confirmação. 409 (e-mail já no público) e `errors.<campo>` aparecem embaixo do campo |

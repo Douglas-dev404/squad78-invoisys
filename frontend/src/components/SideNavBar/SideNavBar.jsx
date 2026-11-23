@@ -10,6 +10,7 @@ export function SideNavBar({
     { icon: 'dashboard', label: 'Dashboard', to: '/dashboard' },
     { icon: 'rate_review', label: 'Releases', to: '/releases' },
     { icon: 'history', label: 'Histórico de envios', to: '/historico' },
+    { icon: 'contact_mail', label: 'Destinatários', to: '/destinatarios' },
     ...(isAdmin ? [{ icon: 'group', label: 'Usuários', to: '/usuarios' }] : []),
   ];
 
