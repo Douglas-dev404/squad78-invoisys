@@ -11,6 +11,8 @@ public sealed class FakeJiraClient : IJiraClient
 
     public List<string> ChavesConsultadas { get; } = [];
 
+    public List<VersaoJira> Versoes { get; set; } = [];
+
     public Task<IReadOnlyList<HistoriaJira>> BuscarHistoriasDaReleaseAsync(
         string fixVersion,
         CancellationToken cancellationToken = default)
@@ -24,8 +26,6 @@ public sealed class FakeJiraClient : IJiraClient
 
         return Task.FromResult<IReadOnlyList<HistoriaJira>>(Historias);
     }
-
-    public List<VersaoJira> Versoes { get; set; } = [];
 
     public Exception? FalhaAoListarVersoes { get; set; }
 

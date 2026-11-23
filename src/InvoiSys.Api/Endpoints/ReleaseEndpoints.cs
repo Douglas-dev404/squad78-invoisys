@@ -146,12 +146,13 @@ public static class ReleaseEndpoints
 
     private static async Task<IResult> ProcessarReleaseAsync(
         string chaveRelease,
+        [FromBody(EmptyBodyBehavior = Microsoft.AspNetCore.Mvc.ModelBinding.EmptyBodyBehavior.Allow)] ProcessarReleaseIn? entrada,
         [FromServices] PipelineGeracaoReleaseNote pipeline,
         CancellationToken cancellationToken)
     {
         try
         {
-            var release = await pipeline.ExecutarAsync(chaveRelease, cancellationToken);
+            var release = await pipeline.ExecutarAsync(chaveRelease, entrada?.ChavesHistorias, cancellationToken);
 
             return Results.Ok(new ReleaseProcessadaOut(
                 ChaveJira: release.ChaveJira,
@@ -168,6 +169,10 @@ public static class ReleaseEndpoints
             return Results.Problem(detail: exc.Message, statusCode: StatusCodes.Status409Conflict);
         }
         catch (ReleaseSemHistoriasException exc)
+        {
+            return Results.Problem(detail: exc.Message, statusCode: StatusCodes.Status422UnprocessableEntity);
+        }
+        catch (HistoriasSelecionadasInvalidasException exc)
         {
             return Results.Problem(detail: exc.Message, statusCode: StatusCodes.Status422UnprocessableEntity);
         }

@@ -82,7 +82,7 @@ function ListaVersoes({ versoes, selecionada, onSelecionar }) {
   );
 }
 
-function PreviaHistorias({ previa }) {
+function PreviaHistorias({ previa, selecionadas, onAlternar, onSelecionarTodas, onLimparSelecao, enviando }) {
   const { carregando, erro, resumo, historias, recarregar } = previa;
 
   if (carregando) {
@@ -114,27 +114,57 @@ function PreviaHistorias({ previa }) {
 
   return (
     <section aria-label={UI_STRINGS.PROCESS_MODAL_PREVIEW_TITLE} className="space-y-xs">
-      <p className="font-label-md text-label-md text-on-surface">
-        {resumo.total} {resumo.total === 1 ? 'história' : 'histórias'}
+      <div className="flex flex-wrap items-center justify-between gap-xs">
+        <p className="font-label-md text-label-md text-on-surface">
+        {selecionadas.length} de {resumo.total} {resumo.total === 1 ? 'história selecionada' : 'histórias selecionadas'}
         <span className="font-body-sm text-body-sm text-on-surface-variant">
           {' · '}
           {tipos.map((t) => `${resumo.porTipo[t]} ${ROTULO_TIPO[t]}`).join(' · ')}
           {' · '}
           {resumo.comReleaseNote} com Release Note
         </span>
-      </p>
+        </p>
+        <div className="flex gap-sm">
+          <button type="button" onClick={onSelecionarTodas} disabled={enviando} className="font-label-sm text-label-sm text-primary underline disabled:opacity-60">
+            {UI_STRINGS.PROCESS_MODAL_STORIES_SELECT_ALL}
+          </button>
+          <button type="button" onClick={onLimparSelecao} disabled={enviando} className="font-label-sm text-label-sm text-primary underline disabled:opacity-60">
+            {UI_STRINGS.PROCESS_MODAL_STORIES_CLEAR_ALL}
+          </button>
+        </div>
+      </div>
       <ul
         tabIndex={0}
         aria-label={UI_STRINGS.PROCESS_MODAL_STORIES_LABEL}
         className="max-h-48 divide-y divide-surface-variant/60 overflow-y-auto rounded-lg border border-outline-variant"
       >
         {historias.map((h) => (
-          <li key={h.chave} className="px-sm py-xs font-body-sm text-body-sm">
-            <span className="font-semibold text-primary">{h.chave}</span>
-            <span className="text-on-surface"> {h.titulo}</span>
+          <li key={h.chave} className="font-body-sm text-body-sm">
+            <label className="flex cursor-pointer items-start gap-sm px-sm py-xs hover:bg-surface-container">
+              <input
+                type="checkbox"
+                checked={selecionadas.includes(h.chave)}
+                onChange={() => onAlternar(h.chave)}
+                disabled={enviando}
+                className="mt-1 accent-primary"
+              />
+              <span>
+                <span className="font-semibold text-primary">{h.chave}</span>
+                <span className="text-on-surface"> {h.titulo}</span>
+                <span className="block text-on-surface-variant">{h.tipoIssue}</span>
+                {h.possuiReleaseNoteDedicada && (
+                  <span className="mt-xs inline-block rounded-full bg-secondary-container px-sm py-[2px] font-label-sm text-label-sm text-on-secondary-container">
+                    Release Note dedicada
+                  </span>
+                )}
+              </span>
+            </label>
           </li>
         ))}
       </ul>
+      {selecionadas.length === 0 && (
+        <p role="alert" className="font-body-sm text-body-sm text-error">{UI_STRINGS.PROCESS_MODAL_STORIES_REQUIRED}</p>
+      )}
     </section>
   );
 }
@@ -150,6 +180,7 @@ export function ProcessarReleaseModal({ onClose, onSucesso }) {
   const [manual, setManual] = useState(false);
   const [busca, setBusca] = useState('');
   const [selecionada, setSelecionada] = useState(null);
+  const [selecao, setSelecao] = useState({ versao: null, chaves: null });
   const [valorManual, setValorManual] = useState('');
   const [erroCampo, setErroCampo] = useState(undefined);
   const [erroApi, setErroApi] = useState(null);
@@ -160,14 +191,18 @@ export function ProcessarReleaseModal({ onClose, onSucesso }) {
   const previa = useHistoriasVersao(manual ? null : selecionada);
 
   const versao = jira.versoes.find((v) => v.nome === selecionada) ?? null;
+  const chavesSelecionadas = selecao.versao === selecionada && selecao.chaves !== null
+    ? selecao.chaves
+    : previa.historias.map((h) => h.chave);
   const visiveis = useMemo(() => filtrarVersoes(jira.versoes, busca), [jira.versoes, busca]);
   const aprovada = versao?.statusInvoisys === 'aprovado';
   const previaPronta = !previa.carregando && !previa.erro && previa.resumo.total > 0;
-  const podeProcessar = manual ? true : Boolean(versao) && previaPronta && !aprovada;
+  const podeProcessar = manual ? Boolean(valorManual.trim()) : Boolean(versao) && previaPronta && !aprovada && chavesSelecionadas.length > 0;
 
   const selecionar = (nome) => {
     if (enviandoRef.current) return;
     setSelecionada(nome);
+    setSelecao({ versao: nome, chaves: null });
     setErroApi(null);
   };
 
@@ -193,7 +228,7 @@ export function ProcessarReleaseModal({ onClose, onSucesso }) {
     setErroApi(null);
 
     try {
-      await processarRelease(chave);
+      await processarRelease(chave, manual ? undefined : chavesSelecionadas);
     } catch (err) {
       setErroApi(mensagemDeErro(err, UI_STRINGS.PROCESS_MODAL_GENERIC_ERROR));
       enviandoRef.current = false;
@@ -291,7 +326,21 @@ export function ProcessarReleaseModal({ onClose, onSucesso }) {
               </div>
             )}
 
-            {versao && <PreviaHistorias previa={previa} />}
+            {versao && (
+              <PreviaHistorias
+                previa={previa}
+                selecionadas={chavesSelecionadas}
+                onAlternar={(chaveHistoria) => setSelecao({
+                  versao: selecionada,
+                  chaves: chavesSelecionadas.includes(chaveHistoria)
+                    ? chavesSelecionadas.filter((chave) => chave !== chaveHistoria)
+                    : [...chavesSelecionadas, chaveHistoria],
+                })}
+                onSelecionarTodas={() => setSelecao({ versao: selecionada, chaves: previa.historias.map((h) => h.chave) })}
+                onLimparSelecao={() => setSelecao({ versao: selecionada, chaves: [] })}
+                enviando={enviando}
+              />
+            )}
           </>
         )}
 

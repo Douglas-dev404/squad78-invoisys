@@ -37,11 +37,11 @@ const DIALOGOS = {
  * @param {string} [props.statusRelease]
  * @param {Function} props.recarregar refaz o GET da Release depois de cada ação
  */
-export function BarraRevisao({ chave, versao, statusRelease, recarregar }) {
+export function BarraRevisao({ chave, versao, chavesHistorias, statusRelease, recarregar }) {
   const [dialogo, setDialogo] = useState(null);
   const [exportacaoAberta, setExportacaoAberta] = useState(false);
   const [envioAberto, setEnvioAberto] = useState(false);
-  const revisao = useRevisaoVersao({ chave, publico: versao.publico, recarregar });
+  const revisao = useRevisaoVersao({ chave, publico: versao.publico, chavesHistorias, recarregar });
   const exportacao = useExportacao({ chave, publico: versao.publico });
   const acoes = acoesDaVersao(versao, statusRelease);
   const ocupado = revisao.executando !== null;

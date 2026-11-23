@@ -12,13 +12,17 @@ public sealed class JiraOptions
 
     public string Projeto { get; set; } = string.Empty;
 
+    public string ProjectKey { get; set; } = string.Empty;
+
     public JiraReleaseNoteOptions ReleaseNote { get; set; } = new();
 
     public bool EstaConfigurado =>
         !string.IsNullOrWhiteSpace(BaseUrl)
         && !string.IsNullOrWhiteSpace(Email)
         && !string.IsNullOrWhiteSpace(ApiToken)
-        && !string.IsNullOrWhiteSpace(Projeto);
+        && !string.IsNullOrWhiteSpace(ProjetoEfetivo);
+
+    public string ProjetoEfetivo => string.IsNullOrWhiteSpace(Projeto) ? ProjectKey : Projeto;
 }
 
 public sealed class JiraReleaseNoteOptions

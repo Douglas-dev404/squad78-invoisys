@@ -83,6 +83,7 @@ classDiagram
 | Exceção | Lançada quando |
 |---|---|
 | `ReleaseSemHistoriasException` | processar Release sem histórias no Jira (`MarcarProcessando`, [ADR-030](../../docs/decisoes-arquiteturais.md#adr-030--release-sem-histórias-no-jira-é-recusada-antes-da-ia)); a API responde 422 |
+| `HistoriasSelecionadasInvalidasException` | lista vazia ou contém histórias que não pertencem à Release carregada do Jira; a API responde 422 |
 | `RevisaoHumanaObrigatoriaException` | aprovar Release com pipeline em `falhou`, transição de revisão inválida, ou reprocessar versão já aprovada sem reabrir (`GarantirQuePodeReprocessar`, [ADR-020](../../docs/decisoes-arquiteturais.md#adr-020--versão-aprovada-não-é-reprocessada-sem-reabrir)) |
 | `ReleaseSemItensProcessadosException` | aprovar/reprovar público sem versão gerada, ou versão sem itens |
 | `VersaoSemItensException` | (interna à versão) aprovar sem itens ou com todos excluídos |
@@ -125,7 +126,7 @@ errado em silêncio).
 
 | Porta | Tipo | Implementada por | Para quê |
 |---|---|---|---|
-| [`IJiraClient`](Ports/IJiraClient.cs) | saída (integração) | `JiraRestClient` / `JiraClientPendente` | `BuscarHistoriasDaReleaseAsync(fixVersion)`: todas as issues, paginação resolvida por dentro |
+| [`IJiraClient`](Ports/IJiraClient.cs) | saída (integração) | `JiraRestClient` / `JiraClientPendente` | lista versões do projeto configurado e busca issues por projeto + `fixVersion`, com paginação resolvida por dentro |
 | [`ILlmProvider`](Ports/ILlmProvider.cs) | saída (integração) | `OpenRouterProvider` / `ProviderPendente` | um método por estágio de IA: `CategorizarAsync`, `AgruparSemelhantesAsync`, `ReescreverLinguagemNegocioAsync`, `GerarTituloEResumoAsync` |
 | [`IReleaseRepository`](Ports/IReleaseRepository.cs) | persistência (agregado) | `ReleaseRepository` | `BuscarPorIdAsync`, `BuscarPorChaveJiraAsync` (agregado completo), `SalvarAsync`, `ListarResumosAsync(status?)` (devolve o modelo de leitura `ReleaseResumo`, nunca uma `Release` parcial) |
 | [`IBloqueioProcessamento`](Ports/IBloqueioProcessamento.cs) | trava por Release | `PostgresBloqueioProcessamento` | `TentarAdquirirAsync(chave)` devolve a trava (`IAsyncDisposable`) ou `null` se a Release já está sendo processada ([ADR-031](../../docs/decisoes-arquiteturais.md#adr-031--trava-por-release-antes-do-pipeline-advisory-lock-no-postgres)) |

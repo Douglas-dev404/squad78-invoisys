@@ -26,15 +26,22 @@ public sealed class PipelineGeracaoReleaseNote(
     public async Task<Release> ExecutarAsync(
         string chaveRelease,
         CancellationToken cancellationToken = default)
+        => await ExecutarAsync(chaveRelease, null, cancellationToken);
+
+    public async Task<Release> ExecutarAsync(
+        string chaveRelease,
+        IReadOnlyCollection<string>? chavesHistoriasSelecionadas,
+        CancellationToken cancellationToken = default)
     {
         await using var trava = await _bloqueio.TentarAdquirirAsync(chaveRelease, cancellationToken)
             ?? throw new ProcessamentoEmAndamentoException(chaveRelease);
 
-        return await ExecutarSemTravaAsync(chaveRelease, cancellationToken);
+        return await ExecutarSemTravaAsync(chaveRelease, chavesHistoriasSelecionadas, cancellationToken);
     }
 
     private async Task<Release> ExecutarSemTravaAsync(
         string chaveRelease,
+        IReadOnlyCollection<string>? chavesHistoriasSelecionadas,
         CancellationToken cancellationToken)
     {
         // Reusar a instância carregada: SalvarAsync decide INSERT/UPDATE pelo rastreamento do EF.
@@ -42,7 +49,8 @@ public sealed class PipelineGeracaoReleaseNote(
 
         release?.GarantirQuePodeReprocessar();
 
-        var historias = await _jira.BuscarHistoriasDaReleaseAsync(chaveRelease, cancellationToken);
+        var historiasDisponiveis = await _jira.BuscarHistoriasDaReleaseAsync(chaveRelease, cancellationToken);
+        var historias = SelecionarHistorias(chaveRelease, historiasDisponiveis, chavesHistoriasSelecionadas);
 
         if (release is null)
         {
@@ -84,6 +92,39 @@ public sealed class PipelineGeracaoReleaseNote(
 
         await _releaseRepository.SalvarAsync(release, cancellationToken);
         return release;
+    }
+
+    private static IReadOnlyList<HistoriaJira> SelecionarHistorias(
+        string chaveRelease,
+        IReadOnlyList<HistoriaJira> historiasDisponiveis,
+        IReadOnlyCollection<string>? chavesSelecionadas)
+    {
+        if (chavesSelecionadas is null)
+        {
+            return historiasDisponiveis;
+        }
+
+        if (chavesSelecionadas.Count == 0 || chavesSelecionadas.Any(string.IsNullOrWhiteSpace))
+        {
+            throw new HistoriasSelecionadasInvalidasException(chaveRelease);
+        }
+
+        var selecionadas = chavesSelecionadas
+            .Select(chave => chave.Trim())
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+        var chavesDisponiveis = historiasDisponiveis
+            .Select(historia => historia.Chave)
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+        if (!selecionadas.IsSubsetOf(chavesDisponiveis))
+        {
+            throw new HistoriasSelecionadasInvalidasException(chaveRelease);
+        }
+
+        return historiasDisponiveis
+            .Where(historia => selecionadas.Contains(historia.Chave))
+            .ToList();
     }
 
     // Limpa o campo que TextoFonte devolve: limpar sempre DescricaoTecnica ignoraria a Release Note.
