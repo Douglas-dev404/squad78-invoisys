@@ -24,6 +24,8 @@ public sealed class InvoiSysDbContext(DbContextOptions<InvoiSysDbContext> option
 
     public DbSet<TokenRedefinicaoSenha> TokensRedefinicaoSenha => Set<TokenRedefinicaoSenha>();
 
+    public DbSet<ConfiguracaoIntegracao> ConfiguracoesIntegracao => Set<ConfiguracaoIntegracao>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder.ApplyConfigurationsFromAssembly(typeof(InvoiSysDbContext).Assembly);

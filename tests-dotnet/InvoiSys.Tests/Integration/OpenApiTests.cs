@@ -83,6 +83,12 @@ public class OpenApiTests
             "/api/v1/auth/logout",
             "/api/v1/usuarios",
             "/api/v1/usuarios/{id}/desativar",
+            "/api/v1/integracoes",
+            "/api/v1/integracoes/jira",
+            "/api/v1/integracoes/ia",
+            "/api/v1/integracoes/jira/testar",
+            "/api/v1/integracoes/ia/testar",
+            "/api/v1/execucoes/ao-vivo",
         ]);
     }
 

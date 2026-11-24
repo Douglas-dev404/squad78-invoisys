@@ -90,6 +90,34 @@ namespace InvoiSys.Infrastructure.Database.Migrations
                         });
                 });
 
+            modelBuilder.Entity("InvoiSys.Domain.Entities.ConfiguracaoIntegracao", b =>
+                {
+                    b.Property<string>("Chave")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("chave");
+
+                    b.Property<DateTimeOffset>("AtualizadoEm")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("atualizado_em")
+                        .HasDefaultValueSql("now()");
+
+                    b.Property<bool>("Secreto")
+                        .HasColumnType("boolean")
+                        .HasColumnName("secreto");
+
+                    b.Property<string>("Valor")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("valor");
+
+                    b.HasKey("Chave")
+                        .HasName("pk_configuracoes_integracao");
+
+                    b.ToTable("configuracoes_integracao", (string)null);
+                });
+
             modelBuilder.Entity("InvoiSys.Domain.Entities.DestaqueHero", b =>
                 {
                     b.Property<Guid>("Id")

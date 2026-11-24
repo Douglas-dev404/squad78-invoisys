@@ -6,7 +6,8 @@ public sealed record HistoriaJiraOut(
     string Chave,
     string Titulo,
     string TipoIssue,
-    bool PossuiReleaseNoteDedicada);
+    bool PossuiReleaseNoteDedicada,
+    string? TextoOriginal = null);
 
 public sealed record ReleaseOut(
     string ChaveJira,

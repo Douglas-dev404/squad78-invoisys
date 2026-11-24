@@ -1,3 +1,4 @@
+using InvoiSys.Domain.Ports;
 using InvoiSys.Infrastructure.Configuration;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -8,7 +9,8 @@ public sealed class OpenAiProvider(
     HttpClient http,
     IOptions<OpenAiOptions> options,
     PromptLoader prompts,
-    ILogger<OpenAiProvider> logger) : ChatCompletionsLlmProvider(http, prompts, logger)
+    ILogger<OpenAiProvider> logger,
+    IMonitorExecucao? monitor = null) : ChatCompletionsLlmProvider(http, prompts, logger, monitor)
 {
     private readonly OpenAiOptions _opcoes = options.Value;
 

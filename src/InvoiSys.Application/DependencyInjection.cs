@@ -24,9 +24,8 @@ public static class DependencyInjection
             provider.GetRequiredService<ILlmProvider>(),
             provider.GetRequiredService<IReleaseRepository>(),
             provider.GetRequiredService<IBloqueioProcessamento>(),
-            string.Equals(configuration["Llm:Provedor"]?.Trim(), "OpenAi", StringComparison.OrdinalIgnoreCase)
-                ? configuration["OpenAi:Modelo"]
-                : configuration["OpenRouter:Modelo"]));
+            provider.GetRequiredService<IModeloIaAtivo>().Modelo,
+            provider.GetRequiredService<IMonitorExecucao>()));
 
         services.AddScoped(provider =>
         {

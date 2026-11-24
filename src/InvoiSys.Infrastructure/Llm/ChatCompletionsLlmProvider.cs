@@ -10,7 +10,8 @@ namespace InvoiSys.Infrastructure.Llm;
 public abstract partial class ChatCompletionsLlmProvider(
     HttpClient http,
     PromptLoader prompts,
-    ILogger logger) : ILlmProvider
+    ILogger logger,
+    IMonitorExecucao? monitor = null) : ILlmProvider
 {
     private static readonly JsonSerializerOptions JsonOpcoes = new(JsonSerializerDefaults.Web);
 
@@ -202,7 +203,19 @@ public abstract partial class ChatCompletionsLlmProvider(
             ResponseFormat = jsonMode ? new ResponseFormat { Type = "json_object" } : null,
         };
 
-        var data = await PostAsync(payload, cancellationToken);
+        monitor?.Publicar(TipoEventoExecucao.IaChamada, $"Chamando {NomeProvedor} ({Modelo}).", prompt: prompt, modelo: Modelo);
+        var relogio = System.Diagnostics.Stopwatch.StartNew();
+
+        JsonElement data;
+        try
+        {
+            data = await PostAsync(payload, cancellationToken);
+        }
+        catch (Exception exc)
+        {
+            monitor?.Publicar(TipoEventoExecucao.IaErro, $"{NomeProvedor} falhou: {exc.Message}", modelo: Modelo, duracaoMs: relogio.ElapsedMilliseconds);
+            throw;
+        }
 
         if (!data.TryGetProperty("choices", out var choices)
             || choices.ValueKind != JsonValueKind.Array
@@ -215,7 +228,9 @@ public abstract partial class ChatCompletionsLlmProvider(
                 $"Resposta da {NomeProvedor} sem choices[0].message.content: {data}");
         }
 
-        return content.GetString()!;
+        var texto = content.GetString()!;
+        monitor?.Publicar(TipoEventoExecucao.IaResposta, $"{NomeProvedor} respondeu.", resposta: texto, modelo: Modelo, duracaoMs: relogio.ElapsedMilliseconds);
+        return texto;
     }
 
     private async Task<JsonElement> PostAsync(

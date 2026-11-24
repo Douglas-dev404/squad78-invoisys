@@ -41,6 +41,20 @@ segredo do GitHub é `AZURE_WEBAPP_PUBLISH_PROFILE`, que o workflow usa para faz
 
 Trocar um App Setting reinicia a API sozinho.
 
+## Integrações editáveis na tela
+
+Jira e IA também podem ser configurados na tela **Configurações → Integrações** (só `admin`). O que for
+salvo ali vale por cima das App Settings, sem reiniciar a API; as App Settings continuam sendo o padrão
+quando nada foi salvo. Token do Jira e chaves da IA ficam **cifrados** (AES-256-GCM) na tabela
+`configuracoes_integracao` e nunca voltam para a tela.
+
+A chave de cifragem vem de `Configuracoes__ChaveCriptografia` (opcional) ou, na falta dela, de
+`Auth__Jwt__Chave`. **Trocar essa chave invalida os segredos salvos na tela**: a API loga o aviso e volta a
+usar as App Settings até alguém salvar de novo.
+
+A tela **Execução da IA** (`/execucao-ia`, qualquer usuário logado) mostra as chamadas à IA em tempo real.
+Os eventos ficam só em memória (últimos 400) e somem ao reiniciar a API.
+
 ## Recriar do zero (Azure CLI)
 
 ```bash

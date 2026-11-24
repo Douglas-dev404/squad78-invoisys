@@ -10,7 +10,13 @@ export function SideNavBar({
     { icon: 'dashboard', label: 'Dashboard', to: '/dashboard' },
     { icon: 'rate_review', label: 'Releases', to: '/releases' },
     { icon: 'history', label: 'Histórico de envios', to: '/historico' },
-    ...(isAdmin ? [{ icon: 'group', label: 'Usuários', to: '/usuarios' }] : []),
+    { icon: 'smart_toy', label: 'Execução da IA', to: '/execucao-ia' },
+    ...(isAdmin
+      ? [
+          { icon: 'group', label: 'Usuários', to: '/usuarios' },
+          { icon: 'settings', label: 'Configurações', to: '/configuracoes/integracoes' },
+        ]
+      : []),
   ];
 
   return (
