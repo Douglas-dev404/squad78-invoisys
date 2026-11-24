@@ -102,18 +102,43 @@ function ErroCarregamento({ mensagem, onRetry }) {
   );
 }
 
-function Item({ item, podeEditar, revisao }) {
+function Item({ item, podeEditar, revisao, historias, comparar }) {
   const excluido = item.incluido === false;
   return (
     <li className="rounded-lg border border-surface-variant/60 p-sm">
       <ItemRevisavel item={item} podeEditar={podeEditar} revisao={revisao}>
-        <ConteudoItem item={item} excluido={excluido} />
+        <ConteudoItem item={item} excluido={excluido} historias={historias} comparar={comparar} />
       </ItemRevisavel>
     </li>
   );
 }
 
-function ConteudoItem({ item, excluido }) {
+/** "Como era" (texto da história no Jira) ao lado de "como ficou" (texto do comunicado). */
+function ComparacaoAntesDepois({ item, historias }) {
+  const origem = (historias ?? []).filter(
+    (historia) => item.origens?.includes(historia.chave) && historia.textoOriginal,
+  );
+  if (origem.length === 0) return null;
+  return (
+    <div className="grid gap-xs md:grid-cols-2" data-testid="comparacao-antes-depois">
+      <div className="rounded-lg bg-surface-container p-sm">
+        <p className="font-label-sm text-label-sm text-on-surface-variant">Como era (Jira)</p>
+        {origem.map((historia) => (
+          <div key={historia.chave} className="mt-xs">
+            <p className="font-label-md text-label-md text-primary">{historia.chave} · {historia.titulo}</p>
+            <p className="whitespace-pre-line font-body-sm text-body-sm text-on-surface">{historia.textoOriginal}</p>
+          </div>
+        ))}
+      </div>
+      <div className="rounded-lg border border-primary/30 bg-primary/5 p-sm">
+        <p className="font-label-sm text-label-sm text-primary">Como ficou</p>
+        <p className="mt-xs whitespace-pre-line font-body-sm text-body-sm text-on-surface">{textoFinalDoItem(item)}</p>
+      </div>
+    </div>
+  );
+}
+
+function ConteudoItem({ item, excluido, historias, comparar }) {
   return (
     <div className="space-y-xs">
       <div className="flex flex-wrap items-start gap-xs">
@@ -136,6 +161,7 @@ function ConteudoItem({ item, excluido }) {
           <p className="mt-xs whitespace-pre-line rounded-lg bg-surface-container p-sm text-on-surface">{item.texto}</p>
         </details>
       )}
+      {comparar && <ComparacaoAntesDepois item={item} historias={historias} />}
       {excluido && (
         <p className="font-body-sm text-body-sm text-on-surface-variant">
           {UI_STRINGS.RELEASE_DETALHE_EXCLUIDO}
@@ -162,11 +188,19 @@ function ConteudoItem({ item, excluido }) {
  * Corpo da aba de um público. A BarraRevisao (#71/#72) mostra quem aprovou e o motivo da reprovação,
  * por isso esta tela não repete essas informações.
  */
-function CorpoVersao({ versao, chave, chavesHistorias, statusRelease, recarregar, revisaoItem }) {
+function CorpoVersao({ versao, chave, chavesHistorias, historias, statusRelease, recarregar, revisaoItem }) {
   const itens = versao.itens ?? [];
   const acoes = acoesDaVersao(versao, statusRelease);
+  const [comparar, setComparar] = useState(false);
+  const temOriginal = (historias ?? []).some((historia) => historia.textoOriginal);
   return (
     <div className="space-y-md">
+      {temOriginal && (
+        <label className="flex w-fit items-center gap-xs font-label-md text-label-md text-on-surface">
+          <input type="checkbox" checked={comparar} onChange={(event) => setComparar(event.target.checked)} />
+          Comparar com o texto original do Jira (como era × como ficou)
+        </label>
+      )}
       <BarraRevisao
         chave={chave}
         versao={versao}
@@ -186,7 +220,14 @@ function CorpoVersao({ versao, chave, chavesHistorias, statusRelease, recarregar
             <h3 className="font-headline-sm text-headline-sm text-on-surface">{titulo}</h3>
             <ul className="space-y-sm">
               {daCategoria.map((item) => (
-                <Item key={item.id} item={item} podeEditar={acoes.editarItens} revisao={revisaoItem} />
+                <Item
+                  key={item.id}
+                  item={item}
+                  podeEditar={acoes.editarItens}
+                  revisao={revisaoItem}
+                  historias={historias}
+                  comparar={comparar}
+                />
               ))}
             </ul>
           </section>
@@ -411,6 +452,7 @@ function Detalhe({ release, recarregar }) {
               versoes={versoes}
               chave={release.chaveJira}
               chavesHistorias={(release.historias ?? []).map((historia) => historia.chave)}
+              historias={release.historias ?? []}
               statusRelease={release.status}
               recarregar={recarregarTudo}
               revisaoItem={revisaoItem}

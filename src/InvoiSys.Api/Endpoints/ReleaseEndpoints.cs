@@ -98,7 +98,8 @@ public static class ReleaseEndpoints
                 h.Chave,
                 h.Titulo,
                 h.TipoIssue,
-                h.PossuiReleaseNoteDedicada))],
+                h.PossuiReleaseNoteDedicada,
+                h.TextoFonte))],
             Versoes: [.. release.Versoes.Select(v => new VersaoComunicadoOut(
                 v.Publico.ParaValor(),
                 v.Status.ParaValor(),
