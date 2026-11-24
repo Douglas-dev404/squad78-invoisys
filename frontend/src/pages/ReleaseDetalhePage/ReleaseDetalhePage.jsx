@@ -130,6 +130,12 @@ function ConteudoItem({ item, excluido }) {
           </span>
         )}
       </div>
+      {item.textoEditadoManualmente != null && item.texto && (
+        <details className="font-body-sm text-body-sm">
+          <summary className="cursor-pointer text-primary">Ver saída original da IA</summary>
+          <p className="mt-xs whitespace-pre-line rounded-lg bg-surface-container p-sm text-on-surface">{item.texto}</p>
+        </details>
+      )}
       {excluido && (
         <p className="font-body-sm text-body-sm text-on-surface-variant">
           {UI_STRINGS.RELEASE_DETALHE_EXCLUIDO}

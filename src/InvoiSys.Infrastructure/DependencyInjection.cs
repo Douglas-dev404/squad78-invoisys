@@ -6,6 +6,7 @@ using InvoiSys.Infrastructure.Auth;
 using InvoiSys.Infrastructure.Configuration;
 using InvoiSys.Infrastructure.Database;
 using InvoiSys.Infrastructure.Email;
+using InvoiSys.Infrastructure.Integracoes;
 using InvoiSys.Infrastructure.Jira;
 using InvoiSys.Infrastructure.Llm;
 using Npgsql;
@@ -13,6 +14,8 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Http.Resilience;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 
 namespace InvoiSys.Infrastructure;
@@ -31,6 +34,8 @@ public static class DependencyInjection
 
         services.AddSingleton<PromptLoader>();
 
+        AddIntegracoesEditaveis(services, configuration);
+
         AddAuth(services, configuration);
 
         AddJiraClient(services);
@@ -38,6 +43,27 @@ public static class DependencyInjection
         AddDatabase(services, configuration);
 
         return services;
+    }
+
+    // Jira e IA podem ser editados na tela de Integrações: IOptions<T> passa a ler o retrato em uso a cada acesso.
+    private static void AddIntegracoesEditaveis(IServiceCollection services, IConfiguration configuration)
+    {
+        services.AddSingleton(_ => new CofreSegredos(configuration));
+        services.AddSingleton(provider => new IntegracoesEmUso(
+            configuration,
+            provider.GetRequiredService<CofreSegredos>(),
+            (ILogger<IntegracoesEmUso>?)provider.GetService<ILogger<IntegracoesEmUso>>()
+                ?? NullLogger<IntegracoesEmUso>.Instance));
+        services.AddSingleton<IMonitorExecucao, MonitorExecucaoEmMemoria>();
+        services.AddSingleton<IModeloIaAtivo, ModeloIaAtivo>();
+        services.AddScoped<AdministracaoIntegracoes>();
+
+        services.AddSingleton<IOptions<JiraOptions>>(
+            p => new OpcoesAoVivo<JiraOptions>(() => p.GetRequiredService<IntegracoesEmUso>().Jira));
+        services.AddSingleton<IOptions<OpenAiOptions>>(
+            p => new OpcoesAoVivo<OpenAiOptions>(() => p.GetRequiredService<IntegracoesEmUso>().OpenAi));
+        services.AddSingleton<IOptions<OpenRouterOptions>>(
+            p => new OpcoesAoVivo<OpenRouterOptions>(() => p.GetRequiredService<IntegracoesEmUso>().OpenRouter));
     }
 
     private static void AddAuth(IServiceCollection services, IConfiguration configuration)
@@ -71,6 +97,7 @@ public static class DependencyInjection
         services.AddScoped<IUsuarioRepository, UsuarioRepository>();
         services.AddScoped<ITokenRedefinicaoSenhaRepository, TokenRedefinicaoSenhaRepository>();
         services.AddScoped<IDestaqueHeroRepository, DestaqueHeroRepository>();
+        services.AddScoped<IConfiguracaoIntegracaoRepository, ConfiguracaoIntegracaoRepository>();
 
         // Trava por Release (ADR-031): advisory lock de sessão numa conexão própria, fora do DbContext,
         // para durar a execução inteira do pipeline sem depender de transação.
@@ -118,7 +145,7 @@ public static class DependencyInjection
 
     private static void AddLlmProvider(IServiceCollection services, IConfiguration configuration)
     {
-        var provedor = LerProvedorLlm(configuration);
+        LerProvedorLlm(configuration); // falha no boot se Llm:Provedor for inválido
 
         services.AddHttpClient<OpenRouterProvider>((provider, http) =>
         {
@@ -134,7 +161,7 @@ public static class DependencyInjection
         })
         .AddStandardResilienceHandler(ConfigurarResilienciaLlm);
 
-        services.AddScoped<ILlmProvider>(provider => provedor switch
+        services.AddScoped<ILlmProvider>(provider => provider.GetRequiredService<IntegracoesEmUso>().Provedor switch
         {
             ProvedorLlm.OpenAi => provider.GetRequiredService<IOptions<OpenAiOptions>>().Value.EstaConfigurado
                 ? provider.GetRequiredService<OpenAiProvider>()
@@ -145,7 +172,7 @@ public static class DependencyInjection
         });
     }
 
-    private static ProvedorLlm LerProvedorLlm(IConfiguration configuration)
+    internal static ProvedorLlm LerProvedorLlm(IConfiguration configuration)
     {
         var valor = configuration["Llm:Provedor"];
         if (string.IsNullOrWhiteSpace(valor))

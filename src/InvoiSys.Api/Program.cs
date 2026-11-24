@@ -7,6 +7,7 @@ using InvoiSys.Infrastructure;
 using InvoiSys.Infrastructure.Auth;
 using InvoiSys.Infrastructure.Configuration;
 using InvoiSys.Infrastructure.Database;
+using InvoiSys.Infrastructure.Integracoes;
 using InvoiSys.Domain.Entities;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
@@ -85,6 +86,18 @@ if (app.Configuration.GetValue<bool>("Database:MigrarAoIniciar"))
     await contexto.Database.MigrateAsync();
 }
 
+// Integrações salvas na tela (Jira e IA) valem por cima das variáveis de ambiente; carrega antes de atender.
+try
+{
+    await using var escopoIntegracoes = app.Services.CreateAsyncScope();
+    await escopoIntegracoes.ServiceProvider.GetRequiredService<AdministracaoIntegracoes>().CarregarAsync();
+}
+catch (Exception exc) when (exc is not OperationCanceledException)
+{
+    // Sem o banco a API segue com as variáveis de ambiente; a tela de Integrações volta a valer no próximo boot.
+    app.Logger.LogWarning(exc, "Não foi possível carregar as integrações salvas; usando só as variáveis de ambiente.");
+}
+
 await using (var escopoAuth = app.Services.CreateAsyncScope())
 {
     await escopoAuth.ServiceProvider.GetRequiredService<AdminInicialSemeador>().SemearAsync();
@@ -109,6 +122,7 @@ app.MapExportacaoEndpoints();
 app.MapBrandingEndpoints();
 app.MapDashboardEndpoints();
 app.MapUsuarioEndpoints();
+app.MapIntegracaoEndpoints();
 
 app.Run();
 return 0;

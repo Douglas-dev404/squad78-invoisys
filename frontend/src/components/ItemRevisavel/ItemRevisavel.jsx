@@ -102,6 +102,20 @@ export function ItemRevisavel({ item, podeEditar, revisao, children }) {
             aria-describedby={`${idEditor}-ajuda`}
             className="w-full rounded-lg border border-outline-variant bg-surface-container-lowest p-sm font-body-md text-body-md text-on-surface focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/30 disabled:opacity-70"
           />
+          <div className="space-y-xs rounded-lg border border-outline-variant/60 bg-surface-container p-sm">
+            <div className="flex items-center justify-between gap-sm">
+              <p className="font-label-md text-label-md text-on-surface-variant">Saída da IA</p>
+              <button
+                type="button"
+                onClick={() => setRascunho(item.texto ?? '')}
+                disabled={salvando || !item.texto || rascunho === item.texto}
+                className={`${BOTAO_TEXTO} disabled:opacity-50`}
+              >
+                Usar texto da IA
+              </button>
+            </div>
+            <p className="whitespace-pre-line font-body-sm text-body-sm text-on-surface">{item.texto}</p>
+          </div>
           <div id={`${idEditor}-ajuda`} className="flex items-center justify-between gap-sm text-body-sm font-body-sm">
             <span className={erroDoEditor ? 'text-error' : 'text-on-surface-variant'} role={erroDoEditor ? 'alert' : undefined}>
               {erroDoEditor ?? 'Ctrl+Enter salva · Esc cancela'}

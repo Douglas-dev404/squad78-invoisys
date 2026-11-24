@@ -13,6 +13,8 @@ import { SentHistoryPage } from './pages/SentHistoryPage/SentHistoryPage';
 import { ReleasesPage } from './pages/ReleasesPage/ReleasesPage';
 import { ReleaseDetalhePage } from './pages/ReleaseDetalhePage/ReleaseDetalhePage';
 import { ResetPasswordPage } from './pages/ResetPasswordPage/ResetPasswordPage';
+import { IntegracoesPage } from './pages/IntegracoesPage/IntegracoesPage';
+import { ExecucaoIaPage } from './pages/ExecucaoIaPage/ExecucaoIaPage';
 
 function LoginRoute() {
   const navigate = useNavigate();
@@ -56,10 +58,12 @@ function App() {
       <Route path="/releases" element={<ReleasesPage />} />
       <Route path="/releases/:chave" element={<ReleaseDetalhePage />} />
       <Route path="/historico" element={<SentHistoryPage />} />
+      <Route path="/execucao-ia" element={<ExecucaoIaPage />} />
       <Route path="/perfil" element={<ProfilePage />} />
       <Route element={<RotaAdmin />}>
         <Route path="/usuarios" element={<UserManagementPage />} />
         <Route path="/usuarios/novo" element={<CreateUserPage />} />
+        <Route path="/configuracoes/integracoes" element={<IntegracoesPage />} />
       </Route>
     </Route>
     <Route path="/" element={<Navigate to="/dashboard" replace />} />

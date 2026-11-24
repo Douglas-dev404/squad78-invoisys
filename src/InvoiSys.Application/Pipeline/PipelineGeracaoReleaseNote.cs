@@ -8,8 +8,11 @@ public sealed class PipelineGeracaoReleaseNote(
     ILlmProvider llmProvider,
     IReleaseRepository releaseRepository,
     IBloqueioProcessamento bloqueio,
-    string? modeloLlm = null)
+    string? modeloLlm = null,
+    IMonitorExecucao? monitor = null)
 {
+    private readonly IMonitorExecucao? _monitor = monitor;
+
     private readonly IJiraClient _jira = jiraClient;
     private readonly ILlmProvider _llm = llmProvider;
     private readonly IReleaseRepository _releaseRepository = releaseRepository;
@@ -33,8 +36,12 @@ public sealed class PipelineGeracaoReleaseNote(
         IReadOnlyCollection<string>? chavesHistoriasSelecionadas,
         CancellationToken cancellationToken = default)
     {
+        using var escopoMonitor = _monitor?.IniciarEscopo(chaveRelease);
+
         await using var trava = await _bloqueio.TentarAdquirirAsync(chaveRelease, cancellationToken)
             ?? throw new ProcessamentoEmAndamentoException(chaveRelease);
+
+        _monitor?.Publicar(TipoEventoExecucao.PipelineIniciado, $"Processamento da Release {chaveRelease} iniciado.", modelo: _modeloLlm);
 
         return await ExecutarSemTravaAsync(chaveRelease, chavesHistoriasSelecionadas, cancellationToken);
     }
@@ -49,8 +56,10 @@ public sealed class PipelineGeracaoReleaseNote(
 
         release?.GarantirQuePodeReprocessar();
 
+        Etapa("Buscando as histórias da versão no Jira.");
         var historiasDisponiveis = await _jira.BuscarHistoriasDaReleaseAsync(chaveRelease, cancellationToken);
         var historias = SelecionarHistorias(chaveRelease, historiasDisponiveis, chavesHistoriasSelecionadas);
+        Etapa($"{historias.Count} história(s) entram no processamento: {string.Join(", ", historias.Select(h => h.Chave))}.");
 
         if (release is null)
         {
@@ -69,23 +78,27 @@ public sealed class PipelineGeracaoReleaseNote(
         {
             var historiasLimpas = historias.Select(ExtrairELimpar).ToList();
 
+            Etapa("Pedindo à IA para agrupar histórias parecidas.");
             var grupos = await _llm.AgruparSemelhantesAsync(
                 [.. historiasLimpas.Select(h => (h.Chave, h.TextoFonte))],
                 cancellationToken);
 
             var itens = await ProcessarGruposAsync(historiasLimpas, grupos, cancellationToken);
 
+            Etapa("Pedindo à IA o título e o resumo executivo.");
             var (titulo, resumo) = await _llm.GerarTituloEResumoAsync(
                 [.. itens.Select(i => i.Texto)],
                 cancellationToken);
 
             release.ConcluirProcessamento(itens, titulo, resumo);
             execucao.MarcarConcluida();
+            _monitor?.Publicar(TipoEventoExecucao.PipelineConcluido, $"Release {chaveRelease} processada: {itens.Count} item(ns) no comunicado.", modelo: _modeloLlm);
         }
         catch (Exception exc)
         {
             release.MarcarFalha();
             execucao.MarcarFalha(exc.Message);
+            _monitor?.Publicar(TipoEventoExecucao.PipelineFalhou, $"Falha ao processar {chaveRelease}: {exc.Message}", modelo: _modeloLlm);
             await _releaseRepository.SalvarAsync(release, cancellationToken);
             throw;
         }
@@ -93,6 +106,8 @@ public sealed class PipelineGeracaoReleaseNote(
         await _releaseRepository.SalvarAsync(release, cancellationToken);
         return release;
     }
+
+    private void Etapa(string mensagem) => _monitor?.Publicar(TipoEventoExecucao.Etapa, mensagem);
 
     private static IReadOnlyList<HistoriaJira> SelecionarHistorias(
         string chaveRelease,
@@ -157,8 +172,10 @@ public sealed class PipelineGeracaoReleaseNote(
         }
         var itens = new List<ItemComunicado>();
 
+        var posicao = 0;
         foreach (var grupoChaves in grupos)
         {
+            posicao++;
             // O LLM pode alucinar chave: filtrar, nunca indexar direto (ADR-017).
             var chavesConhecidas = grupoChaves.Where(porChave.ContainsKey).ToList();
 
@@ -168,6 +185,7 @@ public sealed class PipelineGeracaoReleaseNote(
             }
 
             var historiasDoGrupo = chavesConhecidas.Select(chave => porChave[chave]).ToList();
+            Etapa($"Grupo {posicao}/{grupos.Count} ({string.Join(", ", chavesConhecidas)}): categorizando e reescrevendo em linguagem de negócio.");
 
             var categoria = await _llm.CategorizarAsync(
                 historiasDoGrupo[0].TextoFonte,

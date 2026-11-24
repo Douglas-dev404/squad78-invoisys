@@ -1,3 +1,4 @@
+using InvoiSys.Domain.Ports;
 using InvoiSys.Infrastructure.Configuration;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -8,7 +9,8 @@ public sealed class OpenRouterProvider(
     HttpClient http,
     IOptions<OpenRouterOptions> options,
     PromptLoader prompts,
-    ILogger<OpenRouterProvider> logger) : ChatCompletionsLlmProvider(http, prompts, logger)
+    ILogger<OpenRouterProvider> logger,
+    IMonitorExecucao? monitor = null) : ChatCompletionsLlmProvider(http, prompts, logger, monitor)
 {
     private readonly OpenRouterOptions _opcoes = options.Value;
 
